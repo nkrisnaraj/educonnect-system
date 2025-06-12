@@ -6,11 +6,11 @@
 backend/venv/
 
 # Python cache and compiled files
-**/__pycache__/
-**/*.pyc
+backend/**/__pycache__/
+backend/**/*.pyc
 
 # Pytest cache
-backend/.pytest_cache/
+backend/backend/.pytest_cache/
 
 # Django environment file (contains Supabase keys, etc.)
 backend/.env
