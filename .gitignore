@@ -1,24 +1,56 @@
-# Backend Python/Django
+# ========================
+# Backend - Python/Django
+# ========================
+
+# Virtual environment
 backend/venv/
-backend/backend/__pycache__/
-backend/*.pyc
-backend/db.sqlite3
-backend/.pytest_cache/
-backend/migrations/__pycache__/
-backend/migrations/*.pyc
+
+# Python cache and compiled files
+backend//_pycache_/
+backend//*.pyc
+
+# Pytest cache
+backend/backend/.pytest_cache/
+
+# Django environment file (contains Supabase keys, etc.)
 backend/.env
 
-# Frontend Next.js
+# Ignore all app-level migrations cache and compiled files
+backend//migrations/_pycache_/
+backend//migrations/*.pyc
+
+# Remove this line if you're not using SQLite locally:
+# backend/db.sqlite3
+
+
+# ========================
+# Frontend - Next.js
+# ========================
+
+# Node modules
 frontend/node_modules/
+
+# Build output
 frontend/.next/
 frontend/out/
+frontend/build/
+
+# Local environment files
 frontend/.env.local
 frontend/.env.development.local
 frontend/.env.production.local
 frontend/.env.test.local
-frontend/build/
 
+
+# ========================
 # OS & IDE
+# ========================
+
+# macOS
 .DS_Store
+
+# VS Code
 .vscode/
+
+# Log files
 *.log
