@@ -44,7 +44,11 @@ INSTALLED_APPS = [
     'students',
     'edu_admin',
     'instructor',
+    # 'accounts',
+    'accounts.apps.AccountsConfig',
 ]
+
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
