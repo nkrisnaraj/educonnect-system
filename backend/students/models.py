@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
 from django.conf import settings
+from django.utils import timezone
 
 # Extend Django's default user model
 
@@ -74,4 +75,17 @@ class ReceiptPayment(models.Model):
 
     def __str__(self):
         return f"Receipt by {self.payid.stuid.username} - {'Verified' if self.verified else 'Unverified'}"
+
+
+#Enrollment Model
+class Enrollment(models.Model):
+    enrollid = models.AutoField(primary_key=True)
+    stuid = models.ForeignKey('students.StudentProfile', on_delete=models.CASCADE)
+    courseid = models.ForeignKey('instructor.Course', on_delete=models.CASCADE)
+    payid = models.ForeignKey('students.Payment', on_delete=models.CASCADE, null=True, blank=True)
+    timestamp = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Enrollment {self.enrollid} - Student {self.stuid} in Course {self.courseid}"
+
 
