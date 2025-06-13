@@ -1,17 +1,17 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
 import "./globals.css";
 
 
 export const metadata = {
-  title: "EduConnect System",
-  description: "Automated Payment Verification & Webinar Intergration",
+  title: "EduConnect",
+  description: "EduConnect System",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        {children}
+        <StudentLayoutWrapper>{children}</StudentLayoutWrapper>
       </body>
     </html>
   );
