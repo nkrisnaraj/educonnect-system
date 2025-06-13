@@ -1,6 +1,10 @@
 import uuid
 from django.conf import settings
 from django.db import models
+from students.models import StudentProfile  
+
+
+
 
 # Create your models here.
 #Course Model
@@ -23,3 +27,25 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.courseid})"
+
+
+#Exams Model
+class Exams(models.Model):
+    examid = models.CharField(max_length=20, unique=True)
+    examname = models.CharField(max_length=100)
+    courseid = models.ForeignKey(Course,on_delete=models.CASCADE)
+    date = models.DateField()
+    
+    def __str__(self):
+        return f"{self.name} - {self.course.name}"
+
+#Marks Model
+class Marks(models.Model):
+    marksid = models.CharField(unique=True, max_length=20)
+    stuid = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
+    examid = models.CharField(Exams,max_length=100)
+    marks = models.FloatField()
+
+    def __str__(self):
+        return f"{self.student.stuid} - {self.exam.examname} - {self.marks_obtained}"
+    
