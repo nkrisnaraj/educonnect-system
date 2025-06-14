@@ -25,5 +25,5 @@ def login_user(request):
     user = authenticate(request, username=username, password=password)
 
     if user:
-        return Response(UserSerializer(user).data)
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
     return Response({'error': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
