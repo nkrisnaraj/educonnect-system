@@ -1,16 +1,12 @@
-import "./globals.css";
-import LayoutWrapper from "@/components/LayoutWrapper";
+import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
+import "../globals.css";
 
-export const metadata = {
-  title: "EduConnect",
-  description: "EduConnect System",
-};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <LayoutWrapper>{children}</LayoutWrapper>
+        <StudentLayoutWrapper>{children}</StudentLayoutWrapper>
       </body>
     </html>
   );
