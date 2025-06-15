@@ -110,7 +110,7 @@ export default function Login() {
                     </div>
 
                     {/* Forgot Password */}
-                    <div className="text-right text-md mt-2">
+                    <div className="text-right text-sm ">
                         <span className="text-primary font-medium cursor-pointer hover:underline">
                             Forgot Password?
                         </span>
@@ -128,7 +128,7 @@ export default function Login() {
                 {/* Register Link */}
                 <p className="mt-6 mb-6 text-gray-700 text-center">
                     Don't have an account?{" "}
-                    <span className="text-primary font-bold cursor-pointer hover:underline">
+                    <span className="text-primary font-bold cursor-pointer hover:underline" onClick={()=>{router.push("/register")}}>
                         Register Now
                     </span>
                 </p>
