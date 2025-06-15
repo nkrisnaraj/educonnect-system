@@ -2,6 +2,6 @@
 
 export default function page() {
   return (
-    <div>Instructor Page</div>
+    <div>Admin Page</div>
   )
 }
