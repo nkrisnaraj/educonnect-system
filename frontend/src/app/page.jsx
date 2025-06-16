@@ -1,9 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import MainNavbar from '@/components/MainNavbar';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   return (
+    <>
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
 
       
@@ -44,8 +48,8 @@ export default function Home() {
         <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-400">Watch: How to Use EduConnect</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { title: 'How to Login', src: '/videos/how-to-login.mp4' },
-            { title: 'How to Register', src: '/videos/how-to-register.mp4' }
+            { title: 'How to Login', src: '/videos/howLogin.mp4' },
+            { title: 'How to Register', src: '/videos/howRegister.mp4' }
           ].map((video, i) => (
             <div
               key={i}
@@ -64,5 +68,7 @@ export default function Home() {
       
       
     </div>
+    <Footer />
+    </>
   );
 }

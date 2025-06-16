@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
+import Footer from "@/components/Footer";
+import MainNavbar from "@/components/MainNavbar";
 
 export default function Register() {
   const router = useRouter();
@@ -19,7 +22,8 @@ export default function Register() {
     nicNo: "",
     address: "",
     yearOfAL: "",
-    schoolName: ""
+    schoolName: "",
+  
   });
 
   const handleChange = (e) => {
@@ -27,41 +31,54 @@ export default function Register() {
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const res = await fetch("http://localhost:8000/api/accounts/register/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setMessage(data.detail || "Registration failed!");
-        setIsSuccess(false);
-      } else {
-        setMessage("Registered successfully!");
-        setIsSuccess(true);
-        setTimeout(() => router.push("/login"), 2000);
-      }
-    } catch (err) {
-      setMessage("Server error. Try again later.");
-      setIsSuccess(false);
+  const payload = {
+    username: form.username,
+    email: form.email,
+    password: form.password,
+    first_name: form.firstName,
+    last_name: form.lastName,
+    student_profile: {
+      mobile: form.mobile,
+      nic_no: form.nicNo,
+      address: form.address,
+      year_of_al: form.yearOfAL,
+      school_name: form.schoolName,
     }
   };
 
+  try {
+    const res = await axios.post("http://127.0.0.1:8000/api/accounts/register/", payload);
+    if (res.status === 201) {
+      setMessage("Registered successfully!");
+      setIsSuccess(true);
+      setTimeout(() => router.push("/login"), 2000);
+    } else {
+      setMessage(res.data.detail || "Registration failed!");
+      setIsSuccess(false);
+    }
+  } catch (err) {
+    if (err.response && err.response.data) {
+      setMessage(JSON.stringify(err.response.data));
+    } else {
+      setMessage("Server error. Try again later.");
+    }
+    setIsSuccess(false);
+  }
+};
+
+
   return (
+    <>
+    <MainNavbar />
     <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100">
       {message && (
         <div
           className={`fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
             isSuccess
-              ? 'bg-green-100 text-green-900 border-green-700'
-              : 'bg-red-100 text-red-900 border-red-700'
+              ? "bg-green-100 text-green-900 border-green-700"
+              : "bg-red-100 text-red-900 border-red-700"
           }`}
         >
           {message}
@@ -86,6 +103,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded border border-gray-300"
               placeholder="Enter Username"
+              required
             />
           </div>
 
@@ -98,6 +116,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded border border-gray-300"
               placeholder="Enter Email"
+              required
             />
           </div>
 
@@ -110,6 +129,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded border border-gray-300"
               placeholder="First Name"
+              required
             />
           </div>
 
@@ -122,6 +142,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded border border-gray-300"
               placeholder="Last Name"
+              required
             />
           </div>
 
@@ -194,6 +215,7 @@ export default function Register() {
               onChange={handleChange}
               className="w-full p-3 rounded border border-gray-300"
               placeholder="Enter password"
+              required
             />
           </div>
         </div>
@@ -213,5 +235,7 @@ export default function Register() {
         </p>
       </form>
     </div>
+    <Footer />
+    </>
   );
 }
