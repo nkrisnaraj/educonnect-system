@@ -50,7 +50,12 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
 ]
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
-ZOOM_ACCOUNTS = json.loads(os.getenv("ZOOM_ACCOUNTS_JSON"))  # Load Zoom accounts from environment variable
+try:
+    ZOOM_ACCOUNTS_JSON = os.getenv("ZOOM_ACCOUNTS_JSON", "{}")  # default to empty JSON
+    ZOOM_ACCOUNTS = json.loads(ZOOM_ACCOUNTS_JSON)
+except json.JSONDecodeError:
+    # Fallback in case someone sets invalid JSON
+    ZOOM_ACCOUNTS = {}
 
 AUTH_USER_MODEL = 'accounts.User'
 
