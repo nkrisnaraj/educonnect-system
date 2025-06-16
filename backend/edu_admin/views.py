@@ -2,8 +2,10 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ZoomWebinarSerializer
+from .serializers import ZoomWebinarSerializer, ZoomWebinarListSerializer
 from .zoom_api import ZoomAPIClient
+import traceback
+from .services import ZoomWebinarService
 
 # Create your views here.
 class CreateZoomWebinarView(APIView):
@@ -36,3 +38,24 @@ class CreateZoomWebinarView(APIView):
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+
+class ListZoomWebinarsView(APIView):
+    def get(self, request):
+        serializer = ZoomWebinarListSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        account_key = serializer.validated_data.get("account_key")
+        if not account_key:
+            return Response({"error": "account_key is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            service = ZoomWebinarService(account_key)
+            webinars = service.get_all_detailed_webinars()
+
+            return Response({"webinars": webinars}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print("🔥 Zoom API Error:")
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
