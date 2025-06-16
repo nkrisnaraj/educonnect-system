@@ -44,8 +44,8 @@ export default function Home() {
         <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-400">Watch: How to Use EduConnect</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { title: 'How to Login', src: '/videos/how-to-login.mp4' },
-            { title: 'How to Register', src: '/videos/how-to-register.mp4' }
+            { title: 'How to Login', src: '/videos/howLogin.mp4' },
+            { title: 'How to Register', src: '/videos/howRegister.mp4' }
           ].map((video, i) => (
             <div
               key={i}
