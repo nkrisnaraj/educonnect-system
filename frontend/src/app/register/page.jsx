@@ -1,5 +1,3 @@
-
-// ✅ src/app/register/page.jsx
 "use client";
 
 import { useState } from 'react';
@@ -8,146 +6,212 @@ import Link from 'next/link';
 
 export default function Register() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const [form, setForm] = useState({
+    username: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    mobile: "",
+    nicNo: "",
+    address: "",
+    yearOfAL: "",
+    schoolName: ""
+  });
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !password) {
-      setError("All fields are required.");
-      return;
-    }
-
     try {
-      const res = await fetch("http://localhost:8000/api/register/", {
+      const res = await fetch("http://localhost:8000/api/accounts/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify(form),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || "Registration failed");
+        setMessage(data.detail || "Registration failed!");
+        setIsSuccess(false);
       } else {
-        router.push("/login");
+        setMessage("Registered successfully!");
+        setIsSuccess(true);
+        setTimeout(() => router.push("/login"), 2000);
       }
     } catch (err) {
-      setError("Server error. Try again later.");
+      setMessage("Server error. Try again later.");
+      setIsSuccess(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4">
-      <header className="w-full bg-blue-600 p-4 text-white text-xl font-bold text-center">
-        EduConnect – Register
-      </header>
+    <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100">
+      {message && (
+        <div
+          className={`fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
+            isSuccess
+              ? 'bg-green-100 text-green-900 border-green-700'
+              : 'bg-red-100 text-red-900 border-red-700'
+          }`}
+        >
+          {message}
+        </div>
+      )}
 
-      <form onSubmit={handleRegister} className="bg-gray-900 p-6 rounded shadow-md w-full max-w-md mt-8">
-        <h2 className="text-2xl font-bold mb-4 text-center">Create an Account</h2>
+      <form
+        onSubmit={handleRegister}
+        className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-5xl"
+      >
+        <h2 className="text-3xl font-bold text-center text-blue-600 mb-8">
+          Create an Account
+        </h2>
 
-        {error && <p className="bg-red-500 text-white text-sm p-2 rounded mb-3">{error}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block mb-1 font-medium">Username</label>
+            <input
+              type="text"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Enter Username"
+            />
+          </div>
 
-        <label className="block mb-2">
-          Full Name
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 mt-1 rounded bg-gray-800 border border-gray-700 text-white" placeholder="Enter full name" />
-        </label>
+          <div>
+            <label className="block mb-1 font-medium">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Enter Email"
+            />
+          </div>
 
-        <label className="block mb-2 mt-4">
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2 mt-1 rounded bg-gray-800 border border-gray-700 text-white" placeholder="Enter email" />
-        </label>
+          <div>
+            <label className="block mb-1 font-medium">First Name</label>
+            <input
+              type="text"
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="First Name"
+            />
+          </div>
 
-        <label className="block mb-2 mt-4">
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2 mt-1 rounded bg-gray-800 border border-gray-700 text-white" placeholder="Enter password" />
-        </label>
+          <div>
+            <label className="block mb-1 font-medium">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Last Name"
+            />
+          </div>
 
-        <button type="submit" className="mt-6 w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+          <div>
+            <label className="block mb-1 font-medium">Mobile</label>
+            <input
+              type="text"
+              name="mobile"
+              value={form.mobile}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="0771234567"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">NIC No</label>
+            <input
+              type="text"
+              name="nicNo"
+              value={form.nicNo}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="200012345678"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Year of A/L</label>
+            <input
+              type="text"
+              name="yearOfAL"
+              value={form.yearOfAL}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="2021"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">School Name</label>
+            <input
+              type="text"
+              name="schoolName"
+              value={form.schoolName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="School Name"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block mb-1 font-medium">Address</label>
+            <textarea
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Address"
+              rows={2}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Enter password"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          className="mt-8 w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-semibold transition duration-300"
+        >
           Register
         </button>
 
         <p className="text-sm mt-4 text-center">
-          Already have an account? <Link href="/login" className="text-blue-400 hover:underline">Login</Link>
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-500 hover:underline">
+            Login
+          </Link>
         </p>
       </form>
-
-      <footer className="mt-10 w-full bg-blue-600 text-white py-2 text-center text-sm">
-        © {new Date().getFullYear()} EduConnect
-      </footer>
     </div>
   );
 }
-
-
-// ✅ src/app/dashboard/page.jsx
-// "use client";
-
-// import { useEffect } from 'react';
-// import { useRouter } from 'next/navigation';
-
-// export default function Dashboard() {
-//   const router = useRouter();
-
-//   useEffect(() => {
-//     const token = localStorage.getItem("token");
-//     if (!token) {
-//       router.push("/login");
-//     }
-//   }, []);
-
-//   return (
-//     <div className="text-white bg-black min-h-screen p-6">
-//       <h1 className="text-3xl font-bold text-blue-500">Welcome to Dashboard</h1>
-//       <p className="text-gray-400 mt-2">You are successfully logged in.</p>
-//     </div>
-//   );
-// }
-
-// 
-// // ✅ Django (views.py)
-// from django.contrib.auth.models import User
-// from django.contrib.auth import authenticate
-// from rest_framework.decorators import api_view
-// from rest_framework.response import Response
-// from rest_framework import status
-
-// @api_view(['POST'])
-// def register_user(request):
-//     name = request.data.get('name')
-//     email = request.data.get('email')
-//     password = request.data.get('password')
-
-//     if User.objects.filter(username=email).exists():
-//         return Response({"detail": "User already exists"}, status=400)
-
-//     user = User.objects.create_user(username=email, email=email, password=password, first_name=name)
-//     return Response({"detail": "User registered successfully"})
-
-// @api_view(['POST'])
-// def login_user(request):
-//     email = request.data.get('email')
-//     password = request.data.get('password')
-//     user = authenticate(username=email, password=password)
-//     if user is not None:
-//         # Replace with real JWT token in production
-//         return Response({"token": "sample-jwt-token", "user": {"name": user.first_name, "email": user.email}})
-//     return Response({"detail": "Invalid credentials"}, status=401)
-
-
-// // ✅ Django (urls.py)
-// from django.urls import path
-// from . import views
-
-// urlpatterns = [
-//     path('api/register/', views.register_user),
-//     path('api/login/', views.login_user),
-// ]

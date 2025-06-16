@@ -1,5 +1,7 @@
 // import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
+import Footer from "@/components/Footer";
 import "./globals.css";
+import MainNavbar from "@/components/mainnavbar";
 
 
 export const metadata = {
@@ -11,7 +13,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <MainNavbar />
         {children}
+        <Footer/>
       </body>
     </html>
   );
