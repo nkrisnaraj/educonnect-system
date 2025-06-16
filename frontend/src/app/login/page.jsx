@@ -35,7 +35,7 @@ export default function Login() {
               } else if(userrole === 'instructor'){
                 router.push("/instructor")
               }else if(userrole === 'student'){
-                router.push("/student");
+                router.push("/students");
               }
               }, 1000);
               
