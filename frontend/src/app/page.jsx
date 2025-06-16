@@ -1,9 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import MainNavbar from '@/components/MainNavbar';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   return (
+    <>
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
 
       
@@ -64,5 +68,7 @@ export default function Home() {
       
       
     </div>
+    <Footer />
+    </>
   );
 }

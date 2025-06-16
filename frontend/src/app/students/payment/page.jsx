@@ -3,7 +3,7 @@ import { Eye } from "lucide-react";
 import { useState } from "react";
 // import axios from "axios"
 
-export default function PaymentPage() {
+export default function Payment() {
   const [showModal, setShowModal] = useState(false); 
   const [selectedPayment, setSelectedPayment] = useState(null);
 

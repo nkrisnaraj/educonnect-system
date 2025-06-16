@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
+import Footer from "@/components/Footer";
+import MainNavbar from "@/components/MainNavbar";
 
 export default function Register() {
   const router = useRouter();
@@ -68,6 +70,8 @@ export default function Register() {
 
 
   return (
+    <>
+    <MainNavbar />
     <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100">
       {message && (
         <div
@@ -231,5 +235,7 @@ export default function Register() {
         </p>
       </form>
     </div>
+    <Footer />
+    </>
   );
 }
