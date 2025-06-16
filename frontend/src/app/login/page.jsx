@@ -4,6 +4,8 @@ import { User, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import {useRouter} from "next/navigation";
 import "../globals.css";
+import MainNavbar from "@/components/MainNavbar";
+import Footer from "@/components/Footer";
 
 export default function Login() {
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function Login() {
               } else if(userrole === 'instructor'){
                 router.push("/instructor")
               }else if(userrole === 'student'){
-                router.push("/student");
+                router.push("/students");
               }
               }, 1000);
               
@@ -58,6 +60,9 @@ export default function Login() {
     
 
     return (
+      <>
+      <MainNavbar />
+      
         <div className="flex items-center justify-center min-h-screen px-6 py-6">
             <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
                 {/* Title */}
@@ -134,5 +139,7 @@ export default function Login() {
                 </p>
             </div>
         </div>
+        <Footer />
+        </>
     );
 }
