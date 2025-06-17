@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/context/AuthContext"; // ✅ Fix the error
 import axios from "axios";
 import { User, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -6,6 +7,7 @@ import {useRouter} from "next/navigation";
 import "../globals.css";
 import MainNavbar from "@/components/MainNavbar";
 import Footer from "@/components/Footer";
+import Cookies from "js-cookie";
 
 export default function Login() {
   const router = useRouter();
@@ -14,7 +16,9 @@ export default function Login() {
     const [message, setMessage] = useState("");
     const [isSuccess, setIsSuccess] = useState(false);
 
- 
+  
+    const { login } = useAuth();
+
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
@@ -25,21 +29,38 @@ export default function Login() {
             password
           });
           if(response.status === 200){
+
             setMessage("Login Successfully")
             setIsSuccess(true);
-              const data = response.data;
-              console.log(data);
-              const userrole = data.role;
-              console.log(data.role);
-              setTimeout(() =>{
-                if(userrole === 'admin'){
-                router.push("/admin");
-              } else if(userrole === 'instructor'){
-                router.push("/instructor")
-              }else if(userrole === 'student'){
-                router.push("/students");
+
+            const data = response.data;
+            console.log(data);
+            console.log(data.user.role);
+
+            Cookies.set("accessToken", data.access, { path: "/" });
+
+            localStorage.setItem("userRole",data.user.role);
+            localStorage.setItem("accessToken", response.data.access);
+            localStorage.setItem("refreshToken", response.data.refresh);
+
+            
+
+            //const userrole = localStorage.getItem("userRole");
+            
+            setTimeout(() => {
+              try {
+                if (data.user.role === 'admin') {
+                  router.push("/admin");
+                } else if (data.user.role === 'instructor') {
+                  router.push("/instructor");
+                } else if (data.user.role === 'student') {
+                  router.push("/students");
+                }
+              } catch (err) {
+                console.error("Router push error:", err);
               }
-              }, 1000);
+            }, 1000);
+
               
           }else{
             setMessage("Login Failed")
@@ -47,12 +68,13 @@ export default function Login() {
             console.log("Login Failed");
           }
         } catch (error) {
-          if(error.response){
-            setMessage(error.response.data?.detail || "Invalid Credentials");
-          }
-          else{
-            setMessage("An Error Occurred")
-          }
+            console.error("Login error:", error);
+            if(error.response){
+              setMessage(error.response.data?.detail || "Invalid Credentials");
+            }
+            else{
+              setMessage("An Error Occurred")
+            }
         }
         
     };
@@ -124,7 +146,7 @@ export default function Login() {
                     <button
                         type="submit"
                         className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300"
-                        onClick={handleLogin}
+                        
                     >
                         Login
                     </button>
