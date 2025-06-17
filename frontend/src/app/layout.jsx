@@ -1,3 +1,7 @@
+
+// import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
+import Footer from "@/components/Footer";
+
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
