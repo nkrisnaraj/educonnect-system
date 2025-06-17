@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 // import Home from './guests/home';
 
@@ -22,12 +21,7 @@ import Home from './guests/home';
 
 export default function MainPage() {
   return <Home />;
-=======
-import React from 'react'
-
-export default function page() {
-  return (
-    <div>page</div>
-  )
->>>>>>> 2b622c803d17924925aafa89ff8ceca7c68802e6
 }
+
+
+
