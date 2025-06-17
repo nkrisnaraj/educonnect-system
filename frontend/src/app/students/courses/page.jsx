@@ -1,6 +1,7 @@
 "use client";
 import Script from "next/script";
 import { useState } from "react";
+import axios from "axios";
 
 export default function Courses() {
   const enrolledCourses = [
@@ -19,6 +20,8 @@ export default function Courses() {
   const [showUnPaidClassModal, setShowUnPaidClassModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(false)
+  const [showCardPayModal, setShowCardPayModal] = useState(false)
+  const [showReceiptPayModal, setShowReceiptPayModal] = useState(false)
 
   const handlePaidClass = (paidclass) =>{
     setSelectedCourse(paidclass)
@@ -36,33 +39,40 @@ export default function Courses() {
     setShowPayModal(true);
     setShowUnPaidClassModal(false);
   }
+
+  const handleReceipt = () =>{
+    setShowPayModal(false);
+  }
+
   const handlePayNow = async() => {
-    try {
-      const payment = {
-    sandbox: true, // remove this in production
-    merchant_id: "YOUR_MERCHANT_ID", // Replace with your Merchant ID
-    return_url: "http://localhost:3000/payment-success", 
-    cancel_url: "http://localhost:3000/payment-cancel",
-    notify_url: "http://localhost:8000/api/payhere-notify", // backend webhook
+    setShowPayModal(false);
+  //   try {
+  //     const payment = {
+  //       sandbox: true, // remove this in production
+  //       merchant_id: "YOUR_MERCHANT_ID", // Replace with your Merchant ID
+  //       return_url: "http://localhost:3000/payment-success", 
+  //       cancel_url: "http://localhost:3000/payment-cancel",
+  //       notify_url: "http://localhost:8000/api/payhere-notify", // backend webhook
 
-    pay_id: "Order12345", // unique order ID
-    items: selectedCourse?.title || "Course Payment",
-    amount: "1500.00",
-    currency: "LKR",
-    first_name: "John",
-    last_name: "Doe",
-    email: "john@example.com",
-    phone: "0771234567",
-    address: "No. 1, Galle Road",
-    city: "Colombo",
-    country: "Sri Lanka",
-  };
+  //       pay_id: "Order12345", // unique order ID
+  //       items: selectedCourse?.title || "Course Payment",
+  //       amount: "1500.00",
+  //       currency: "LKR",
+  //       first_name: "John",
+  //       last_name: "Doe",
+  //       email: "john@example.com",
+  //       phone: "0771234567",
+  //       address: "No. 1, Galle Road",
+  //       city: "Colombo",
+  //       country: "Sri Lanka",
+  //     };
 
-  payhere.startPayment(payment);
-  const response = await axios.post("http://localhost:8080/students/payent")
-    } catch (error) {
-      console.error("Error sending request to backend:", error);
-    }
+  //     payhere.startPayment(payment);
+  //     const response = await axios.post("http://localhost:8080/students/payment")
+
+  //   } catch (error) {
+  //     console.error("Error sending request to backend:", error);
+  // }
   
  
 };
@@ -194,6 +204,7 @@ export default function Courses() {
     onClick={() => {
       setShowPayModal(false);
       setSelectedCourse(null);
+      setSelectedPayment(null);
     }}
   >
     <div
@@ -205,31 +216,37 @@ export default function Courses() {
       <div className="flex justify-center gap-6 mb-6">
         <button
           onClick={() => setSelectedPayment("card")}
-          className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition"
+          className={`px-4 py-2 rounded transition ${
+            selectedPayment === "card" ? "bg-primary text-white" : "bg-gray-200 text-gray-800"
+          }`}
         >
           Credit Card
         </button>
         <button
           onClick={() => setSelectedPayment("receipt")}
-          className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition"
+          className={`px-4 py-2 rounded transition ${
+            selectedPayment === "receipt" ? "bg-primary text-white" : "bg-gray-200 text-gray-800"
+          }`}
         >
           Receipt Upload
         </button>
       </div>
 
+      {/* Show card pay option */}
       {selectedPayment === "card" && (
-  <button
-    onClick={handlePayNow}
-    className="w-full bg-green-600 text-white py-2 rounded"
-  >
-    Pay with Card via PayHere
-  </button>
-)}
+        <div className="mb-4">
+          <button
+            onClick={handlePayNow}
+            className="w-full bg-green-600 text-white py-2 rounded"
+          >
+            Pay with Card via PayHere
+          </button>
+        </div>
+      )}
 
-
-
+      {/* Show receipt upload option */}
       {selectedPayment === "receipt" && (
-        <form className="space-y-4">
+        <form className="space-y-4 mb-4" onSubmit={handleReceipt}>
           <input type="file" className="w-full border rounded px-4 py-2" />
           <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
             Upload Receipt
