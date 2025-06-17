@@ -15,7 +15,6 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [message, setMessage] = useState("");
     const [isSuccess, setIsSuccess] = useState(false);
-
   
     const { login } = useAuth();
 
