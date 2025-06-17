@@ -29,11 +29,11 @@ export default function StudentNavbar({ isOpen, onClose }) {
           <Home className="w-5 h-5" />
           <span>Dashboard</span>
         </Link>
-        <Link href="/payment" className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href="/students/payment" className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <CreditCard className="w-5 h-5" />
           <span>Payment Info</span>
         </Link>
-        <Link href="/courses" className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href="/students/courses" className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <BookOpen className="w-5 h-5" />
           <span>Courses</span>
         </Link>

@@ -1,6 +1,7 @@
 import base64
 import requests
 from django.conf import settings
+import json
 
 class ZoomAPIClient:
     def __init__(self, account_key: str):
@@ -35,60 +36,6 @@ class ZoomAPIClient:
 
         return response_data["access_token"]
 
-    # def create_webinar(
-    #     self,
-    #     topic,
-    #     start_time,
-    #     duration,
-    #     agenda,
-    #     repeat_type=None,
-    #     repeat_interval=1,
-    #     end_date_time=None,
-    # ):
-    #     token = self.get_access_token()
-    #     headers = {
-    #         "Authorization": f"Bearer {token}",
-    #         "Content-Type": "application/json"
-    #     }
-
-    #     payload = {
-    #         "topic": topic,
-    #         "start_time": start_time,
-    #         "duration": duration,
-    #         "timezone": "Asia/Colombo",
-    #         "agenda": agenda,
-    #         "settings": {
-    #             "host_video": True,
-    #             "panelists_video": True,
-    #         }
-    #     }
-
-    #     if repeat_type:
-    #         repeat_type_map = {
-    #             "daily": 1,
-    #             "weekly": 2,
-    #             "monthly": 3
-    #         }
-
-    #         payload["type"] = 9  # Recurring
-    #         payload["recurrence"] = {
-    #             "type": repeat_type_map.get(repeat_type),
-    #             "repeat_interval": repeat_interval
-    #         }
-    #         if end_date_time:
-    #             payload["recurrence"]["end_date_time"] = end_date_time
-    #     else:
-    #         payload["type"] = 5  # One-time
-
-    #     url = f"https://api.zoom.us/v2/users/{self.user_id}/webinars"
-    #     try:
-    #         response = requests.post(url, headers=headers, json=payload)
-    #         response.raise_for_status()
-    #         return response
-    #     except requests.exceptions.RequestException as e:
-    #         print("Zoom API Error:", e)
-    #         print("Zoom Response:", response.text)
-    #         raise
 
     def create_webinar(
         self,
@@ -144,4 +91,40 @@ class ZoomAPIClient:
         except requests.exceptions.RequestException as e:
             print("Zoom API Error:", e)
             print("Zoom Response:", response.text)
+            raise
+
+    def list_webinars(self)-> dict:
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            # "Content-Type": "application/json"
+        }
+        url= f"https://api.zoom.us/v2/users/{self.user_id}/webinars"
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            if data :
+                print("Zoom API Response: successfully fetched webinars")
+            # print("Zoom Response (formatted):")
+            # print(json.dumps(data, indent=4))  # Debugging line
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print("Zoom API Error:", e)
+            print("Zoom Response:", response.text)
+            raise
+
+
+    def get_webinar_detail(self, webinar_id: str) -> dict:
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        url = f"https://api.zoom.us/v2/webinars/{webinar_id}?show_previous_occurrences=true"
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching webinar {webinar_id} detail:", e)
             raise
