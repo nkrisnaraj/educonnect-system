@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/context/AuthContext"; // ✅ Fix the error
 import axios from "axios";
 import { User, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -6,6 +7,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import "../globals.css";
+import MainNavbar from "@/components/MainNavbar";
+import Footer from "@/components/Footer";
 
 export default function Login() {
   const router = useRouter();
@@ -15,73 +18,56 @@ export default function Login() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
+ 
+    const handleLogin = async(e) => {
+        e.preventDefault();
+        try {
+          console.log(username);
+          console.log(password);
+          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
+            username,
+            password
+          });
+          if(response.status === 200){
+            setMessage("Login Successfully")
+            setIsSuccess(true);
+              const data = response.data;
+              console.log(data);
+              const userrole = data.role;
+              console.log(data.role);
+              setTimeout(() =>{
+                if(userrole === 'admin'){
+                router.push("/admin");
+              } else if(userrole === 'instructor'){
+                router.push("/instructor")
+              }else if(userrole === 'student'){
+                router.push("/students");
+              }
+              }, 1000);
+              
+          }else{
+            setMessage("Login Failed")
+            setIsSuccess(false);
+            console.log("Login Failed");
+          }
+        } catch (error) {
+          if(error.response){
+            setMessage(error.response.data?.detail || "Invalid Credentials");
+          }
+          else{
+            setMessage("An Error Occurred")
+          }
+        }
+        
+    };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/", {
-        username,
-        password,
-      });
-
-      if (response.status === 200) {
-        setMessage("Login Successfully");
-        setIsSuccess(true);
-        const userrole = response.data.role;
-        setTimeout(() => {
-          if (userrole === "admin") router.push("/admin");
-          else if (userrole === "instructor") router.push("/instructor");
-          else if (userrole === "student") router.push("/students");
-        }, 1000);
-      } else {
-        setMessage("Login Failed");
-        setIsSuccess(false);
-      }
-    } catch (error) {
-      if (error.response) {
-        setMessage(error.response.data?.detail || "Invalid Credentials");
-      } else {
-        setMessage("An Error Occurred");
-      }
-      setIsSuccess(false);
-    }
-  };
+    
 
   return (
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-      {/* Header - Same as Home Page */}
-      <header className="flex justify-between items-center p-4 shadow-md bg-blue-600 text-white dark:bg-blue-700">
-        <div className="flex items-center space-x-2">
-          <Image
-            src="/images/logos/logo.png"
-            alt="EduConnect Logo"
-            width={40}
-            height={40}
-            className="rounded"
-          />
-          <div className="text-xl font-bold">EduConnect</div>
-        </div>
-        <nav className="space-x-4 flex items-center">
-          <Link href="#" className="hover:text-blue-200 transition-colors">About</Link>
-          <Link href="#" className="hover:text-blue-200 transition-colors">Pricing</Link>
-          <Link href="#" className="hover:text-blue-200 transition-colors">Courses</Link>
-          <Link href="/">
-            <button className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition-colors">
-              Home
-            </button>
-          </Link>
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="ml-4 text-xl focus:outline-none hover:scale-110 transition-transform"
-            title="Toggle theme"
-          >
-            {isDarkMode ? "🌙" : "☀️"}
-          </button>
-        </nav>
-      </header>
+      {/* Nav bar */}
+      <MainNavbar />
+
 
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
@@ -129,13 +115,14 @@ export default function Login() {
               </span>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-800 dark:bg-blue-500 dark:hover:bg-blue-600 transition duration-300"
-            >
-              Login
-            </button>
-          </form>
+                    <button
+                        type="submit"
+                        className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300"
+                        onClick={handleLogin}
+                    >
+                        Login
+                    </button>
+                </form>
 
           <p className="mt-6 mb-6 text-center text-gray-700 dark:text-gray-300">
             Don't have an account?{" "}
@@ -150,7 +137,7 @@ export default function Login() {
       </div>
 
       {/* Footer - Same as Home Page */}
-      <footer className="bg-blue-600 text-white mt-10 dark:bg-blue-700">
+      {/* <footer className="bg-blue-600 text-white mt-10 dark:bg-blue-700">
         <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <div className="flex items-center space-x-3 mb-4">
@@ -215,7 +202,10 @@ export default function Login() {
             © {new Date().getFullYear()} EduConnect. All rights reserved. | Made with ❤️ in Sri Lanka
           </p>
         </div>
-      </footer>
+      </footer> */}
+
+<Footer />
+
     </div>
   );
 }
