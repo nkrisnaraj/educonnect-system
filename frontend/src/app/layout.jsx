@@ -4,6 +4,8 @@ import Footer from "@/components/Footer";
 
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "../context/ThemeContext"; // or "../../" depending on your structure
+
 
 
 export const metadata = {
@@ -15,7 +17,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
