@@ -9,10 +9,7 @@ import Image from "next/image";
 import "../globals.css";
 import MainNavbar from "@/components/MainNavbar";
 import Footer from "@/components/Footer";
-<<<<<<< HEAD
 import Cookies from "js-cookie";
-=======
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
 
 export default function Login() {
   const router = useRouter();
@@ -38,7 +35,6 @@ export default function Login() {
 
             setMessage("Login Successfully")
             setIsSuccess(true);
-<<<<<<< HEAD
 
             const data = response.data;
             console.log(data); //contains user, access, refresh
@@ -66,19 +62,6 @@ export default function Login() {
                 }
               } catch (err) {
                 console.error("Router push error:", err);
-=======
-              const data = response.data;
-              console.log(data);
-              const userrole = data.role;
-              console.log(data.role);
-              setTimeout(() =>{
-                if(userrole === 'admin'){
-                router.push("/admin");
-              } else if(userrole === 'instructor'){
-                router.push("/instructor")
-              }else if(userrole === 'student'){
-                router.push("/students");
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
               }
             }, 1000);
 

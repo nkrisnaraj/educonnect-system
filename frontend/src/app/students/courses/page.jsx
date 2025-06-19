@@ -7,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 =======
 import { useState } from "react";
 import axios from "axios";
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
 
 export default function Courses() {
   const enrolledCourses = [
@@ -26,43 +25,8 @@ export default function Courses() {
   const [showUnPaidClassModal, setShowUnPaidClassModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(false)
-<<<<<<< HEAD
-  const [isPayHereLoaded, setIsPayHereLoaded] = useState(false);
-
-  
-
-
-  // const {user, accessToken} = useAuth();
-
-  
- 
-
-  const [user, setUser] = useState(null);
-  const [accessToken, setAccessToken] = useState(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("accessToken");
-
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
-    if (storedToken) {
-      setAccessToken(storedToken);
-    }
-  }, []);
-
-if (!user) {
-    return <p className="text-center mt-10">Please log in to see courses.</p>;
-  }
-  
-  console.log("User:", user);
-  console.log("Access Token:", accessToken);
-=======
   const [showCardPayModal, setShowCardPayModal] = useState(false)
   const [showReceiptPayModal, setShowReceiptPayModal] = useState(false)
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
 
   const handlePaidClass = (paidclass) =>{
     setSelectedCourse(paidclass)
@@ -87,78 +51,6 @@ if (!user) {
 
   const handleReceipt = () =>{
     setShowPayModal(false);
-<<<<<<< HEAD
-
-  }
-
-// lazy-load script just before payment
-// const loadPayHereScript = () => {
-//   return new Promise((resolve, reject) => {
-//     if (window.payhere) return resolve(); // already loaded
-
-//     const script = document.createElement("script");
-//     script.src = "https://www.payhere.lk/lib/payhere.js";
-//     script.onload = resolve;
-//     script.onerror = reject;
-//     document.body.appendChild(script);
-//   });
-// };
-
-
-  const handlePayNow = async() => {
-
-    setShowPayModal(false);
-
-    if (!isPayHereLoaded || typeof window === "undefined" || !window.payhere) {
-      console.error(" PayHere script not loaded.");
-      return;
-    }
-
-    const payId = `CLASS-${selectedCourse?.id}-${user?.id}`;
-
-    const payment = {
-        sandbox: true, // remove this in production
-        merchant_id: process.env.NEXT_PUBLIC_PAYHERE_MERCHANT_ID, // Replace with your Merchant ID
-        return_url: "http://localhost:3000/payment-success", 
-        cancel_url: "http://localhost:3000/payment-cancel",
-        notify_url: "http://localhost:8000/api/payhere-notify", // backend webhook
-
-        order_id: payId, // unique order ID
-        items: selectedCourse?.title || "Course Payment",
-        amount: selectedCourse?.amount ,
-        currency: "LKR",
-        first_name: user?.first_name,
-        last_name: user?.last_name,
-        email: user?.email,
-        phone: user?.mobile,
-        address: user?.address,
-        city: user?.address,
-        country: "Sri Lanka",
-      };
-
-      window.payhere.startPayment(payment);
-
-    // try {
-    
-    //   const response = await axios.post(
-    //     "http://localhost:8000/payments/online/",
-    //     {
-    //       amount: selectedCourse?.amount,
-    //       course: selectedCourse?.id,
-    //     },
-    //     {
-    //       headers: {
-    //         Authorization: `Bearer ${accessToken}`,
-    //       },
-    //     }
-    //   );
-
-    //   const { payid, invoice_no, amount } = response.data;
-  
-    // } catch (error) {
-    //   console.error("Error creating payment or starting PayHere:", error);
-    // }
-=======
   }
 
   const handlePayNow = async() => {
