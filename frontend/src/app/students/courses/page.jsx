@@ -1,12 +1,9 @@
 "use client";
 import Script from "next/script";
-<<<<<<< HEAD
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
-=======
-import { useState } from "react";
-import axios from "axios";
+
 
 export default function Courses() {
   const enrolledCourses = [
@@ -41,10 +38,9 @@ export default function Courses() {
 
   const handleJoin = (course) =>{
     setSelectedCourse(course)
-<<<<<<< HEAD
+
     console.log("course;",course.id);
-=======
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
+
     setShowPayModal(true);
     setShowUnPaidClassModal(false);
   }
@@ -54,36 +50,58 @@ export default function Courses() {
   }
 
   const handlePayNow = async() => {
+
     setShowPayModal(false);
-  //   try {
-  //     const payment = {
-  //       sandbox: true, // remove this in production
-  //       merchant_id: "YOUR_MERCHANT_ID", // Replace with your Merchant ID
-  //       return_url: "http://localhost:3000/payment-success", 
-  //       cancel_url: "http://localhost:3000/payment-cancel",
-  //       notify_url: "http://localhost:8000/api/payhere-notify", // backend webhook
 
-  //       pay_id: "Order12345", // unique order ID
-  //       items: selectedCourse?.title || "Course Payment",
-  //       amount: "1500.00",
-  //       currency: "LKR",
-  //       first_name: "John",
-  //       last_name: "Doe",
-  //       email: "john@example.com",
-  //       phone: "0771234567",
-  //       address: "No. 1, Galle Road",
-  //       city: "Colombo",
-  //       country: "Sri Lanka",
-  //     };
+    if (typeof window === "undefined" || !window.payhere) 
+    {
+      console.error("PayHere script not loaded.");
+      return;
+    }
 
-  //     payhere.startPayment(payment);
-  //     const response = await axios.post("http://localhost:8080/students/payment")
+    const payId = `CLASS-${selectedCourse?.id}-${user?.id}`;
+
+    const payment = {
+      sandbox: true,
+      merchant_id: process.env.NEXT_PUBLIC_PAYHERE_MERCHANT_ID,
+      return_url: "http://localhost:3000/payment-success", 
+      cancel_url: "http://localhost:3000/payment-cancel",
+      notify_url: "http://localhost:8000/api/payhere-notify",
+
+      order_id: payId,
+      items: selectedCourse?.title || "Course Payment",
+      amount: selectedCourse?.amount,
+      currency: "LKR",
+      first_name: user?.first_name,
+      last_name: user?.last_name,
+      email: user?.email,
+      phone: user?.mobile,
+      address: user?.address,
+      city: user?.address,
+      country: "Sri Lanka",
+    };
+
+    window.payhere.startPayment(payment);
+
+  // try{
+  //     const response = await axios.post(
+  //     "http://127.0.0.1:8000/students/payments/online/",
+  //     {
+  //       amount: selectedCourse?.amount,
+  //       course: selectedCourse?.id,
+  //     },
+  //     {
+  //       headers: {
+  //         Authorization: `Bearer ${accessToken}`,
+  //       },
+  //     }
+  //   )
 
   //   } catch (error) {
   //     console.error("Error sending request to backend:", error);
   // }
   
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
+
  
 };
 
@@ -92,7 +110,7 @@ export default function Courses() {
   return (
     
     <div className="bg-gray-50 min-h-screen p-6">
-<<<<<<< HEAD
+
       <Script 
           src="https://www.payhere.lk/lib/payhere.js" 
           strategy="beforeInteractive"
@@ -100,10 +118,7 @@ export default function Courses() {
             console.log("Payhere script loaded!");
             setIsPayHereLoaded(true);
           }} />
-=======
-      <Script src="https://www.payhere.lk/lib/payhere.js" strategy="beforeInteractive" />
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
-
+      
       {/* Enrolled Courses */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6 ">Enrolled Courses</h2>

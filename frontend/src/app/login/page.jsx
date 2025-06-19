@@ -85,40 +85,10 @@ export default function Login() {
 
     
 
-<<<<<<< HEAD
-    return (
-      <>
-      <MainNavbar />
-      
-        <div className="flex items-center justify-center min-h-screen px-6 py-6">
-            <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
-                {/* Title */}
-                <h1 className="text-3xl font-bold text-primary text-center mb-4">
-                    Login
-                </h1>
-
-                {message && (
-                  <div
-                    className={`
-                      fixed top-5 right-5 w-[350px] max-w-full px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50
-                      text-sm font-semibold
-                      transition-all duration-500 ease-in-out
-
-                      ${isSuccess
-                        ? 'bg-green-100 text-green-900 border-green-700 animate-fadeIn animate-pulse-border-green'
-                        : 'bg-red-100 text-red-900 border-red-700 animate-fadeIn animate-pulse-border-red'
-                      }
-                    `}
-                  >
-                    {message}
-                  </div>
-                )}
-=======
   return (
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
       {/* Nav bar */}
       <MainNavbar />
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
 
 
       {/* Login Form */}
@@ -186,12 +156,6 @@ export default function Login() {
             </Link>
           </p>
         </div>
-<<<<<<< HEAD
-        <Footer />
-        </>
-    );
-}
-=======
       </div>
 
       
@@ -201,4 +165,3 @@ export default function Login() {
     </div>
   );
 }
->>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
