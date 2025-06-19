@@ -76,7 +76,10 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+<<<<<<< HEAD
         'rest_framework.authentication.TokenAuthentication',
+=======
+>>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

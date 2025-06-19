@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -9,28 +10,34 @@ export default function Home() {
     <>
     <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+=======
 
+"use client";
+// import Home from './guests/home';
+>>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
+
+// export default function Home() {
+//   return (
+//     <div className="flex items-center justify-center min-h-screen bg-blue-100">
+//       <h1 className="text-4xl font-bold text-red-500">
+//         Home Page
+
+//       </h1>
       
+//     </div>
+//   );
+// }
 
-      {/* Hero Section */}
-      <section className="text-center p-10 bg-blue-50 dark:bg-gray-800 transition-colors">
-        <h1 className="text-3xl font-bold mb-2 text-blue-600 dark:text-blue-400">Welcome to EduConnect!</h1>
-        <p className="mb-4 text-gray-700 dark:text-gray-300">Streamline payments and webinars for education!</p>
-        <button className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded">Learn More</button>
-      </section>
+//........
+// export default function Home() {
+//   return <Home />;
+// }
+import Home from './guests/home';
 
-      {/* Features */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-white dark:bg-gray-900">
-        {['Automated Payment Verification', 'Webinar Integration', 'Calendar Sync', 'Monthly Reports'].map((text, i) => (
-          <div
-            key={i}
-            className="border border-blue-100 dark:border-blue-600 bg-blue-100 dark:bg-gray-800 p-4 rounded text-center shadow hover:shadow-lg transition"
-          >
-            <p className="font-medium text-blue-700 dark:text-blue-400">{text}</p>
-          </div>
-        ))}
-      </section>
+export default function MainPage() {
+  return <Home />;
 
+<<<<<<< HEAD
       {/* Upcoming Webinars */}
       <section className="p-6 bg-blue-50 dark:bg-gray-900">
         <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-400">Upcoming Webinars</h2>
@@ -72,3 +79,6 @@ export default function Home() {
     </>
   );
 }
+=======
+}
+>>>>>>> 13da922dcedb5896a2db254e9f91c3e732ee8842
