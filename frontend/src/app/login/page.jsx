@@ -34,16 +34,17 @@ export default function Login() {
             setIsSuccess(true);
 
             const data = response.data;
-            console.log(data);
+            console.log(data); //contains user, access, refresh
             console.log(data.user.role);
 
             Cookies.set("accessToken", data.access, { path: "/" });
 
-            localStorage.setItem("userRole",data.user.role);
-            localStorage.setItem("accessToken", response.data.access);
-            localStorage.setItem("refreshToken", response.data.refresh);
-
+            login(data); // this replace all loalstorage
             
+            //localStorage.setItem("user", JSON.stringify(userObject));
+            //localStorage.setItem("userRole",data.user.role);
+            //localStorage.setItem("accessToken", response.data.access);
+            //localStorage.setItem("refreshToken", response.data.refresh);
 
             //const userrole = localStorage.getItem("userRole");
             
