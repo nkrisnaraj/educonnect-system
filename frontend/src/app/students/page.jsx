@@ -1,7 +1,21 @@
+"use client";
 import { Bell, CreditCard } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function StudentPage() {
+  const router = useRouter();
+
+  useEffect(()=>{
+    const role = localStorage.getItem("userRole");
+    const token = localStorage.getItem("accessToken");
+    if(!token || role !== "student"){
+      router.push("/login");
+    }
+  }, []);
+
+
   const courses = [
     {
       title: "Object Oriented Programming",
@@ -13,6 +27,8 @@ export default function StudentPage() {
     },
    
   ];
+
+  
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto w-full">
