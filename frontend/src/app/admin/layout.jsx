@@ -1,10 +1,3 @@
-import "../globals.css";
-
-export default function Layout({ children }) {
-  return (
-    <>
-      {children}
-    </>
-  );
+export default function AdminLayout({ children }) {
+  return <div className="admin-layout">{children}</div>
 }
-
