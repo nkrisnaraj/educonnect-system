@@ -1,10 +1,8 @@
-
-// import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
-import Footer from "@/components/Footer";
-
+// app/layout.jsx
 import "./globals.css";
+import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
-
+import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
 
 export const metadata = {
   title: "EduConnect",
@@ -15,9 +13,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ThemeProvider> {/* ✅ Wrap children with ThemeProvider */}
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
 }
-
