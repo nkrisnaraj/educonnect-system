@@ -1,9 +1,15 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import { Bell, Menu } from "lucide-react";
 import Image from "next/image";
+import { useState } from "react";
 
 export default function Topbar({ toggleSidebar }) {
+  
+  const {user} = useAuth();
+  //console.log(user?.username);
+
   return (
     <div className="flex justify-between items-center mb-6 gap-6 px-6 pt-6">
       <button className="md:hidden" onClick={toggleSidebar}>
@@ -19,14 +25,14 @@ export default function Topbar({ toggleSidebar }) {
       <div className="flex items-center gap-8">
         <div className="flex items-center gap-2">
           <Image
-            src="/placeholder.svg"
+            src="/images/icons/profile1.jpg"
             alt="Profile"
             width={40}
             height={40}
             className="rounded-full bg-blue-300"
           />
           <div>
-            <p className="text-sm font-medium">John Doe</p>
+            <p className="text-sm font-medium">{user?.username || "Loading..."}</p>
             <p className="text-xs text-gray-500">3rd year</p>
           </div>
         </div>

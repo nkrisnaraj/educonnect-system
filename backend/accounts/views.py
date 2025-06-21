@@ -8,8 +8,30 @@ from django.contrib.auth import authenticate
 from .serializers import UserSerializer, RegisterSerializer
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.generics import RetrieveAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+from rest_framework_simplejwt.authentication import JWTAuthentication 
 
 User = get_user_model()
+
+
+class StudentDetailView(RetrieveAPIView):
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    serializer_class = UserSerializer
+
+    def get_object(self):
+        print("User in request:", self.request.user)
+        print("Is authenticated:", self.request.user.is_authenticated)
+        user = self.request.user
+        if not hasattr(user, 'student_profile'):
+            raise PermissionDenied("Student profile not found.")
+        return user
+
+
 
 @api_view(['POST'])
 def register_user(request):
