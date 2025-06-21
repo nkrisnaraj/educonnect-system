@@ -3,6 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {Home,BookOpen,Users,GraduationCap,ClipboardList,Upload,BarChart3,Calendar,Bell,Settings,LogOut} from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
 
 const menuItems = [
   {
@@ -54,6 +55,7 @@ const menuItems = [
 
 export function InstructorSidebar() {
   const pathname = usePathname()
+  const { logout } = useAuth();
 
   return (
     <div className="mt-4 ml-4 w-64 bg-primary border-r border-purple-200 flex flex-col rounded-xl">
@@ -104,7 +106,10 @@ export function InstructorSidebar() {
             <Settings className="h-4 w-4" />
             Settings
           </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg">
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg"
+            onClick={()=>
+              logout()
+            }>
             <LogOut className="h-4 w-4" />
             Logout
           </button>
