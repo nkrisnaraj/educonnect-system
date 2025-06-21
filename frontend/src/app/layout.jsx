@@ -1,6 +1,4 @@
-// app/layout.jsx
 import "./globals.css";
-import Footer from "@/components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
 
