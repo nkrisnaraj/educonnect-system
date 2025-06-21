@@ -8,9 +8,9 @@ export default function AdminHeader({ onMenuClick }) {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  console.log("AdminHeader user:", user)
+  console.log("AdminHeader user:", user.username)
   console.log("AdminHeader user role:", user?.role)
-  console.log("AdminHeader user name:", user?.email)
+  
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
