@@ -25,8 +25,8 @@ export default function Login() {
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
-          console.log(username);
-          console.log(password);
+          // console.log(username);
+          // console.log(password);
           const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
@@ -86,11 +86,10 @@ export default function Login() {
     
 
   return (
+    <>
+    {/* Nav bar */}
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-      {/* Nav bar */}
-      <MainNavbar />
-
-
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">
@@ -160,8 +159,10 @@ export default function Login() {
 
       
 
-<Footer />
+
 
     </div>
+    <Footer />
+    </>
   );
 }

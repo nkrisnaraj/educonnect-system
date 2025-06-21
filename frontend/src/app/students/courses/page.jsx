@@ -1,6 +1,7 @@
 "use client";
 import Script from "next/script";
 import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { useSearchParams } from "next/navigation";
@@ -111,6 +112,9 @@ export default function Courses() {
 
   const handleJoin = (course) =>{
     setSelectedCourse(course)
+
+    console.log("course;",course.id);
+
     setShowPayModal(true);
     setShowUnPaidClassModal(false);
   }
@@ -196,6 +200,7 @@ export default function Courses() {
   };
 
   const handlePayNow = async() => {
+
     setShowPayModal(false);
   
     try {

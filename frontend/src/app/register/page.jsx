@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import axios from "axios";
+import Footer from "@/components/Footer";
 import MainNavbar from "@/components/MainNavbar";
 import "../globals.css";
 import Footer from "@/components/Footer";
@@ -98,19 +98,21 @@ export default function Register() {
             Create an Account
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Username</label>
-              <input
-                type="text"
-                name="username"
-                value={form.username}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Enter Username"
-                required
-              />
-            </div>
+          
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block mb-1 font-medium">Username</label>
+            <input
+              type="text"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Enter Username"
+              required
+            />
+          </div>
 
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Email</label>
@@ -125,112 +127,112 @@ export default function Register() {
               />
             </div>
 
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                value={form.firstName}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="First Name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={form.lastName}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Last Name"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Mobile</label>
-              <input
-                type="text"
-                name="mobile"
-                value={form.mobile}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="0771234567"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">NIC No</label>
-              <input
-                type="text"
-                name="nicNo"
-                value={form.nicNo}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="200012345678"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Year of A/L</label>
-              <input
-                type="text"
-                name="yearOfAL"
-                value={form.yearOfAL}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="2021"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">School Name</label>
-              <input
-                type="text"
-                name="schoolName"
-                value={form.schoolName}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="School Name"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Address</label>
-              <textarea
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Address"
-                rows={2}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Password</label>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                placeholder="Enter password"
-                required
-              />
-            </div>
+          <div>
+            <label className="block mb-1 font-medium">First Name</label>
+            <input
+              type="text"
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="First Name"
+              required
+            />
           </div>
 
-          <button
-            type="submit"
-            className="mt-8 w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-semibold transition duration-300"
-          >
-            Register
-          </button>
+          <div>
+            <label className="block mb-1 font-medium">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Last Name"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Mobile</label>
+            <input
+              type="text"
+              name="mobile"
+              value={form.mobile}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="0771234567"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">NIC No</label>
+            <input
+              type="text"
+              name="nicNo"
+              value={form.nicNo}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="200012345678"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Year of A/L</label>
+            <input
+              type="text"
+              name="yearOfAL"
+              value={form.yearOfAL}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="2021"
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">School Name</label>
+            <input
+              type="text"
+              name="schoolName"
+              value={form.schoolName}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="School Name"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block mb-1 font-medium">Address</label>
+            <textarea
+              name="address"
+              value={form.address}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Address"
+              rows={2}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block mb-1 font-medium">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              className="w-full p-3 rounded border border-gray-300"
+              placeholder="Enter password"
+              required
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          className="mt-8 w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-semibold transition duration-300"
+        >
+          Register
+        </button>
 
           <p className="text-sm mt-4 text-center text-gray-700 dark:text-gray-300">
             Already have an account?{" "}
@@ -241,6 +243,8 @@ export default function Register() {
         </form>
       </div>
     </div>
+    <Footer />
+    
     <Footer />
     </>
   );

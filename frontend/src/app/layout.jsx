@@ -1,6 +1,7 @@
 import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
 
 
 export const metadata = {
@@ -13,7 +14,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <AuthProvider>
-          <ThemeProvider>
+          <ThemeProvider> {/* ✅ Wrap children with ThemeProvider */}
             {children}
           </ThemeProvider>
           </AuthProvider>
@@ -21,4 +22,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
