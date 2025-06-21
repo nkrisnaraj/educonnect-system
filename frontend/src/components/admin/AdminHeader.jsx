@@ -8,6 +8,10 @@ export default function AdminHeader({ onMenuClick }) {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
+  console.log("AdminHeader user:", user)
+  console.log("AdminHeader user role:", user?.role)
+  console.log("AdminHeader user name:", user?.email)
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between px-4 py-3">
@@ -51,7 +55,7 @@ export default function AdminHeader({ onMenuClick }) {
                 <User className="h-4 w-4 text-white" />
               </div>
               <div className="text-sm hidden sm:block text-left">
-                <p className="font-medium text-gray-900">{user?.name}</p>
+                <p className="font-medium text-gray-900">{user?.last_name}</p>
                 <div className="flex items-center space-x-1">
                   <Shield className="h-3 w-3 text-primary" />
                   <p className="text-gray-500 text-xs capitalize">{user?.role}</p>
@@ -64,7 +68,7 @@ export default function AdminHeader({ onMenuClick }) {
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                 <div className="py-1">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-sm font-medium text-gray-900">{user?.last_name}</p>
                     <p className="text-xs text-gray-500">{user?.email}</p>
                     <div className="flex items-center space-x-1 mt-1">
                       <Shield className="h-3 w-3 text-primary" />

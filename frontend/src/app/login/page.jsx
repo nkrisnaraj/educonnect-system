@@ -25,8 +25,8 @@ export default function Login() {
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
-          console.log(username);
-          console.log(password);
+          // console.log(username);
+          // console.log(password);
           const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
@@ -42,7 +42,7 @@ export default function Login() {
 
             Cookies.set("accessToken", data.access, { path: "/" });
 
-            login(data); // this replace all loalstorage
+            login(data.user); // this replace all loalstorage
             
             //localStorage.setItem("user", JSON.stringify(userObject));
             //localStorage.setItem("userRole",data.user.role);
