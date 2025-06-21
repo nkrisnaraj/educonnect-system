@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Search, Bell, User, Menu, LogOut, Shield } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 
@@ -8,8 +8,10 @@ export default function AdminHeader({ onMenuClick }) {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  console.log("AdminHeader user:", user.username)
-  console.log("AdminHeader user role:", user?.role)
+  // useEffect(()=>{
+  //   console.log("AdminHeader user:", user.username)
+  //   console.log("AdminHeader user role:", user?.role)
+  // },[user])
   
 
   return (
