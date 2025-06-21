@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Search,
   Bell,
@@ -13,6 +13,8 @@ import {
   Users,
   Eye,
 } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
 
 export default function InstructorDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -100,6 +102,20 @@ export default function InstructorDashboard() {
     }
   }
 
+  
+    const {user } = useAuth();
+    const router = useRouter();
+  
+    useEffect(() => {
+      const role = localStorage.getItem("userRole");
+      if (!role || role !== 'instructor') {
+        router.replace("/login");
+      }
+    }, []);
+  
+    if (!user || user.role !== 'instructor') {
+      return null; // or a loading spinner
+    }
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}

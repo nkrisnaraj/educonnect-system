@@ -1,4 +1,5 @@
 "use client";
+import { useAuth } from "@/context/AuthContext";
 import { Bell, CreditCard } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -6,14 +7,17 @@ import { useEffect } from "react";
 
 export default function StudentPage() {
   const router = useRouter();
+  const {user} = useAuth();
 
   useEffect(()=>{
     const role = localStorage.getItem("userRole");
     const token = localStorage.getItem("accessToken");
-    if(!token || role !== "student"){
+    if(!token || !user || role !== "student"){
       router.push("/login");
     }
   }, []);
+
+  if (!user) return null; // or a loading spinner
 
 
   const courses = [
