@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-from django.db import models
-
-# Create your models here.
-=======
 import uuid
 from django.conf import settings
 from django.db import models
@@ -54,4 +49,3 @@ class Marks(models.Model):
     def __str__(self):
         return f"{self.student.stuid} - {self.exam.examname} - {self.marks_obtained}"
     
->>>>>>> 917432b0b93bb150a6cd425d9ac0e03b85e1b17a
