@@ -98,7 +98,7 @@ export default function Login() {
 
           {message && (
             <div
-              className={`fixed top-5 right-5 w-[350px] max-w-full px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
+              className={` mt-16 mb-6 fixed top-5 right-5 w-[350px] max-w-full px-6 py-4  rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
                 isSuccess
                   ? "bg-green-100 text-green-900 border-green-700 dark:bg-green-800 dark:text-green-100 dark:border-green-400"
                   : "bg-red-100 text-red-900 border-red-700 dark:bg-red-800 dark:text-red-100 dark:border-red-400"

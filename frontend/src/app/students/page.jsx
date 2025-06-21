@@ -1,20 +1,34 @@
 "use client";
+import { useAuth } from "@/context/AuthContext";
 import { Bell, CreditCard } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function StudentPage() {
+  const {user } = useAuth();
   const router = useRouter();
+
+  const today = new Date();
+  const formatdate = today.toLocaleDateString("en-GB",{
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  })
 
   useEffect(()=>{
     const role = localStorage.getItem("userRole");
     const token = localStorage.getItem("accessToken");
+    
     if(!token || role !== "student"){
       router.push("/login");
     }
   }, []);
-
+  // const user = JSON.parse(localStorage.getItem("user"));
+   console.log(user); 
+   console.log(user?.username)
+   console.log(user?.first_name);
 
   const courses = [
     {
@@ -35,15 +49,15 @@ export default function StudentPage() {
       {/* Welcome Banner */}
       <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
         <div className="relative z-10 p-4">
-          <p className="text-sm mb-6">September 4, 2023</p>
-          <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back, John!</h1>
+          <p className="text-sm mb-6">{formatdate}</p>
+          <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back, {user?.first_name}!</h1>
           <p className="text-sm opacity-90">Always stay updated in your student portal</p>
         </div>
         <div className="absolute right-4 bottom-0 hidden sm:block">
           <Image
             src="/student.png"
             alt="Student illustration"
-            width={220}
+            width={280}
             height={150}
             className="object-contain"
           />
@@ -110,8 +124,8 @@ export default function StudentPage() {
 
         {/* Right Content (Chat Box) */}
         <div className="w-full lg:w-4/12 border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
-          <div className="bg-blue-100 p-3 border-b border-gray-200">
-            <h3 className="font-medium text-md">Chat with instructors</h3>
+          <div className="bg-primary p-3 border-b border-gray-200">
+            <h3 className="font-medium text-white text-md">Chat with instructors</h3>
           </div>
           <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
             {/* Chat messages */}
