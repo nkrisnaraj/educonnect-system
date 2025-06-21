@@ -1,5 +1,6 @@
 "use client"
 
+import { useAuth } from "@/context/AuthContext"
 import {
   LayoutDashboard,
   Users,
@@ -23,6 +24,7 @@ const navigation = [
 ]
 
 export default function Sidebar({ activeSection, onSectionChange }) {
+  const { logout } = useAuth();
   return (
     <div className="flex h-screen w-64 flex-col bg-primary">
       {/* Logo */}
@@ -60,7 +62,11 @@ export default function Sidebar({ activeSection, onSectionChange }) {
 
       {/* Logout */}
       <div className="p-4">
-        <button className="group flex w-full items-center rounded-lg px-4 py-3 mx-2 text-sm font-medium text-blue-100 transition-colors hover:text-white hover:bg-accent">
+        <button 
+          onClick={()=>
+            logout()
+          }
+        className="group flex w-full items-center rounded-lg px-4 py-3 mx-2 text-sm font-medium text-blue-100 transition-colors hover:text-white hover:bg-accent">
           <LogOut className="mr-3 h-5 w-5" />
           Logout
         </button>

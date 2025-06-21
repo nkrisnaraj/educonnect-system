@@ -9,6 +9,7 @@ export default function StudentPage() {
   const {user } = useAuth();
   const router = useRouter();
 
+
   const today = new Date();
   const formatdate = today.toLocaleDateString("en-GB",{
     weekday:"long",
@@ -20,15 +21,13 @@ export default function StudentPage() {
   useEffect(()=>{
     const role = localStorage.getItem("userRole");
     const token = localStorage.getItem("accessToken");
-    
-    if(!token || role !== "student"){
+    if(!token || !user || role !== "student"){
       router.push("/login");
     }
   }, []);
-  // const user = JSON.parse(localStorage.getItem("user"));
-   console.log(user); 
-   console.log(user?.username)
-   console.log(user?.first_name);
+
+  if (!user) return null; // or a loading spinner
+
 
   const courses = [
     {

@@ -12,7 +12,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
-    if (!role || role !== 'admin') {
+    if (!user || !role || role !== 'admin') {
       router.replace("/login");
     }
   }, []);
