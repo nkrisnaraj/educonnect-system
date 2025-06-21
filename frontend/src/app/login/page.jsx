@@ -42,7 +42,7 @@ export default function Login() {
 
             Cookies.set("accessToken", data.access, { path: "/" });
 
-            login(data.user); // this replace all loalstorage
+            login(data); // this replace all loalstorage
             
             //localStorage.setItem("user", JSON.stringify(userObject));
             //localStorage.setItem("userRole",data.user.role);
@@ -86,11 +86,10 @@ export default function Login() {
     
 
   return (
+    <>
+    {/* Nav bar */}
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-      {/* Nav bar */}
-      <MainNavbar />
-
-
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">
@@ -98,7 +97,7 @@ export default function Login() {
 
           {message && (
             <div
-              className={`fixed top-5 right-5 w-[350px] max-w-full px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
+              className={` mt-16 mb-6 fixed top-5 right-5 w-[350px] max-w-full px-6 py-4  rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
                 isSuccess
                   ? "bg-green-100 text-green-900 border-green-700 dark:bg-green-800 dark:text-green-100 dark:border-green-400"
                   : "bg-red-100 text-red-900 border-red-700 dark:bg-red-800 dark:text-red-100 dark:border-red-400"
@@ -160,8 +159,10 @@ export default function Login() {
 
       
 
-<Footer />
+
 
     </div>
+    <Footer />
+    </>
   );
 }
