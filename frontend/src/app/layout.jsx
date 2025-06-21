@@ -1,7 +1,7 @@
 import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
+
 
 
 export const metadata = {
