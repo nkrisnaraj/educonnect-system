@@ -59,3 +59,18 @@ class ListZoomWebinarsView(APIView):
             print("🔥 Zoom API Error:")
             traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class SyncZoomWebinarsView(APIView):
+    def post(self, request):
+        serializer = ZoomWebinarListSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        account_key = serializer.validated_data.get("account_key")
+
+        try:
+            service = ZoomWebinarService(account_key)
+            service.sync_webinars_to_db()
+            return Response({"message": "Webinars synced successfully"}, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
