@@ -4,6 +4,7 @@
 import { createContext, useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import axios from "axios";
 
 
 
@@ -13,18 +14,28 @@ export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
-
+  const [refreshToken,setRefreshToken] = useState(null)
+  
+  // const [richUser,setRichuser] = useState(null);
 
   useEffect(() => {
+    // Load tokens & user from localStorage on mount
     const userJson = localStorage.getItem("user");
     const token = localStorage.getItem("accessToken");
+    const refresh = localStorage.getItem("refreshToken")
     if (userJson) setUser(JSON.parse(userJson));
     if (token) setAccessToken(token);
+    if(refresh) setRefreshToken(refresh);
   }, []);
 
 
-
+// Login saves tokens and user info
   const login = (userData) => {
+    const enrichedUser = {
+      ...userData.user,
+      accessToken:userData.access,
+      refreshToken:userData.refresh
+    }
     
     localStorage.setItem("user",JSON.stringify(userData.user));
     localStorage.setItem("userRole", userData.user.role);
@@ -32,6 +43,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("refreshToken", userData.refresh);
     setUser(userData.user);
     setAccessToken(userData.access);
+    setRefreshToken(userData.refresh);
+    //localStorage.setItem("richUser",JSON.stringify(enrichedUser));
+    //setRichuser(enrichedUser);
 };
 
   const logout = () => {
@@ -43,11 +57,32 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("refreshToken");
     localStorage.clear();
     setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null)
     router.push("/login");
   };
 
+  const refreshAccessToken = async() => {
+    try{
+      if(!refreshToken) throw new Error("No refresh token")
+
+      const res = await axios.post("http://127.0.0.1:8000/api/accounts/token/refresh/", {
+        refresh:refreshToken,
+      })
+
+      const newAccessToken = res.data.access;
+      localStorage.setItem("accessToken",newAccessToken);
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+
+    }catch(err){
+      logout()
+      console.log(err);
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, setAccessToken, login, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, refreshToken, login, logout,refreshAccessToken, }}>
       {children}
     </AuthContext.Provider>
   );

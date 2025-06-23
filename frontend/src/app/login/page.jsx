@@ -50,7 +50,7 @@ export default function Login() {
             //localStorage.setItem("refreshToken", response.data.refresh);
 
             //const userrole = localStorage.getItem("userRole");
-            
+            console.log(data.user.id);
             setTimeout(() => {
               try {
                 if (data.user.role === 'admin') {
@@ -58,7 +58,7 @@ export default function Login() {
                 } else if (data.user.role === 'instructor') {
                   router.push("/instructor");
                 } else if (data.user.role === 'student') {
-                  router.push("/students");
+                  router.push(`/students/${data.user.id}`);
                 }
               } catch (err) {
                 console.error("Router push error:", err);

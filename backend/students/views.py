@@ -18,6 +18,7 @@ import pytesseract
 from PIL import Image
 from io import BytesIO
 from instructor.models import Course
+from accounts.serializers import StudentProfileSerializer
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 User = get_user_model()
@@ -134,6 +135,119 @@ class OnlinePaymentView(APIView):
 
 
 
+##ocr related
+class ReceiptUploadView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser,FormParser]
 
 
 
+    def post(self, request):
+        user = request.user
+        image = request.FILES.get("image")
+        method = 'receipt'
+        
+
+        if not image:
+            return Response({'error':"No image provided"},status=400)
+        
+        payment = Payment.objects.create(stuid=user, method=method,amount=0.0)
+
+        #OCR the receipt
+        ocr_image = Image.open(image)
+        text = pytesseract.image_to_string(ocr_image)
+
+        print("OCR TEXT:\n",text)
+
+        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', text)
+        amount = float(amount_match.group(2).replace(',', ''))if amount_match else 0.0
+        payment.amount = amount
+        payment.save()
+
+        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', text)
+        transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
+        
+        
+
+        receipt_payment = ReceiptPayment.objects.create(
+            payid = payment,
+            image_url = image,
+            transaction_id=transaction_id,
+            verified = False
+        )
+
+        serializer = ReceiptPaymentSerializer(receipt_payment)
+        return Response({"message":"Successfully Saved Details","data":serializer.data},status=status.HTTP_201_CREATED)
+
+    
+
+
+#Payment Info
+class PaymentInfoView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self,request):
+        user = request.user
+        print("request user: ", user)
+        payments = Payment.objects.filter(stuid=user)
+
+        payment_list = [] 
+
+        
+
+        
+        for payment in payments:
+            enrollment = Enrollment.objects.filter(payid=payment)
+            coursename = enrollment.courseid.title if enrollment else None
+
+            invoice_no = None
+            transaction_id = None
+
+            
+
+        if payment.method == 'online' :
+            try:
+                online_payment = OnlinePayment.objects.get(payid=payment)
+                invoice_no = online_payment.invoice_no
+            except OnlinePayment.DoesNotExist:
+                invoice_no = None
+            
+        elif payment.method == 'receipt':
+            try:
+                receipt_payment = ReceiptPayment.objects.get(payid=payment)
+                transaction_id = receipt_payment.transaction_id
+            except ReceiptPayment.DoesNotExist:
+                transaction_id = None
+
+        payment_list.append({
+                "payid": payment.payid,
+                "date": payment.date.strftime('%Y-%m-%d'),
+                "amount": float(payment.amount),
+                "status": payment.status,
+                "method": payment.method,
+                "course": coursename,
+                "Invoice_No" : invoice_no,
+                "Transaction" : transaction_id
+        })
+
+        return Response({"payments" : payment_list})
+
+
+class StudentProfileView(APIView):
+    authentication_classes = [JWTAuthentication]
+    @permission_classes([IsAuthenticated])
+    
+    def get(self,request):
+        user = request.user
+        print(user)
+        print(user.role)
+
+        if user.role != "student":
+            return Response({"error":"Only Students allowed"},status=403)
+    
+        profile = user.student_profile
+        print(profile)
+        serializer = StudentProfileSerializer(profile)
+        return Response(serializer.data)
