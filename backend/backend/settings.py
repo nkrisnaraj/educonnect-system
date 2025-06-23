@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    #'rest_framework_simplejwt.token_blacklist',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'students',
     'edu_admin',
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     # 'accounts',
     'accounts.apps.AccountsConfig',
 ]
+
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
 try:
     ZOOM_ACCOUNTS_JSON = os.getenv("ZOOM_ACCOUNTS_JSON", "{}")  # default to empty JSON
@@ -61,6 +63,10 @@ except json.JSONDecodeError:
     ZOOM_ACCOUNTS = {}
 
 AUTH_USER_MODEL = 'accounts.User'
+
+MEDIA_ROOT = BASE_DIR / "media"   #your_project_folder/media/ - #your_project_folder/media/receipts/
+MEDIA_URL = "/media/"     #http://localhost:8000/media/receipts/receipt1.jpg
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
@@ -85,13 +91,13 @@ REST_FRAMEWORK = {
     )
 }
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': True,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-# }
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for production

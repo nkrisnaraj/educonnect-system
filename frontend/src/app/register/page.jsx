@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
-import Footer from "@/components/Footer";
 import MainNavbar from "@/components/MainNavbar";
 import "../globals.css";
 import Footer from "@/components/Footer";
@@ -245,7 +244,7 @@ export default function Register() {
     </div>
     <Footer />
     
-    <Footer />
+    
     </>
   );
 }

@@ -3,7 +3,7 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 
 export default function Courses() {
@@ -32,6 +32,7 @@ export default function Courses() {
 
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
+  const {id} = useParams();
 
   useEffect(() => {
     if (status === "success") {
@@ -59,44 +60,13 @@ export default function Courses() {
   //  console.log(user);
   //  console.log(accessToken);
 
-    useEffect(()=>{
-      const fetchStudentProfile = async ()=> {
-        // try {
-        //   const res = await axios.get("http://127.0.0.1:8000/api/accounts/student/",
-        //     {
-        //       headers: {
-        //       Authorization: `Bearer ${accessToken}`,
-        //     },
-        //     });
-        //   if(res.status==200){
-        //     console.log(res);
-            
-        //     setStudentProfile(res.data.student_profile);
-        //     //console.log("Mobile:", studentProfile?.mobile);
-        //     //console.log("Address:", studentProfile?.address);
-        //     // console.log(res.data);
-        //     // const student = res.data;
-        //     // const mobile = student.student_profile.mobile || "";
-        //     // const address = student.student_profile.address || "";
-        //     // console.log("Mobile:", mobile);
-        //     // console.log("Address:", address);
-        //   }
-        // } catch (error) {
-        //     console.log("Failed to fetch student profile", error);
-        //   }
-      };
-      if (user && accessToken) {
-        fetchStudentProfile();
-      }
-    },[user, accessToken])
-   
-
    useEffect(() => {
       const script = document.createElement("script");
       script.src = "https://www.payhere.lk/lib/payhere.js";
       script.onload = () => setIsPayHereLoaded(true);
       document.body.appendChild(script);
     }, []);
+
 
   const handlePaidClass = (paidclass) =>{
     setSelectedCourse(paidclass)
@@ -111,34 +81,45 @@ export default function Courses() {
 
   const handleJoin = (course) =>{
     setSelectedCourse(course)
-
     console.log("course;",course.id);
-
     setShowPayModal(true);
     setShowUnPaidClassModal(false);
   }
 
   //OCR Part
   const handleReceipt = async() =>{
-    // setShowPayModal(false);
-    // if(!file){
-    //   return alert("Please select a file");
-    // }
-    // const formData = new FormData();
-    // formData.append('image',file);
+    setShowPayModal(false);
+    let token = accessToken;
+    if (!token || isTokenExpired(token))
+    {
+      token = await refreshAccessToken();
+      setAccessToken(token);
+    }
+
+    if (!accessToken) {
+      alert("You are not authenticated. Please log in again.");
+      return;
+    }
+
+    if(!file || !file.type.includes("image")){
+      return alert("Please select a file (jpg, png)");
+    }
+    const formData = new FormData();
+    formData.append('image',file); //Add image to the FormData object
     
-    // try {
-    //   const res = await axios.post('http://localhost.0.0.1:8000/students/payment/upload-receipt',formData,{
-    //     headers:{
-    //       'Content-Type': 'multipart/form-data',
-    //     }
-    //   });
-    //   const data = res.data;
-    //   alert(data.message);
-    // } catch (error) {
-    //   console.error(error);
-    //   alert('something went wrong');
-    // }
+    try {
+      const res = await axios.post('http://127.0.0.1:8000/students/payments/upload-receipt/',formData,{
+        headers:{
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      const data = res.data;
+      alert(data.message);
+    } catch (error) {
+      console.error(error);
+      alert('something went wrong while uploading the receipt');
+    }
   }
 
 
@@ -171,36 +152,44 @@ export default function Courses() {
   };
 
 
-  const createOnlinePayment = async () => {
+  // const createOnlinePayment = async () => {
+  //     let token = accessToken;
+  //     console.log("Sending token:", accessToken);
+  //     // If expired, try refresh
+  //     if (!token || isTokenExpired(token)) {
+  //       token = await refreshAccessToken();
+  //       setAccessToken(token); // update React state
+  //     }
+  //     if (!token) {
+  //       console.error("No valid access token available.");
+  //       return;
+  //     }
+  //     // const response = await axios.post("http://127.0.0.1:8000/students/payments/online/",
+       
+  //     //   {
+  //     //     headers: {
+  //     //       Authorization: `Bearer ${token}`,
+  //     //     },
+  //     //   }
+  //     // );
+  //     // return response.data; // includes payid, invoice_no, amount
+  // }
 
-      let token = accessToken;
+  const handlePayNow = async() => {
+
+    setShowPayModal(false);
+
+    let token = accessToken;
       console.log("Sending token:", accessToken);
-
       // If expired, try refresh
       if (!token || isTokenExpired(token)) {
         token = await refreshAccessToken();
         setAccessToken(token); // update React state
       }
-
       if (!token) {
         console.error("No valid access token available.");
         return;
       }
-
-      // const response = await axios.post("http://127.0.0.1:8000/students/payments/online/",
-       
-      //   {
-      //     headers: {
-      //       Authorization: `Bearer ${token}`,
-      //     },
-      //   }
-      // );
-      // return response.data; // includes payid, invoice_no, amount
-  };
-
-  const handlePayNow = async() => {
-
-    setShowPayModal(false);
   
     try {
       //const data = await createOnlinePayment();
@@ -405,8 +394,8 @@ return (
 
         {/* Show receipt upload option */}
         {selectedPayment === "receipt" && (
-          <form className="space-y-4 mb-4" onSubmit={handleReceipt} name="image">
-            <input type="file" className="w-full border rounded px-4 py-2" />
+          <form className="space-y-4 mb-4" onSubmit={handleReceipt} >
+            <input type="file" className="w-full border rounded px-4 py-2" name="image" onChange={(e) => setFile(e.target.files[0])} />
             <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded">
               Upload Receipt
             </button>
