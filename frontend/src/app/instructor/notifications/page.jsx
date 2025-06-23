@@ -167,8 +167,7 @@ export default function NotificationsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Notifications</h1>
-          <p className="text-gray-600">Stay updated with your A/L class activities and alerts</p>
+          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
@@ -270,8 +269,7 @@ export default function NotificationsPage() {
       {/* Notifications List */}
       <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
-          <h3 className="text-lg font-semibold">A/L Notification Center</h3>
-          <p className="text-gray-600">All your important updates and alerts in one place</p>
+          <h3 className="text-lg font-semibold">Notification Center</h3>
         </div>
         <div className="divide-y divide-gray-200">
           {filteredNotifications.length === 0 ? (

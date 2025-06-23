@@ -147,7 +147,6 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">A/L Students Management</h1>
-          <p className="text-gray-600">Manage your A/L students and track their progress</p>
         </div>
         <div className="flex items-center gap-3">
           <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
