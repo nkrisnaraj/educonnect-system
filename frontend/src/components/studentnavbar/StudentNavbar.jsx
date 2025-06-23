@@ -36,7 +36,7 @@ export default function StudentNavbar({ isOpen, onClose }) {
       </div>
 
       <nav className="space-y-4">
-        <Link href="/" className="flex items-center gap-4 px-3 py-2 bg-accent rounded-md">
+        <Link href="/students" className="flex items-center gap-4 px-3 py-2 hover:bg-accent rounded-md">
           <Home className="w-5 h-5" />
           <span>Dashboard</span>
         </Link>

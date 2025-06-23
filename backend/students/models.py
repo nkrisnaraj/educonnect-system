@@ -34,6 +34,7 @@ class Payment(models.Model):
     method = models.CharField(max_length=10, choices=[('online', 'Online'), ('receipt', 'Receipt Upload')])
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField(auto_now_add=True)
+    status = models.CharField(max_length=20,choices=[('success', 'Success'), ('fail', 'Fail'), ('pending' , 'Pending')], default='pending')
 
     def save(self, *args, **kwargs):
         if not self.payid:
@@ -49,7 +50,8 @@ class OnlinePayment(models.Model):
     onlinepayid = models.CharField(max_length=20, unique=True, blank=True)
     payid = models.OneToOneField(Payment, on_delete=models.CASCADE)
     invoice_no = models.CharField(max_length=100, unique=True)
-    status = models.CharField(max_length=10, choices=[('success', 'Success'), ('fail', 'Fail')])
+    #status = models.CharField(max_length=10, choices=[('success', 'Success'), ('fail', 'Fail')])
+    verified = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.onlinepayid:
@@ -65,6 +67,7 @@ class ReceiptPayment(models.Model):
     receiptid = models.CharField(max_length=20, unique=True, blank=True)
     payid = models.OneToOneField(Payment, on_delete=models.CASCADE)
     image_url = models.ImageField(upload_to='receipts/')
+    transaction_id = models.CharField(unique=True,null=True, blank=True)
     verified = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 

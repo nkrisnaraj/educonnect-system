@@ -3,12 +3,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "@/context/ThemeContext";
 import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function MainNavbar() {
   const { isDarkMode, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("home");
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Smooth scroll to section
+  // Check if we're on the homepage
+  const isHomePage = pathname === "/" || pathname === "/home";
+
+  // Smooth scroll to section (for homepage)
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -20,8 +26,35 @@ export default function MainNavbar() {
     }
   };
 
-  // Track active section on scroll
+  // Handle navigation click
+  const handleNavClick = (sectionId) => {
+    if (isHomePage) {
+      // If on homepage, just scroll to section
+      scrollToSection(sectionId);
+    } else {
+      // If on other pages (login/register), navigate to homepage with hash
+      router.push(`/#${sectionId}`);
+    }
+  };
+
+  // Handle scrolling to section after navigation (for cross-page navigation)
   useEffect(() => {
+    if (isHomePage && window.location.hash) {
+      const hash = window.location.hash.substring(1); // Remove the # symbol
+      const timer = setTimeout(() => {
+        scrollToSection(hash);
+        // Clean up the hash from URL after scrolling
+        window.history.replaceState(null, null, '/');
+      }, 100); // Small delay to ensure page is loaded
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isHomePage, pathname]);
+
+  // Track active section on scroll (only on homepage)
+  useEffect(() => {
+    if (!isHomePage) return;
+
     const handleScroll = () => {
       const sections = ["home", "about", "courses", "contact"];
       const scrollPosition = window.scrollY + 100;
@@ -40,7 +73,7 @@ export default function MainNavbar() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isHomePage]);
 
   const navItems = [
     { id: "home", label: "Home" },
@@ -59,16 +92,18 @@ export default function MainNavbar() {
           height={40}
           className="rounded"
         />
-        <div className="text-xl font-bold">EduConnect</div>
+        <Link href="/" className="text-xl font-bold hover:text-blue-200 transition-colors">
+          EduConnect
+        </Link>
       </div>
       
       <nav className="space-x-4 flex items-center">
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => scrollToSection(item.id)}
+            onClick={() => handleNavClick(item.id)}
             className={`hover:text-blue-200 dark:hover:text-blue-300 transition-colors px-2 py-1 rounded ${
-              activeSection === item.id
+              isHomePage && activeSection === item.id
                 ? "text-blue-200 dark:text-blue-300 font-semibold"
                 : ""
             }`}

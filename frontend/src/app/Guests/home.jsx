@@ -113,67 +113,108 @@ export default function HomePage() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="p-8 py-16 bg-white dark:bg-gray-900">
-        <h2 className="text-3xl font-bold text-center mb-6 text-blue-700 dark:text-blue-400">
-          About EduConnect
-        </h2>
-        <p className="text-center max-w-3xl mx-auto text-gray-700 dark:text-gray-300 mb-12">
-          EduConnect is a modern education platform built to manage class registration, payment verification, webinar hosting, and more – all from one place.
-        </p>
+      <section id="about" className="py-16 bg-white dark:bg-gray-900">
+  {/* Story Section with Image */}
+  <div className="container mx-auto px-8 mb-16">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      {/* Image Section */}
+      <div className="order-2 lg:order-1">
+        <div className="relative overflow-hidden rounded-lg shadow-lg">
+          <img 
+            src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" 
+            alt="Students collaborating in a modern learning environment" 
+            className="w-full h-[400px] object-cover"
+          />
+          <div className="absolute inset-0 bg-blue-900 bg-opacity-20"></div>
+        </div>
+      </div>
 
-        {/* Features Section */}
-        <div className="max-w-6xl mx-auto">
-          <h3 className="text-2xl font-bold text-center mb-8 text-blue-700 dark:text-blue-400">
-            Why Choose EduConnect?
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: "Automated Payment Verification",
-                icon: <CreditCard className="w-12 h-12 text-blue-600" />,
-                description: "Secure and instant payment processing",
-                emoji: "💳"
-              },
-              {
-                title: "Webinar Integration",
-                icon: <Play className="w-12 h-12 text-blue-600" />,
-                description: "Seamless video conferencing tools",
-                emoji: "🎥"
-              },
-              {
-                title: "Calendar Sync",
-                icon: <Calendar className="w-12 h-12 text-blue-600" />,
-                description: "Never miss a class or meeting",
-                emoji: "📅"
-              },
-              {
-                title: "Monthly Reports",
-                icon: <BarChart3 className="w-12 h-12 text-blue-600" />,
-                description: "Track progress and analytics",
-                emoji: "📊"
-              }
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="border border-blue-100 dark:border-blue-600 bg-blue-50 dark:bg-gray-800 p-6 rounded-xl text-center shadow-md hover:shadow-lg transition-all hover:scale-105"
-              >
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">{feature.emoji}</span>
-                  </div>
-                </div>
-                <h3 className="font-bold text-blue-700 dark:text-blue-400 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
+      {/* Story Content */}
+      <div className="order-1 lg:order-2 space-y-6">
+        <div>
+          <h2 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
+            OUR STORY
+          </h2>
+          <div className="w-16 h-1 bg-blue-600 mb-6"></div>
+        </div>
+
+        <div className="space-y-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+          <p>
+            EduConnect was born from a simple observation: educational institutions were struggling with fragmented systems that made learning management unnecessarily complex. Students faced multiple platforms for different tasks, while administrators juggled countless tools to keep everything running smoothly.
+          </p>
+          
+          <p>
+            Our journey began when we witnessed firsthand how technology could either empower or overwhelm the learning experience. We decided to create a solution that brings clarity to chaos - a unified platform where education truly connects all stakeholders in meaningful ways.
+          </p>
+
+          <p>
+            Today, EduConnect serves thousands of students and educators worldwide, transforming how educational institutions operate. From seamless course registrations to integrated payment processing and live interactive sessions, we've built more than just software - we've created a community where learning thrives.
+          </p>
+        </div>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-2 gap-6 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">10K+</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Active Students</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">500+</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Institutions</div>
           </div>
         </div>
-      </section>
+      </div>
+    </div>
+  </div>
 
+  {/* Features Section */}
+  <div className="max-w-6xl mx-auto px-8">
+    <h3 className="text-2xl font-bold text-center mb-8 text-blue-700 dark:text-blue-400">
+      Why Choose EduConnect?
+    </h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[
+        {
+          title: "Automated Payment Verification",
+          description: "Secure and instant payment processing",
+          emoji: "💳"
+        },
+        {
+          title: "Webinar Integration",
+          description: "Seamless video conferencing tools",
+          emoji: "🎥"
+        },
+        {
+          title: "Calendar Sync",
+          description: "Never miss a class or meeting",
+          emoji: "📅"
+        },
+        {
+          title: "Monthly Reports",
+          description: "Track progress and analytics",
+          emoji: "📊"
+        }
+      ].map((feature, i) => (
+        <div
+          key={i}
+          className="border border-blue-100 dark:border-blue-600 bg-blue-50 dark:bg-gray-800 p-6 rounded-xl text-center shadow-md hover:shadow-lg transition-all hover:scale-105"
+        >
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <span className="text-2xl">{feature.emoji}</span>
+            </div>
+          </div>
+          <h3 className="font-bold text-blue-700 dark:text-blue-400 mb-2">
+            {feature.title}
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            {feature.description}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
       {/* Courses Section */}
       <section id="courses" className="p-8 py-16 bg-blue-50 dark:bg-gray-800">
         <div className="max-w-6xl mx-auto">

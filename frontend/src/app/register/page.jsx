@@ -222,12 +222,12 @@ export default function Register() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="mt-8 w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 font-semibold transition duration-300"
-          >
-            Register
-          </button>
+        <button
+          type="submit"
+          className="mt-8 w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 font-semibold transition duration-300"
+        >
+          Register
+        </button>
 
           <p className="text-sm mt-4 text-center text-gray-700 dark:text-gray-300">
             Already have an account?{" "}
@@ -237,10 +237,11 @@ export default function Register() {
           </p>
         </form>
       </div>
-
-      {/* Footer - Same as Home Page */}
-    
-      <Footer />
-    </div>
-  );
-}
+     
+           
+     
+     <Footer />
+     
+         </div>
+       );
+     }

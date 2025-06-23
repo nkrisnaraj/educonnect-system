@@ -13,6 +13,7 @@ import os , json
 from dotenv import load_dotenv
 load_dotenv()
 import dj_database_url
+from datetime import timedelta
 
 from pathlib import Path
 
@@ -29,7 +30,7 @@ SECRET_KEY = 'django-insecure-rp(0@=xqhh!a26&b$j-p_u5m()k=5qa23_04u7yexc20&3s9@(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -42,6 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
+    #'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'students',
     'edu_admin',
@@ -75,12 +78,20 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     )
 }
 
+# SIMPLE_JWT = {
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+#     'ROTATE_REFRESH_TOKENS': True,
+#     'BLACKLIST_AFTER_ROTATION': True,
+#     'AUTH_HEADER_TYPES': ('Bearer',),
+# }
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for production

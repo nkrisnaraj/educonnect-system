@@ -1,12 +1,14 @@
 "use client";
+import { useAuth } from "@/context/AuthContext";
 import { Eye } from "lucide-react";
-import { useState } from "react";
-// import axios from "axios"
+import { useEffect, useState } from "react";
+import axios from "axios"
 
 export default function Payment() {
+  
   const [showModal, setShowModal] = useState(false); 
   const [selectedPayment, setSelectedPayment] = useState(null);
-
+  
   const transactions = [
     {
       id: 1,
@@ -24,17 +26,9 @@ export default function Payment() {
     },
   ];
 
+
+
   const handleView = async(payment) => {
-   
-    // try {
-    //    const response = await axios.get("http://127.0.0.1:8000/students/payment");
-    //    if(response.status === 200){
-    //     console.log(response.data);
-    // }
-    // } catch (error) {
-    //   console.log(error);
-    // }
-   
     setSelectedPayment(payment);
     setShowModal(true);
   };
