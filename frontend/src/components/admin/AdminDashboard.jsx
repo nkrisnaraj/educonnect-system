@@ -44,7 +44,11 @@ export default function AdminDashboard() {
             <div className="rounded-xl p-4 lg:p-6 text-white bg-gradient-to-r from-primary to-accent">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-xs sm:text-sm">December 18, 2024</p>
+                  <p className="text-blue-100 text-xs sm:text-sm">{new Date().toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}</p>
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-1 lg:mb-2">Welcome back, Admin!</h2>
                   <p className="text-blue-100 text-sm lg:text-base">Manage your institution efficiently</p>
                 </div>
