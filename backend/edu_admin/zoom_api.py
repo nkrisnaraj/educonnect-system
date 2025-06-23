@@ -60,8 +60,11 @@ class ZoomAPIClient:
             "timezone": "Asia/Colombo",
             "agenda": agenda,
             "settings": {
+                "approval_type": 1,  # manual approval
+                "registration_type": 1,  # no registration required
                 "host_video": True,
                 "panelists_video": True,
+
             }
         }
 

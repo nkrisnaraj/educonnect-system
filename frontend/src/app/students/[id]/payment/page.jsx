@@ -42,6 +42,7 @@ console.log(accessToken);
           Authorization: `Bearer ${accessToken}`
         }
        });
+       
        if(response.status === 200){
         console.log(response.data);
         setPayments(response.data.payments);
