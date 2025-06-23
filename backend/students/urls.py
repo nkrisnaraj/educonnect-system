@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import OnlinePaymentView, PayHereNotifyView
+# from .views import OnlinePaymentView, ReceiptUploadView, PayHereNotifyView
+
 
 
 
