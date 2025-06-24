@@ -11,12 +11,14 @@ import {
   Bell,
   LogOut,
   BookOpen,
+  Video,
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", id: "dashboard", icon: LayoutDashboard },
   { name: "Students", id: "students", icon: Users },
   { name: "Classes", id: "classes", icon: BookOpen },
+  { name: "Webinars", id: "webinars", icon: Video },
   { name: "Payments", id: "payments", icon: DollarSign },
   { name: "Reports", id: "reports", icon: FileText },
   { name: "Notifications", id: "notifications", icon: Bell },

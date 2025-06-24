@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from .models import ZoomOccurrence
+from .models import ZoomWebinar
+
 
 class ZoomWebinarSerializer(serializers.Serializer):
     account_key = serializers.CharField()
@@ -17,6 +20,31 @@ class ZoomWebinarSerializer(serializers.Serializer):
 
 class ZoomWebinarListSerializer(serializers.Serializer):
     account_key = serializers.CharField(required=True)
+
+
+class ZoomOccurrenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ZoomOccurrence
+        fields = ['occurrence_id', 'start_time', 'duration']
+
+
+class ZoomWebinarSerilizer(serializers.ModelSerializer):
+    occurrences = ZoomOccurrenceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ZoomWebinar
+        fields = [
+            'webinar_id',
+            'account_key',
+            'topic',
+            'registration_url',
+            'start_time',
+            'duration',
+            'agenda',
+            'is_recurring',
+            'updated_at',
+            'occurrences',
+        ]
 
     # def validate_account_key(self, value):
     #     if not value:

@@ -2,7 +2,8 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import ZoomWebinarSerializer, ZoomWebinarListSerializer
+from .serializers import ZoomWebinarSerializer, ZoomWebinarListSerializer, ZoomOccurrenceSerializer, ZoomWebinarSerilizer
+from .models import ZoomWebinar
 from .zoom_api import ZoomAPIClient
 import traceback
 from .services import ZoomWebinarService
@@ -74,3 +75,9 @@ class SyncZoomWebinarsView(APIView):
             return Response({"message": "Webinars synced successfully"}, status=200)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+        
+class WebinarListAPIView(APIView):
+    def get(self, request):
+        webinars = ZoomWebinar.objects.all().order_by('-start_time')
+        serializer = ZoomWebinarSerilizer(webinars, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

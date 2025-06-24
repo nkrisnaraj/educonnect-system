@@ -207,30 +207,30 @@ class PaymentInfoView(APIView):
 
             
 
-        if payment.method == 'online' :
-            try:
-                online_payment = OnlinePayment.objects.get(payid=payment)
-                invoice_no = online_payment.invoice_no
-            except OnlinePayment.DoesNotExist:
-                invoice_no = None
-            
-        elif payment.method == 'receipt':
-            try:
-                receipt_payment = ReceiptPayment.objects.get(payid=payment)
-                transaction_id = receipt_payment.transaction_id
-            except ReceiptPayment.DoesNotExist:
-                transaction_id = None
+            if payment.method == 'online' :
+                try:
+                    online_payment = OnlinePayment.objects.get(payid=payment)
+                    invoice_no = online_payment.invoice_no
+                except OnlinePayment.DoesNotExist:
+                    invoice_no = None
+                
+            elif payment.method == 'receipt':
+                try:
+                    receipt_payment = ReceiptPayment.objects.get(payid=payment)
+                    transaction_id = receipt_payment.transaction_id
+                except ReceiptPayment.DoesNotExist:
+                    transaction_id = None
 
-        payment_list.append({
-                "payid": payment.payid,
-                "date": payment.date.strftime('%Y-%m-%d'),
-                "amount": float(payment.amount),
-                "status": payment.status,
-                "method": payment.method,
-                "course": coursename,
-                "Invoice_No" : invoice_no,
-                "Transaction" : transaction_id
-        })
+            payment_list.append({
+                    "payid": payment.payid,
+                    "date": payment.date.strftime('%Y-%m-%d'),
+                    "amount": float(payment.amount),
+                    "status": payment.status,
+                    "method": payment.method,
+                    "course": coursename,
+                    "Invoice_No" : invoice_no,
+                    "Transaction" : transaction_id
+            })
 
         return Response({"payments" : payment_list})
 
