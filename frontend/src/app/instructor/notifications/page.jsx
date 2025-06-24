@@ -167,8 +167,7 @@ export default function NotificationsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Notifications</h1>
-          <p className="text-gray-600">Stay updated with your A/L class activities and alerts</p>
+          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
@@ -242,7 +241,7 @@ export default function NotificationsPage() {
               placeholder="Search notifications..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -250,7 +249,7 @@ export default function NotificationsPage() {
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All Notifications</option>
               <option value="unread">Unread</option>
@@ -271,7 +270,6 @@ export default function NotificationsPage() {
       <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <h3 className="text-lg font-semibold">A/L Notification Center</h3>
-          <p className="text-gray-600">All your important updates and alerts in one place</p>
         </div>
         <div className="divide-y divide-gray-200">
           {filteredNotifications.length === 0 ? (
@@ -296,7 +294,7 @@ export default function NotificationsPage() {
                         <h4 className={`font-medium ${!notification.read ? "text-gray-900" : "text-gray-700"}`}>
                           {notification.title}
                         </h4>
-                        {!notification.read && <div className="w-2 h-2 bg-purple-600 rounded-full"></div>}
+                        {!notification.read && <div className="w-2 h-2 bg-primary rounded-full"></div>}
                         <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(notification.priority)}`}>
                           {notification.priority}
                         </span>
