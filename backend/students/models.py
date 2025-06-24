@@ -9,7 +9,7 @@ from django.utils import timezone
 
 # Student profile model (additional student-only fields)
 class StudentProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='student_profile')
     mobile = models.CharField(max_length=15)
     nic_no = models.CharField(max_length=15)
     address = models.TextField()

@@ -31,17 +31,33 @@ export default function Login() {
           if(response.status === 200){
             setMessage("Login Successfully")
             setIsSuccess(true);
-              const data = response.data;
-              console.log(data);
-              const userrole = data.role;
-              console.log(data.role);
-              setTimeout(() =>{
-                if(userrole === 'admin'){
-                router.push("/admin");
-              } else if(userrole === 'instructor'){
-                router.push("/instructor")
-              }else if(userrole === 'student'){
-                router.push("/students");
+
+            const data = response.data;
+            console.log(data); //contains user, access, refresh
+            console.log(data.user.role);
+
+            Cookies.set("accessToken", data.access, { path: "/" });
+
+            login(data); // this replace all loalstorage
+            
+            //localStorage.setItem("user", JSON.stringify(userObject));
+            //localStorage.setItem("userRole",data.user.role);
+            //localStorage.setItem("accessToken", response.data.access);
+            //localStorage.setItem("refreshToken", response.data.refresh);
+
+            //const userrole = localStorage.getItem("userRole");
+            console.log(data.user.id);
+            setTimeout(() => {
+              try {
+                if (data.user.role === 'admin') {
+                  router.push("/admin");
+                } else if (data.user.role === 'instructor') {
+                  router.push("/instructor");
+                } else if (data.user.role === 'student') {
+                  router.push(`/students/${data.user.id}`);
+                }
+              } catch (err) {
+                console.error("Router push error:", err);
               }
               }, 1000);
               

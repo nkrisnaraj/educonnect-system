@@ -69,6 +69,7 @@ export default function Register() {
   };
 
   return (
+    <>
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
        {/* Nav bar */}
        <MainNavbar />
@@ -237,11 +238,10 @@ export default function Register() {
           </p>
         </form>
       </div>
-     
-           
-     
-     <Footer />
-     
-         </div>
-       );
-     }
+    </div>
+    <Footer />
+    
+    
+    </>
+  );
+}
