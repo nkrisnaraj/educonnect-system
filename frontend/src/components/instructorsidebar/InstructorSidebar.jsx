@@ -27,14 +27,14 @@ const menuItems = [
     icon: GraduationCap,
   },
   {
-    title: "Results",
-    url: "/instructor/results",
-    icon: ClipboardList,
-  },
-  {
     title: "Upload Marks",
     url: "/instructor/upload-marks",
     icon: Upload,
+  },
+  {
+    title: "Results",
+    url: "/instructor/results",
+    icon: ClipboardList,
   },
   {
     title: "Reports",

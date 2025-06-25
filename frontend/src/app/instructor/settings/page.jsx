@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile Section */}
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-6">
           <div className="flex items-center gap-4 mb-6">
             <User className="h-6 w-6 text-purple-600" />
             <div>
@@ -104,7 +104,7 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-600">JPG, PNG or GIF. Max size 2MB.</p>
                 <button
                   onClick={() => setIsImageModalOpen(true)}
-                  className="mt-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="mt-2 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
                 >
                   Change Picture
                 </button>
@@ -119,7 +119,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.firstName}
                   onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -128,7 +128,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.lastName}
                   onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
                   type="email"
                   value={profileData.email}
                   onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                   type="tel"
                   value={profileData.phone}
                   onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function SettingsPage() {
                 type="text"
                 value={profileData.address}
                 onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                 value={profileData.bio}
                 onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
@@ -181,7 +181,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.qualification}
                   onChange={(e) => setProfileData({ ...profileData, qualification: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -190,7 +190,7 @@ export default function SettingsPage() {
                   type="text"
                   value={profileData.experience}
                   onChange={(e) => setProfileData({ ...profileData, experience: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <button
                 onClick={handleProfileUpdate}
-                className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-purple-500"
+                className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl hover:bg-purple-500"
               >
                 <Save className="h-4 w-4" />
                 Save Profile
@@ -208,7 +208,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Password Section */}
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-6">
           <div className="flex items-center gap-4 mb-6">
             <Lock className="h-6 w-6 text-purple-600" />
             <div>
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                   type={showCurrentPassword ? "text" : "password"}
                   value={passwordData.currentPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter current password"
                 />
                 <button
@@ -245,7 +245,7 @@ export default function SettingsPage() {
                   type={showNewPassword ? "text" : "password"}
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter new password"
                 />
                 <button
@@ -266,7 +266,7 @@ export default function SettingsPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Confirm new password"
                 />
                 <button
@@ -324,7 +324,7 @@ export default function SettingsPage() {
                   !passwordData.confirmPassword ||
                   passwordData.newPassword !== passwordData.confirmPassword
                 }
-                className="w-full flex items-center justify-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-6 py-2 bg-primary text-white rounded-xl hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Save className="h-4 w-4" />
                 Update Password
@@ -337,7 +337,7 @@ export default function SettingsPage() {
       {/* Image Upload Modal */}
       {isImageModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Change Profile Picture</h2>
               <button onClick={() => setIsImageModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                 <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="image-upload" />
                 <label
                   htmlFor="image-upload"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-700 cursor-pointer inline-block"
+                  className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700 cursor-pointer inline-block"
                 >
                   Choose File
                 </label>
@@ -363,7 +363,7 @@ export default function SettingsPage() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setIsImageModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
               >
                 Cancel
               </button>
