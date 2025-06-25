@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -23,7 +24,7 @@ from accounts.serializers import StudentProfileSerializer
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 User = get_user_model()
 
-@method_decorator(csrf_exempt, name='dispatch')
+# @method_decorator(csrf_exempt, name='dispatch')
 class PayHereNotifyView(APIView):
     """
     Called by PayHere when payment is completed (success/fail).
@@ -34,26 +35,23 @@ class PayHereNotifyView(APIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            order_id = request.data.get('order_id')  # This is CLASS-COURSEID-USERID
-            status_code = request.data.get('status_code')  # '2' = success
+            order_id = request.data.get('order_id')  # Format: CLASS-COURSEID-USERID
+            status_code = request.data.get('status')  # ⚠️ Use correct field name
             payhere_amount = request.data.get('payhere_amount')
-            
 
             print("Received from PayHere Data:", request.data)
 
-            if status_code == '2' :
+            if status_code == '2':
                 payment_status = 'success'
-            elif status_code == '1' :
+            elif status_code == '1':
                 payment_status = 'fail'
-            else :
+            else:
                 payment_status = "pending"
 
             if not order_id or not status_code:
                 return Response({"error": "Missing required fields"}, status=400)
-            
-            
 
-            # Extract payment using order_id
+            # Extract course_id and user_id
             parts = order_id.split('-')
             if len(parts) != 3:
                 return Response({"error": "Invalid order_id format"}, status=400)
@@ -62,10 +60,13 @@ class PayHereNotifyView(APIView):
             user_id = int(parts[2])
             user = User.objects.get(id=user_id)
 
-            
-
-            # Get latest payment by user with "pending" status
-            payment = Payment.objects.filter(stuid=user, method='online',status='pending',amount=payhere_amount).order_by('-date').first()
+            # Find corresponding Payment
+            payment = Payment.objects.filter(
+                stuid=user,
+                method='online',
+                status='pending',
+                amount=payhere_amount
+            ).order_by('-date').first()
 
             if not payment:
                 return Response({"error": "Payment not found"}, status=404)
@@ -79,18 +80,17 @@ class PayHereNotifyView(APIView):
 
             if payment_status == "success":
                 Enrollment.objects.create(
-                    stuid = user,
-                    courseid = course_id,
-                    payid = payment
+                    stuid=user,
+                    courseid=course_id,
+                    payid=payment
                 )
 
             return HttpResponse("Payment notification processed successfully.", status=200)
-        
-            
-        
+
         except Exception as e:
             print("Notify error:", e)
-            return Response({"error": str(e)}, status=400)
+            return Response({"error": str(e)}, status=400)  
+
 
 
 
@@ -251,3 +251,71 @@ class StudentProfileView(APIView):
         print(profile)
         serializer = StudentProfileSerializer(profile)
         return Response(serializer.data)
+import hashlib
+import base64
+import time
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils.decorators import method_decorator
+# from django.views.decorators.csrf import csrf_exempt
+
+# @method_decorator(csrf_exempt, name='dispatch')
+class CreatePayHereCheckoutUrl(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        print("AUTH HEADER:", request.headers.get("Authorization"))
+        print("USER:", request.user)
+        print("IS AUTHENTICATED:", request.user.is_authenticated)
+
+        user = request.user
+        course_id = request.data.get("course_id")
+        amount = request.data.get("amount")
+
+        if not course_id or not amount:
+            return Response({"error": "course_id and amount are required"}, status=400)
+
+        try:
+            amount_float = float(amount)
+        except ValueError:
+            return Response({"error": "Invalid amount format"}, status=400)
+
+        order_id = f"ORDER-{user.id}-{course_id}-{int(time.time())}"
+        currency = "LKR"
+        merchant_id = "1230994"
+        # merchant_secret = "MzkwOTE0MzEzNDE5MjQwNjA2NzI4ODA3Mzk0MzE2MTY5MjYyMzI="
+        merchant_secret_base64 = "MzY1ODM3ODU5MjI2MTg3MjI1MjU2ODM5OTczMzM5NzQwMzg3ODc="
+        merchant_secret = base64.b64decode(merchant_secret_base64).decode("utf-8")
+
+        hash_string = f"{merchant_id}{order_id}{amount_float:.2f}{currency}{merchant_secret}"
+        print(hash_string)
+        hashed = hashlib.sha256(hash_string.encode("utf-8")).hexdigest().upper()
+
+        payload = {
+            "merchant_id": merchant_id,
+            "return_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=success",
+            "cancel_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=cancel",
+            # "notify_url": "https://rnfky-101-2-191-32.a.free.pinggy.link/students/payhere-notify",
+            "notify_url": "https://google.com",
+            "order_id": order_id,
+            "items": "Course Fee",
+            "amount": "%.2f" % amount_float,
+            "currency": currency,
+            "hash": hashed,
+            "first_name": user.first_name or "Student",
+            "last_name": user.last_name or "",
+            "email": user.email or "",
+            "phone": getattr(user.student_profile, "mobile", "0771234567"),
+            "address": getattr(user.student_profile, "address", "N/A"),
+            "city": "Colombo",
+            "country": "Sri Lanka",
+        }
+        print("PAYHERE Payload:", json.dumps(payload, indent=2))
+
+        return Response({
+            "url": "https://sandbox.payhere.lk/pay/checkout",
+            "params": payload
+        })

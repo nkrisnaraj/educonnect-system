@@ -76,6 +76,7 @@ class SyncZoomWebinarsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
         
+        
 class WebinarListAPIView(APIView):
     def get(self, request):
         webinars = ZoomWebinar.objects.all().order_by('-start_time')

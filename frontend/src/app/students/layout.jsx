@@ -7,6 +7,7 @@ export default function RootLayout({ children }) {
     
       
         <StudentLayoutWrapper>{children}</StudentLayoutWrapper>
+        
       
     
   );
