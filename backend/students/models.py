@@ -10,8 +10,8 @@ from django.utils import timezone
 # Student profile model (additional student-only fields)
 class StudentProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,related_name='student_profile')
-    mobile = models.CharField(max_length=12)
-    nic_no = models.CharField(unique=True,max_length=15)
+    mobile = models.CharField(max_length=15)
+    nic_no = models.CharField(max_length=15,unique=True)
     address = models.TextField()
     year_of_al = models.CharField()
     school_name = models.CharField(max_length=100)
