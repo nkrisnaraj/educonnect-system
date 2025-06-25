@@ -12,6 +12,7 @@ from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication 
+from datetime import datetime
 
 User = get_user_model()
 
@@ -48,6 +49,13 @@ def validate_nic(nic_no):
 
     return None  # No error
 
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
 @api_view(['POST'])
 def register_user(request):
     nic_no = request.data.get('student_profile', {}).get('nic_no')
@@ -63,12 +71,7 @@ def register_user(request):
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
+
 
 @api_view(['POST'])
 def login_user(request):

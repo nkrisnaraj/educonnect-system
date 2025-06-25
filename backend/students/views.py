@@ -22,6 +22,7 @@ from instructor.models import Course
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
 
+
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 User = get_user_model()
 

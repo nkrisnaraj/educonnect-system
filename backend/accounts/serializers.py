@@ -27,7 +27,9 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     student_profile = StudentProfileSerializer(required=True)
-
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'first_name', 'last_name', 'student_profile']
