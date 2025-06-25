@@ -88,8 +88,8 @@ export default function MainNavbar() {
         <Image
           src="/images/logos/logo.png"
           alt="EduConnect Logo"
-          width={40}
-          height={40}
+          width={60}
+          height={60}
           className="rounded"
         />
         <Link href="/" className="text-xl font-bold hover:text-blue-200 transition-colors">
