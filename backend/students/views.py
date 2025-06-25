@@ -20,6 +20,7 @@ from PIL import Image
 from io import BytesIO
 from instructor.models import Course
 from accounts.serializers import StudentProfileSerializer
+from google.cloud import vision
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 User = get_user_model()
@@ -137,49 +138,108 @@ class OnlinePaymentView(APIView):
 
 
 ##ocr related
+
 class ReceiptUploadView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser,FormParser]
-
-
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        #print(os.path.exists(os.path.join(BASE_DIR, 'backend', 'vision-key.json')))
+
         user = request.user
         image = request.FILES.get("image")
         method = 'receipt'
-        
 
         if not image:
-            return Response({'error':"No image provided"},status=400)
-        
-        payment = Payment.objects.create(stuid=user, method=method,amount=0.0)
+            return Response({'error': "No image provided"}, status=400)
 
-        #OCR the receipt
-        ocr_image = Image.open(image)
-        text = pytesseract.image_to_string(ocr_image)
+        # Step 1: Create payment with zero amount
+        payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
 
-        print("OCR TEXT:\n",text)
+        # Step 2: Setup Google Vision client
+        client = vision.ImageAnnotatorClient()
 
-        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', text)
-        amount = float(amount_match.group(2).replace(',', ''))if amount_match else 0.0
+        # Step 3: Read uploaded image and send to Vision API
+        image_content = image.read()
+        vision_image = vision.Image(content=image_content)
+        response = client.text_detection(image=vision_image)
+
+        if not response.text_annotations:
+            return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+
+        # Step 4: Extract text and parse details
+        full_text = response.text_annotations[0].description
+        print("GOOGLE OCR TEXT:\n", full_text)
+
+        # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
+        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
+        amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
         payment.amount = amount
         payment.save()
 
-        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', text)
+        # Extract transaction ID (e.g., Transaction ID: ABC123)
+        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
         transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
-        
-        
 
+        # Step 5: Save receipt image + extracted info
         receipt_payment = ReceiptPayment.objects.create(
-            payid = payment,
-            image_url = image,
+            payid=payment,
+            image_url=image,
             transaction_id=transaction_id,
-            verified = False
+            verified=False
         )
 
         serializer = ReceiptPaymentSerializer(receipt_payment)
-        return Response({"message":"Successfully Saved Details","data":serializer.data},status=status.HTTP_201_CREATED)
+        return Response({
+            "message": "Successfully saved details. After verification, you can enroll in class.",
+            "data": serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+
+# class ReceiptUploadView(APIView):
+#     authentication_classes = [JWTAuthentication]
+#     permission_classes = [IsAuthenticated]
+#     parser_classes = [MultiPartParser,FormParser]
+
+
+
+#     def post(self, request):
+#         user = request.user
+#         image = request.FILES.get("image")
+#         method = 'receipt'
+        
+
+#         if not image:
+#             return Response({'error':"No image provided"},status=400)
+        
+#         payment = Payment.objects.create(stuid=user, method=method,amount=0.0)
+
+#         #OCR the receipt
+#         ocr_image = Image.open(image)
+#         text = pytesseract.image_to_string(ocr_image)
+
+#         print("OCR TEXT:\n",text)
+
+#         amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', text)
+#         amount = float(amount_match.group(2).replace(',', ''))if amount_match else 0.0
+#         payment.amount = amount
+#         payment.save()
+
+#         transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', text)
+#         transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
+        
+        
+
+#         receipt_payment = ReceiptPayment.objects.create(
+#             payid = payment,
+#             image_url = image,
+#             transaction_id=transaction_id,
+#             verified = False
+#         )
+
+#         serializer = ReceiptPaymentSerializer(receipt_payment)
+#         return Response({"message":"Successfully Saved Details","data":serializer.data},status=status.HTTP_201_CREATED)
 
     
 
