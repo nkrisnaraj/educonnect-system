@@ -11,11 +11,11 @@ export default function Topbar({ toggleSidebar }) {
   //console.log(user?.username);
 
   return (
-    <div className="flex justify-between items-center mb-6 gap-6 px-6 pt-6">
+    <div className="flex justify-between items-center mb-2  mt-2 gap-6 px-6 pt-6">
       <button className="md:hidden" onClick={toggleSidebar}>
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full mt-6 max-w-md">
         <input
           type="text"
           placeholder="Search"

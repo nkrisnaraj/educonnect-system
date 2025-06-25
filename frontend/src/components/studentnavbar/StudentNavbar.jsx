@@ -18,7 +18,7 @@ export default function StudentNavbar({ isOpen, onClose }) {
   return (
     <div
       className={`
-        bg-primary text-white p-6 fixed z-40 m-4 rounded-lg top-0 left-0 h-full w-64
+        bg-primary text-white p-6 fixed z-40 m-4 rounded-xl top-0 left-0 h-full w-64
         transform transition-transform duration-300
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:h-auto
