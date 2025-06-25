@@ -32,6 +32,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
+print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
+
 
 # Application definition
 

@@ -31,17 +31,37 @@ class StudentDetailView(RetrieveAPIView):
             raise PermissionDenied("Student profile not found.")
         return user
 
+def validate_nic(nic_no):
+    if len(nic_no) != 12 or not nic_no.isdigit():
+        return "NIC must be exactly 12 numeric characters (modern format)."
 
+    try:
+        birth_year = int(nic_no[:4])
+    except ValueError:
+        return "NIC format is invalid. Birth year could not be parsed."
+
+    current_year = datetime.now().year
+    age = current_year - birth_year
+
+    if age not in [16, 17, 18, 19,20, 21, 22, 23]:
+        return "Only students aged 19 to 22 can register."
+
+    return None  # No error
 
 @api_view(['POST'])
 def register_user(request):
+    nic_no = request.data.get('student_profile', {}).get('nic_no')
+    if nic_no:
+        nic_error = validate_nic(nic_no)
+        if nic_error:
+            return Response({"error": nic_error}, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -49,7 +69,6 @@ def get_tokens_for_user(user):
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
-
 
 @api_view(['POST'])
 def login_user(request):
