@@ -70,9 +70,10 @@ export default function Register() {
 
   return (
     <>
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
        {/* Nav bar */}
-       <MainNavbar />
+       
       
       {/* Registration Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">

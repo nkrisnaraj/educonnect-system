@@ -103,8 +103,8 @@ export default function HomePage() {
             <Image
               src="/images/hero/studentlearning.png"
               alt="Student Learning"
-              width={500}
-              height={400}
+              width={700}
+              height={600}
               className="rounded-xl shadow-xl"
               priority
             />
@@ -215,125 +215,120 @@ export default function HomePage() {
     </div>
   </div>
 </section>
+
       {/* Courses Section */}
-      <section id="courses" className="p-8 py-16 bg-blue-50 dark:bg-gray-800">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6 text-blue-700 dark:text-blue-400 text-center">
-            Our Courses
-          </h2>
-          <p className="text-center text-gray-600 dark:text-gray-300 mb-12">
-            Explore our comprehensive range of courses designed to help you achieve your goals
+<section id="courses" className="p-8 py-16 bg-blue-50 dark:bg-gray-800">
+  <div className="max-w-6xl mx-auto">
+    <h2 className="text-3xl font-bold mb-6 text-blue-700 dark:text-blue-400 text-center">
+      Our Courses
+    </h2>
+    <p className="text-center text-gray-600 dark:text-gray-300 mb-12">
+      Explore our comprehensive range of courses designed to help you achieve your goals
+    </p>
+
+    {/* First Row - Course Categories */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+           {[
+        {
+          title: "2025 A/L Theory",
+          icon: <Users className="w-8 h-8 text-blue-600" />,
+          students: "1,200+",
+          description: "Comprehensive coverage of A/L Theory syllabus for 2025 examination"
+        },
+        {
+          title: "2025 A/L Revision",
+          icon: <BookOpen className="w-8 h-8 text-blue-600" />,
+          students: "2,500+",
+          description: "Intensive revision classes and practice sessions for A/L 2025"
+        },
+        {
+          title: "2025 A/L Papers",
+          icon: <Award className="w-8 h-8 text-blue-600" />,
+          students: "800+",
+          description: "Past papers and model papers for A/L 2025 examination practice"
+        }
+      ].map((category, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105"
+        >
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
+              {category.icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {category.title}
+              </h3>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                {category.students} students
+              </p>
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 text-sm">
+            {category.description}
           </p>
-
-          {/* Course Categories */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            {[
-              {
-                title: "Business Management",
-                icon: <Users className="w-8 h-8 text-blue-600" />,
-                courses: 15,
-                students: "1,200+",
-                description: "Leadership, strategy, and management skills"
-              },
-              {
-                title: "Technology & Programming",
-                icon: <BookOpen className="w-8 h-8 text-blue-600" />,
-                courses: 25,
-                students: "2,500+",
-                description: "Web development, mobile apps, and more"
-              },
-              {
-                title: "Digital Marketing",
-                icon: <Award className="w-8 h-8 text-blue-600" />,
-                courses: 12,
-                students: "800+",
-                description: "SEO, social media, and online advertising"
-              }
-            ].map((category, i) => (
-              <div
-                key={i}
-                className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105"
-              >
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
-                    {category.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-                      {category.title}
-                    </h3>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">
-                      {category.courses} courses • {category.students} students
-                    </p>
-                  </div>
-                </div>
-                <p className="text-gray-600 dark:text-gray-300 text-sm">
-                  {category.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Upcoming Webinars */}
-          <div className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md border border-blue-200 dark:border-blue-600">
-            <h3 className="text-2xl font-bold mb-6 text-blue-700 dark:text-blue-400">
-              Upcoming Webinars
-            </h3>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎯</span>
-                </div>
-                <div>
-                  <h4 className="text-xl font-semibold text-gray-800 dark:text-white">
-                    Management Seminar
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-400">Sep. 20, 2025 • 2:00 PM</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">50+ registered</p>
-                </div>
-              </div>
-              <button className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                View All
-              </button>
-            </div>
-          </div>
-
-          {/* Video Tutorials */}
-          <div className="mt-12">
-            <h3 className="text-2xl font-bold mb-6 text-blue-700 dark:text-blue-400 text-center">
-              Watch: How to Use EduConnect
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[
-                { title: "How to Login", emoji: "🔐", description: "Learn how to access your account" },
-                { title: "How to Register", emoji: "📝", description: "Create your EduConnect account" }
-              ].map((video, i) => (
-                <div
-                  key={i}
-                  className="border border-blue-200 dark:border-blue-600 bg-white dark:bg-gray-900 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  <div className="relative bg-gradient-to-br from-blue-100 to-blue-200 dark:from-gray-700 dark:to-gray-800 h-48 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">{video.emoji}</div>
-                      <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-500 transition-colors cursor-pointer">
-                        <Play className="w-8 h-8 text-white ml-1" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h4 className="font-semibold text-blue-600 dark:text-blue-300 text-lg mb-1">
-                      {video.title}
-                    </h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {video.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
-      </section>
+      ))}
+    </div>
+
+    {/* Second Row - Additional Courses */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+      {[
+        {
+          title: "2026 A/L Theory",
+          icon: <Users className="w-8 h-8 text-blue-600" />,
+          students: "1,800+",
+          description: "Early preparation for A/L Theory syllabus for 2026 examination"
+        },
+        {
+          title: "2026 A/L Revision",
+          icon: <BookOpen className="w-8 h-8 text-blue-600" />,
+          students: "1,500+",
+          description: "Advanced revision classes and mock tests for A/L 2026"
+        },
+        {
+          title: "2026 A/L Papers",
+          icon: <Award className="w-8 h-8 text-blue-600" />,
+          students: "3,200+",
+          description: "Question papers and practice materials for A/L 2026 preparation"
+        }
+      ].map((category, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105"
+        >
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
+              {category.icon}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {category.title}
+              </h3>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                {category.students} students
+              </p>
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 text-sm">
+            {category.description}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    {/* See More Courses Button */}
+    <div className="text-center">
+      <Link href="/courses">
+        <button className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 inline-flex items-center space-x-2">
+          <BookOpen className="w-5 h-5" />
+          <span>See More Courses</span>
+        </button>
+      </Link>
+    </div>
+  </div>
+</section>
 
       {/* Contact Section */}
       <section id="contact" className="p-8 py-16 bg-white dark:bg-gray-900">
