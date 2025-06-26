@@ -6,19 +6,16 @@ import { Search, Plus, Filter, Calendar, Clock, Users, MapPin, BookOpen, Edit, T
 const classesData = [
   {
     id: 1,
-    name: "Advanced Mathematics",
-    instructor: "Dr. Sarah Wilson",
-    room: "Room A-205",
+    name: "SIVATH 2025 Unit-4,5",
+    instructor: "Sivathiran sir",
+    webinarID: "81865900107",
     schedule: "Mon, Wed, Fri",
     time: "9:00 AM - 10:30 AM",
     duration: "90 min",
-    capacity: 30,
+    capacity: null, // unlimited
     enrolled: 28,
     status: "active",
-    semester: "Fall 2024",
-    credits: 3,
     description: "Advanced calculus and mathematical analysis",
-    prerequisites: "Calculus I, II",
   },
   {
     id: 2,
@@ -28,13 +25,10 @@ const classesData = [
     schedule: "Tue, Thu",
     time: "11:30 AM - 1:00 PM",
     duration: "90 min",
-    capacity: 20,
+    capacity: null,
     enrolled: 18,
     status: "active",
-    semester: "Fall 2024",
-    credits: 2,
     description: "Hands-on physics experiments and lab work",
-    prerequisites: "Physics I",
   },
   {
     id: 3,
@@ -44,13 +38,10 @@ const classesData = [
     schedule: "Mon, Wed",
     time: "2:00 PM - 3:30 PM",
     duration: "90 min",
-    capacity: 25,
+    capacity: null,
     enrolled: 22,
     status: "active",
-    semester: "Fall 2024",
-    credits: 4,
     description: "Organic chemistry fundamentals",
-    prerequisites: "Chemistry I",
   },
   {
     id: 4,
@@ -60,13 +51,10 @@ const classesData = [
     schedule: "Tue, Thu",
     time: "3:30 PM - 5:00 PM",
     duration: "90 min",
-    capacity: 35,
+    capacity: null,
     enrolled: 32,
     status: "active",
-    semester: "Fall 2024",
-    credits: 3,
     description: "Modern and contemporary literature analysis",
-    prerequisites: "English Composition",
   },
   {
     id: 5,
@@ -76,13 +64,10 @@ const classesData = [
     schedule: "Mon, Wed, Fri",
     time: "10:00 AM - 11:30 AM",
     duration: "90 min",
-    capacity: 25,
+    capacity: null,
     enrolled: 25,
-    status: "full",
-    semester: "Fall 2024",
-    credits: 4,
+    status: "active",
     description: "Introduction to programming and algorithms",
-    prerequisites: "None",
   },
   {
     id: 6,
@@ -92,13 +77,10 @@ const classesData = [
     schedule: "Tue, Thu",
     time: "1:00 PM - 2:30 PM",
     duration: "90 min",
-    capacity: 40,
+    capacity: null,
     enrolled: 15,
     status: "active",
-    semester: "Fall 2024",
-    credits: 3,
     description: "Survey of Western art from Renaissance to Modern",
-    prerequisites: "None",
   },
 ]
 
@@ -106,8 +88,6 @@ function getStatusColor(status) {
   switch (status) {
     case "active":
       return "text-green-600 bg-green-50"
-    case "full":
-      return "text-orange-600 bg-orange-50"
     case "cancelled":
       return "text-red-600 bg-red-50"
     case "pending":
@@ -117,10 +97,7 @@ function getStatusColor(status) {
   }
 }
 
-function getEnrollmentColor(enrolled, capacity) {
-  const percentage = (enrolled / capacity) * 100
-  if (percentage >= 90) return "text-red-600"
-  if (percentage >= 75) return "text-orange-600"
+function getEnrollmentColor(enrolled) {
   return "text-green-600"
 }
 
@@ -134,10 +111,12 @@ export default function ClassesPage() {
     const matchesSearch =
       classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       classItem.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      classItem.room.toLowerCase().includes(searchTerm.toLowerCase())
+      (classItem.room && classItem.room.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus = selectedStatus === "all" || classItem.status === selectedStatus
     return matchesSearch && matchesStatus
   })
+
+  const totalEnrollment = classesData.reduce((sum, c) => sum + c.enrolled, 0)
 
   return (
     <div className="space-y-6">
@@ -145,7 +124,7 @@ export default function ClassesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Classes Management</h1>
-          <p className="text-gray-600">Manage class schedules, enrollment, and academic programs</p>
+          <p className="text-gray-600">Manage class schedules and enrollment</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -176,7 +155,7 @@ export default function ClassesPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Enrollment</p>
-              <p className="text-2xl font-bold text-gray-900">{classesData.reduce((sum, c) => sum + c.enrolled, 0)}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalEnrollment}</p>
             </div>
           </div>
         </div>
@@ -199,12 +178,9 @@ export default function ClassesPage() {
               <MapPin className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Avg Capacity</p>
+              <p className="text-sm text-gray-600">Avg Enrollment</p>
               <p className="text-2xl font-bold text-gray-900">
-                {Math.round(
-                  (classesData.reduce((sum, c) => sum + c.enrolled / c.capacity, 0) / classesData.length) * 100,
-                )}
-                %
+                {Math.round(totalEnrollment / classesData.length)}
               </p>
             </div>
           </div>
@@ -231,7 +207,6 @@ export default function ClassesPage() {
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
-            <option value="full">Full</option>
             <option value="cancelled">Cancelled</option>
             <option value="pending">Pending</option>
           </select>
@@ -257,10 +232,12 @@ export default function ClassesPage() {
             </div>
 
             <div className="space-y-3 mb-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <MapPin className="h-4 w-4" />
-                <span>{classItem.room}</span>
-              </div>
+              {classItem.room && (
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <MapPin className="h-4 w-4" />
+                  <span>{classItem.room}</span>
+                </div>
+              )}
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="h-4 w-4" />
                 <span>{classItem.schedule}</span>
@@ -271,35 +248,13 @@ export default function ClassesPage() {
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Users className="h-4 w-4" />
-                <span className={getEnrollmentColor(classItem.enrolled, classItem.capacity)}>
-                  {classItem.enrolled}/{classItem.capacity} students
-                </span>
-              </div>
-            </div>
-
-            {/* Enrollment Progress Bar */}
-            <div className="mb-4">
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Enrollment</span>
-                <span>{Math.round((classItem.enrolled / classItem.capacity) * 100)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    (classItem.enrolled / classItem.capacity) >= 0.9
-                      ? "bg-red-500"
-                      : classItem.enrolled / classItem.capacity >= 0.75
-                        ? "bg-orange-500"
-                        : "bg-green-500"
-                  }`}
-                  style={{ width: `${(classItem.enrolled / classItem.capacity) * 100}%` }}
-                ></div>
+                <span className={getEnrollmentColor(classItem.enrolled)}>{classItem.enrolled} students</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">{classItem.credits}</span> credits
+                {/* Removed credits display */}
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -362,32 +317,15 @@ export default function ClassesPage() {
                       <Clock className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">{selectedClass.time}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-600">{selectedClass.room}</span>
-                    </div>
+                    {selectedClass.room && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-600">{selectedClass.room}</span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">{selectedClass.duration} duration</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Academic Information */}
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Academic Information</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Credits</p>
-                      <p className="font-semibold text-gray-900">{selectedClass.credits}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Semester</p>
-                      <p className="font-semibold text-gray-900">{selectedClass.semester}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Prerequisites</p>
-                      <p className="font-semibold text-gray-900">{selectedClass.prerequisites}</p>
                     </div>
                   </div>
                 </div>
@@ -398,7 +336,7 @@ export default function ClassesPage() {
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     <div>
                       <p className="text-sm text-gray-500">Capacity</p>
-                      <p className="font-semibold text-gray-900">{selectedClass.capacity}</p>
+                      <p className="font-semibold text-gray-900">Unlimited</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Enrolled</p>
@@ -406,27 +344,7 @@ export default function ClassesPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Available</p>
-                      <p className="font-semibold text-gray-900">{selectedClass.capacity - selectedClass.enrolled}</p>
-                    </div>
-                  </div>
-
-                  {/* Enrollment Progress Bar */}
-                  <div>
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Enrollment Progress</span>
-                      <span>{Math.round((selectedClass.enrolled / selectedClass.capacity) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full ${
-                          (selectedClass.enrolled / selectedClass.capacity) >= 0.9
-                            ? "bg-red-500"
-                            : selectedClass.enrolled / selectedClass.capacity >= 0.75
-                              ? "bg-orange-500"
-                              : "bg-green-500"
-                        }`}
-                        style={{ width: `${(selectedClass.enrolled / selectedClass.capacity) * 100}%` }}
-                      ></div>
+                      <p className="font-semibold text-gray-900">Unlimited</p>
                     </div>
                   </div>
                 </div>

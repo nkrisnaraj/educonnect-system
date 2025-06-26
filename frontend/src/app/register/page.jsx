@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import axios from "axios";
 import MainNavbar from "@/components/MainNavbar";
 import "../globals.css";
 import Footer from "@/components/Footer";
 
 export default function Register() {
+
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -30,7 +32,7 @@ export default function Register() {
   };
 
   const handleRegister = async (e) => {
-      e.preventDefault();
+     e.preventDefault();
 
       const payload = {
         username: form.username,
@@ -72,21 +74,21 @@ export default function Register() {
         }
         setIsSuccess(false);
       }
+     
   };
 
-
   return (
-  <>
+    <>
     <MainNavbar />
-
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
        {/* Nav bar */}
+       
       
       {/* Registration Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         {message && (
           <div
-            className={` mt-16 mb-6 fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
+            className={`fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
               isSuccess
                 ? "bg-green-100 text-green-900 border-green-700 dark:bg-green-800 dark:text-green-100 dark:border-green-400"
                 : "bg-red-100 text-red-900 border-red-700 dark:bg-red-800 dark:text-red-100 dark:border-red-400"
@@ -104,7 +106,6 @@ export default function Register() {
             Create an Account
           </h2>
 
-          
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -231,7 +232,6 @@ export default function Register() {
               required
             />
           </div>
-        </div>
 
         <button
           type="submit"

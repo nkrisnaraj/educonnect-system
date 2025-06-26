@@ -9,6 +9,17 @@ class User(AbstractUser):
         ('instructor', 'Instructor'),
         ('student', 'Student'),
     )
+
+    # class Contact(models.Model):
+    # name = models.CharField(max_length=100)
+    # email = models.EmailField()
+    # subject = models.CharField(max_length=200)
+    # message = models.TextField()
+    # created_at = models.DateTimeField(default=timezone.now)
+    # is_read = models.BooleanField(default=False)
+    
+    # class Meta:
+    #     ordering = ['-created_at']
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')  # auto student for new users
 
     def __str__(self):
