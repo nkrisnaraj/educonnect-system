@@ -78,83 +78,11 @@ export default function CoursesPage() {
   const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "Applied Mathematics"]
   const batches = ["2025 A/L", "2026 A/L"]
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800"
-      case "draft":
-        return "bg-yellow-100 text-yellow-800"
-      case "completed":
-        return "bg-blue-100 text-blue-800"
-      case "archived":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const filteredCourses = courses.filter((course) => {
-    if (selectedTab === "all") return true
-    if (selectedTab === "active") return course.status === "active"
-    if (selectedTab === "draft") return course.status === "draft"
-    return true
-  })
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My A/L Courses</h1>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total A/L Courses</p>
-              <p className="text-xl font-bold">{courses.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Students</p>
-              <p className="text-xl font-bold">{courses.reduce((sum, course) => sum + course.students, 0)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Active Courses</p>
-              <p className="text-xl font-bold">{courses.filter((c) => c.status === "active").length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <BookOpen className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Avg Progress</p>
-              <p className="text-xl font-bold">
-                {Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length)}%
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -177,30 +105,7 @@ export default function CoursesPage() {
         <div className="p-6">
           {/* Tabs */}
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
-            <button
-              onClick={() => setSelectedTab("all")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                selectedTab === "all" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              All Courses
-            </button>
-            <button
-              onClick={() => setSelectedTab("active")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                selectedTab === "active" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setSelectedTab("draft")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                selectedTab === "draft" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Draft
-            </button>
+            
           </div>
 
           {/* Course Cards */}
@@ -211,7 +116,7 @@ export default function CoursesPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="text-lg font-semibold text-gray-900">{course.name}</h4>
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(course.status)}`}>
+                      <span className="px-2 py-1 text-xs rounded-full">
                         {course.status}
                       </span>
                     </div>

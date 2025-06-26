@@ -22,7 +22,7 @@ export default function InstructorDashboard() {
     { id: 4, name: "Mathematics", students: 41, color: "bg-orange-500" },
   ]
 
-  const notesToUpload = [
+  const UploadedNotes = [
     { id: 1, subject: "Physics", topic: "Quantum Mechanics", dueDate: "2024-06-20"},
     { id: 2, subject: "Chemistry", topic: "Organic Chemistry", dueDate: "2024-06-22"},
     { id: 3, subject: "Biology", topic: "Cell Biology", dueDate: "2024-06-25"},
@@ -33,49 +33,6 @@ export default function InstructorDashboard() {
     { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today"},
     { id: 3, class: "2025 A/L Biology", time: "2:00 PM", date: "Tomorrow"},
     { id: 4, class: "2025 A/L Day Batch", time: "4:00 PM", date: "Tomorrow"},
-  ]
-
-  const students = [
-    {
-      id: 1,
-      name: "Kasun Perera",
-      email: "kasun@email.com",
-      school: "Royal College",
-      subjects: ["Physics", "Chemistry", "Biology"],
-      batch: "2025 A/L"
-    },
-    {
-      id: 2,
-      name: "Nimali Silva",
-      email: "nimali@email.com",
-      school: "Visakha Vidyalaya",
-      subjects: ["Physics", "Chemistry", "Mathematics"],
-      batch: "2025 A/L"
-    },
-    {
-      id: 3,
-      name: "Tharindu Fernando",
-      email: "tharindu@email.com",
-      school: "S. Thomas' College",
-      subjects: ["Biology", "Chemistry", "Physics"],
-      batch: "2026 A/L"
-    },
-    {
-      id: 4,
-      name: "Sachini Jayawardena",
-      email: "sachini@email.com",
-      school: "Ladies' College",
-      subjects: ["Physics", "Mathematics"],
-      batch: "2025 A/L"
-    },
-    {
-      id: 5,
-      name: "Ravindu Wickramasinghe",
-      email: "ravindu@email.com",
-      school: "Trinity College",
-      subjects: ["Chemistry", "Biology"],
-      batch: "2026 A/L"
-    },
   ]
 
   const chatMessages = [
@@ -188,17 +145,17 @@ export default function InstructorDashboard() {
             </div>
           </div>
 
-          {/* Notes to Upload */}
+          {/* Uploaded Notes */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Upload className="h-5 w-5 text-purple-600" />
-                Notes to Upload
+                Uploaded Notes
               </h3>
             </div>
             <div className="p-6">
               <div className="space-y-3">
-                {notesToUpload.map((note) => (
+                {UploadedNotes.map((note) => (
                   <div key={note.id} className="p-3 bg-white/50 rounded-xl border border-purple-100">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm">{note.subject}</h4>
@@ -218,49 +175,6 @@ export default function InstructorDashboard() {
                     <p className="text-xs text-gray-500">Due: {note.dueDate}</p>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Calendar */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-            <div className="p-6 border-b border-purple-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
-                Calendar
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="text-center mb-4">
-                <h4 className="text-lg font-semibold">
-                  {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                </h4>
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                  <div key={day} className="p-2 font-medium text-gray-500">
-                    {day}
-                  </div>
-                ))}
-                {Array.from({ length: 35 }, (_, i) => {
-                  const day = i - 5 // Adjust for month start
-                  const isToday = day === new Date().getDate()
-                  const isCurrentMonth = day > 0 && day <= 30
-                  return (
-                    <div
-                      key={i}
-                      className={`p-2 text-sm ${
-                        isToday
-                          ? "bg-primary text-white rounded-full"
-                          : isCurrentMonth
-                            ? "text-gray-900 hover:bg-purple-100 rounded"
-                            : "text-gray-300"
-                      }`}
-                    >
-                      {isCurrentMonth ? day : ""}
-                    </div>
-                  )
-                })}
               </div>
             </div>
           </div>
@@ -332,84 +246,6 @@ export default function InstructorDashboard() {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Third Row: Student Details Table */}
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-          <div className="p-6 border-b border-purple-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Users className="h-5 w-5 text-purple-600" />
-                A/L Student Details
-              </h3>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700">Export</button>
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Email</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">School</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Subjects</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Batch</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student) => (
-                    <tr key={student.id} className="border-b border-gray-100 hover:bg-white/50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-purple-600">
-                              {student.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </span>
-                          </div>
-                          <span className="font-medium">{student.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{student.email}</td>
-                      <td className="py-3 px-4 text-gray-600">{student.school}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {student.subjects.map((subject, index) => (
-                            <span key={index} className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                              {subject}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                          {student.batch}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <button className="p-1 text-blue-600 hover:bg-blue-100 rounded">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>
