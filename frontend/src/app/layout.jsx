@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Use correct path
+import Head from 'next/head';
 
 export const metadata = {
   title: "EduConnect",
@@ -10,7 +11,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet" />
+      </head>
       <body>
         <AuthProvider>
           <ThemeProvider>

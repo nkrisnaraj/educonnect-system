@@ -71,6 +71,8 @@ export default function MainNavbar() {
       }
     };
 
+
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHomePage]);
@@ -82,8 +84,31 @@ export default function MainNavbar() {
     { id: "contact", label: "Contact" },
   ];
 
+const [isScrolled, setIsScrolled] = useState(false);
+
+useEffect(() => {
+  const handlescroll = () => {
+    if (window.scrollY > 10) {
+      setIsScrolled(true);
+    } else {
+      setIsScrolled(false);
+    }
+  };
+
+  window.addEventListener("scroll", handlescroll);
+  return () => window.removeEventListener("scroll", handlescroll);
+}, []);
+
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center p-4 shadow-md bg-blue-600 text-white dark:bg-blue-700 transition-colors duration-300">
+    <header
+  className={`fixed top-0 left-0 text-primary right-0 z-50 flex justify-between items-center p-4 shadow-md transition-all duration-300 ${
+    isScrolled
+      ? "bg-white/10 backdrop-blur-md dark:bg-blue-900/70"
+      : "bg-transparent"
+  }`}
+>
+
       <div className="flex items-center space-x-2">
         <Image
           src="/images/logos/logo.png"
@@ -92,7 +117,7 @@ export default function MainNavbar() {
           height={60}
           className="rounded"
         />
-        <Link href="/" className="text-xl font-bold hover:text-blue-200 transition-colors">
+        <Link href="/" className="text-xl font-bold hover:text-blue-200 transition-colors font-lora ">
           EduConnect
         </Link>
       </div>
@@ -102,9 +127,9 @@ export default function MainNavbar() {
           <button
             key={item.id}
             onClick={() => handleNavClick(item.id)}
-            className={`hover:text-blue-200 dark:hover:text-blue-300 transition-colors px-2 py-1 rounded ${
+            className={`hover:bg-blue-100 dark:hover:text-blue-300 font-bold transition-colors px-2 py-1 rounded ${
               isHomePage && activeSection === item.id
-                ? "text-blue-200 dark:text-blue-300 font-semibold"
+                ? "text-blue-500 dark:text-blue-300 font-semibold border-b-2 border-[#2064d4]"
                 : ""
             }`}
           >
