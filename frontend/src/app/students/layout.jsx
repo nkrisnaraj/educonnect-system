@@ -6,7 +6,6 @@ export default function RootLayout({ children }) {
   return (
     
         <StudentLayoutWrapper>{children}</StudentLayoutWrapper>
-
     
   );
 }

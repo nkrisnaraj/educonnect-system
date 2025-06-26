@@ -22,4 +22,4 @@ class ReceiptPaymentSerializer(serializers.ModelSerializer):
 class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
-        fields = ['enrollid', 'stuid' , 'courseid', 'payid','timestamp']
+        fields = ['enrollid', 'stuid' , 'classid', 'payid','timestamp']
