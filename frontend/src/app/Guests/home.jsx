@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Play,
+  Play,ArrowRight,
   CreditCard,
   Calendar,
   BarChart3,
@@ -14,7 +14,7 @@ import {
   BookOpen,
   Users,
   Award,
-  Clock
+  Clock,Video,Button,
 } from "lucide-react";
 
 import MainNavbar from "@/components/MainNavbar";
@@ -72,45 +72,105 @@ export default function HomePage() {
   };
 
   return (
-    <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-      {/* Nav bar */}
-      <MainNavbar />
-
+    <>
+    <MainNavbar />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Hero Section */}
       <section 
         id="home" 
-        className="relative text-center p-10 pt-24 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900 transition-colors overflow-hidden min-h-screen flex items-center"
+        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden"
       >
-        <div className="relative z-10 max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
-          <div className="text-left">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-blue-600 dark:text-blue-400">
-              Welcome to EduConnect!
-            </h1>
-            <p className="text-lg mb-6 text-gray-700 dark:text-gray-300">
-              Streamline payments and webinars for education!
-              Connect students and instructors seamlessly.
-            </p>
-            <button 
-              onClick={() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' })}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
-            >
-              Learn More
-            </button>
-          </div>
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
 
-          {/* Hero Image */}
-          <div className="flex justify-center">
-            <Image
-              src="/images/hero/studentlearning.png"
-              alt="Student Learning"
-              width={700}
-              height={600}
-              className="rounded-xl shadow-xl"
-              priority
-            />
+        <div className="relative z-10 max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Content Section */}
+            <div className="text-center lg:text-left space-y-8 animate-fade-in">
+             
+
+              {/* Main Heading */}
+              <div className="space-y-4">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                  Welcome to{" "}
+                  <span className="bg-gradient-to-r from-[#2064d4] via-purple-600 to-[#2064d4] bg-clip-text text-transparent">
+                    EduConnect
+                  </span>
+                  !
+                </h1>
+                <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto lg:mx-0">
+                  Streamline payments and webinars for education! Connect students and instructors seamlessly with our cutting-edge platform.
+                </p>
+              </div>
+
+              {/* Feature Highlights */}
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start text-sm">
+                <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-2 rounded-full">
+                  <Video className="w-4 h-4 text-[#2064d4]" />
+                  <span>Live Webinars</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-2 rounded-full">
+                  <BookOpen className="w-4 h-4 text-purple-600" />
+                  <span>Course Management</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-2 rounded-full">
+                  <Users className="w-4 h-4 text-[#2064d4]" />
+                  <span>Student Portal</span>
+                </div>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <button 
+                  onClick={() => scrollToSection('about')}
+                  className="bg-gradient-to-r from-[#2064d4] to-purple-600 hover:from-[#1a56b8] hover:to-purple-700 text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
+                >
+                  Get Started
+                </button>
+
+                <button 
+                  onClick={() => console.log('Watch Demo clicked')}
+                  className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm"
+                >
+                  Watch Demo
+                </button>
+              </div>
+
+
+             
+            </div>
+
+            {/* Image Section */}
+            <div className="relative animate-fade-in delay-300">
+              <div className="relative">
+                {/* Decorative Elements */}
+                <div className="absolute -inset-4 bg-gradient-to-r from-[#2064d4]/20 to-purple-600/20 rounded-3xl blur-2xl"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[#2064d4]/10 to-purple-600/10 rounded-2xl"></div>
+                
+                {/* Main Image Container */}
+                <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+                  <img
+                    src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
+                    alt="Student Learning Online"
+                    className="w-full h-auto rounded-xl shadow-lg"
+                  />
+                  
+                 
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+    
       </section>
+
+      
+    
 
       {/* About Section */}
       <section id="about" className="py-16 bg-white dark:bg-gray-900">
@@ -168,7 +228,7 @@ export default function HomePage() {
   </div>
 
   {/* Features Section */}
-  <div className="max-w-6xl mx-auto px-8">
+  <div className="max-w-6xl mx-auto px-8 [#FAF9F6]">
     <h3 className="text-2xl font-bold text-center mb-8 text-blue-700 dark:text-blue-400">
       Why Choose EduConnect?
     </h3>
@@ -197,10 +257,10 @@ export default function HomePage() {
       ].map((feature, i) => (
         <div
           key={i}
-          className="border border-blue-100 dark:border-blue-600 bg-blue-50 dark:bg-gray-800 p-6 rounded-xl text-center shadow-md hover:shadow-lg transition-all hover:scale-105"
+          className="border border-blue-100 border-width-3 dark:border-blue-600 bg-white dark:bg-gray-800 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition-all hover:scale-105"
         >
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+            <div className="w-16 h-16 bg-white border border-primary dark:bg-blue-900 rounded-full flex items-center justify-center">
               <span className="text-2xl">{feature.emoji}</span>
             </div>
           </div>
@@ -217,7 +277,7 @@ export default function HomePage() {
 </section>
 
       {/* Courses Section */}
-<section id="courses" className="p-8 py-16 bg-blue-50 dark:bg-gray-800">
+<section id="courses" className="p-8 py-16 bg-[#FAF9F6] dark:bg-gray-800">
   <div className="max-w-6xl mx-auto">
     <h2 className="text-3xl font-bold mb-6 text-blue-700 dark:text-blue-400 text-center">
       Our Courses
@@ -469,8 +529,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <Footer />
+      
     </div>
+    {/* Footer */}
+      <Footer />
+    </>
   );
 }
