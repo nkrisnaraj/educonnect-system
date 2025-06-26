@@ -175,7 +175,7 @@ export default function NotificationsPage() {
           </span>
           <button
             onClick={markAllAsRead}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Check className="h-4 w-4" />
             Mark All Read
@@ -185,9 +185,9 @@ export default function NotificationsPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-xl">
+            <div className="p-2 bg-blue-100 rounded-lg">
               <Bell className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -196,9 +196,9 @@ export default function NotificationsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-xl">
+            <div className="p-2 bg-red-100 rounded-lg">
               <AlertCircle className="h-5 w-5 text-red-600" />
             </div>
             <div>
@@ -207,9 +207,9 @@ export default function NotificationsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-xl">
+            <div className="p-2 bg-yellow-100 rounded-lg">
               <Clock className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
@@ -218,7 +218,7 @@ export default function NotificationsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600" />
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-gray-400" />
@@ -241,7 +241,7 @@ export default function NotificationsPage() {
               placeholder="Search notifications..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export default function NotificationsPage() {
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="all">All Notifications</option>
               <option value="unread">Unread</option>
@@ -267,9 +267,9 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notifications List */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
-          <h3 className="text-lg font-semibold">A/L Notification Center</h3>
+          <h3 className="text-lg font-semibold">Notification Center</h3>
         </div>
         <div className="divide-y divide-gray-200">
           {filteredNotifications.length === 0 ? (
@@ -294,7 +294,7 @@ export default function NotificationsPage() {
                         <h4 className={`font-medium ${!notification.read ? "text-gray-900" : "text-gray-700"}`}>
                           {notification.title}
                         </h4>
-                        {!notification.read && <div className="w-2 h-2 bg-primary rounded-full"></div>}
+                        {!notification.read && <div className="w-2 h-2 bg-purple-600 rounded-full"></div>}
                         <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(notification.priority)}`}>
                           {notification.priority}
                         </span>

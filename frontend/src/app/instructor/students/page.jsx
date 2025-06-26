@@ -146,10 +146,10 @@ export default function StudentsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Students Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">A/L Students Management</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50">
+          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Download className="h-4 w-4" />
             Export
           </button>
@@ -158,7 +158,7 @@ export default function StudentsPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Users className="h-5 w-5 text-blue-600" />
@@ -169,7 +169,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <Users className="h-5 w-5 text-green-600" />
@@ -180,7 +180,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Users className="h-5 w-5 text-purple-600" />
@@ -191,7 +191,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
               <Users className="h-5 w-5 text-orange-600" />
@@ -207,7 +207,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-gray-400" />
@@ -216,13 +216,13 @@ export default function StudentsPage() {
               placeholder="Search students..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <select
             value={selectedBatch}
             onChange={(e) => setSelectedBatch(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="all">All Batches</option>
             {batches.map((batch) => (
@@ -234,7 +234,7 @@ export default function StudentsPage() {
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="all">All Subjects</option>
             {subjects.map((subject) => (
@@ -247,7 +247,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Students Table */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <h3 className="text-lg font-semibold">A/L Student Directory</h3>
         </div>

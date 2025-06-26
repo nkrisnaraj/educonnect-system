@@ -11,6 +11,7 @@ export default function CoursesPage() {
     {
       id: 1,
       name: "Advanced Physics - 2025 A/L",
+      code: "PHY2025",
       subject: "Physics",
       batch: "2025 A/L",
       students: 45,
@@ -18,13 +19,12 @@ export default function CoursesPage() {
       progress: 75,
       status: "active",
       startDate: "2024-01-15",
-      fees: 2000,
-      description: "Comprehensive A/L Physics course covering mechanics, waves, electricity and modern physics",
-      type: "Theory + Paper",
+      endDate: "2024-12-15"
     },
     {
       id: 2,
       name: "Organic Chemistry - 2026 A/L",
+      code: "CHE2026",
       subject: "Chemistry",
       batch: "2026 A/L",
       students: 38,
@@ -32,13 +32,12 @@ export default function CoursesPage() {
       progress: 60,
       status: "active",
       startDate: "2024-02-01",
-      fees: 2000,
-      description: "In-depth study of organic compounds, reactions and mechanisms for A/L Chemistry",
-      type: "Theory + Paper",
+      endDate: "2024-11-30"
     },
     {
       id: 3,
       name: "Cell Biology & Genetics - 2025 A/L",
+      code: "BIO2025",
       subject: "Biology",
       batch: "2025 A/L",
       students: 52,
@@ -46,13 +45,12 @@ export default function CoursesPage() {
       progress: 85,
       status: "active",
       startDate: "2024-01-10",
-      fees: 2000,
-      description: "Advanced biological concepts including cell structure, genetics and molecular biology",
-      type: "Theory + Paper",
+      endDate: "2024-12-10"
     },
     {
       id: 4,
       name: "Pure Mathematics - 2025 A/L",
+      code: "MAT2025",
       subject: "Mathematics",
       batch: "2025 A/L",
       students: 41,
@@ -60,13 +58,12 @@ export default function CoursesPage() {
       progress: 45,
       status: "active",
       startDate: "2024-01-20",
-      fees: 1000,
-      description: "Advanced mathematics covering calculus, algebra, trigonometry and statistics",
-      type: "Theory",
+      endDate: "2024-12-20"
     },
     {
       id: 5,
       name: "Applied Mathematics - 2026 A/L",
+      code: "AMAT2026",
       subject: "Applied Mathematics",
       batch: "2026 A/L",
       students: 35,
@@ -74,9 +71,7 @@ export default function CoursesPage() {
       progress: 30,
       status: "draft",
       startDate: "2024-03-01",
-      fees: 1000,
-      description: "Practical applications of mathematics in real-world scenarios",
-      type: "Theory",
+      endDate: "2024-12-30"
     },
   ]
 
@@ -109,21 +104,13 @@ export default function CoursesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Courses</h1>
-          <p className="text-gray-600">Manage your A/L courses and track student progress</p>
+          <h1 className="text-2xl font-bold text-gray-900">My A/L Courses</h1>
         </div>
-        <button
-          onClick={() => setIsDialogOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
-        >
-          <Plus className="h-4 w-4" />
-          Create New Course
-        </button>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <BookOpen className="h-5 w-5 text-blue-600" />
@@ -134,7 +121,7 @@ export default function CoursesPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <Users className="h-5 w-5 text-green-600" />
@@ -145,7 +132,7 @@ export default function CoursesPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-100 rounded-lg">
               <Clock className="h-5 w-5 text-purple-600" />
@@ -156,7 +143,7 @@ export default function CoursesPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
               <BookOpen className="h-5 w-5 text-orange-600" />
@@ -172,25 +159,24 @@ export default function CoursesPage() {
       </div>
 
       {/* Courses List */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+      <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">A/L Course Management</h3>
-              <p className="text-gray-600">Create, edit and manage your A/L courses</p>
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Search courses..."
-                className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
         </div>
         <div className="p-6">
           {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl mb-6">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
             <button
               onClick={() => setSelectedTab("all")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
@@ -220,7 +206,7 @@ export default function CoursesPage() {
           {/* Course Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredCourses.map((course) => (
-              <div key={course.id} className="bg-white/50 border border-purple-100 rounded-xl p-6">
+              <div key={course.id} className="bg-white/50 border border-primary rounded-lg p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -232,7 +218,6 @@ export default function CoursesPage() {
                     <p className="text-sm text-gray-600 mb-2">
                       {course.code} • {course.subject}
                     </p>
-                    <p className="text-sm text-gray-500">{course.description}</p>
                   </div>
                 </div>
 
@@ -270,13 +255,6 @@ export default function CoursesPage() {
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Course Fees:</span>
-                    <span className="text-lg font-bold text-green-600">Rs. {course.fees.toLocaleString()}</span>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-500">
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{course.batch}</span>
@@ -297,101 +275,7 @@ export default function CoursesPage() {
             ))}
           </div>
         </div>
-      </div>
-
-      {/* Create Course Modal */}
-      {isDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Create New A/L Course</h2>
-              <button onClick={() => setIsDialogOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <p className="text-gray-600 mb-6">Set up a new A/L course for your students</p>
-
-            <div className="grid gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter course name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="">Choose subject</option>
-                    {subjects.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Batch</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="">Choose batch</option>
-                    {batches.map((batch) => (
-                      <option key={batch} value={batch}>
-                        {batch}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  placeholder="Course description and objectives"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Course Fees (Rs.)</label>
-                  <input
-                    type="number"
-                    placeholder="15000"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setIsDialogOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setIsDialogOpen(false)}
-                className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
-              >
-                Create Course
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+     </div>
+     </div>
   )
 }

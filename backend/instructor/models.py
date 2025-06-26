@@ -43,9 +43,8 @@ class Exams(models.Model):
 class Marks(models.Model):
     marksid = models.CharField(unique=True, max_length=20)
     stuid = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
-    examid = models.CharField(Exams,max_length=100)
+    examid = models.ForeignKey(Exams, on_delete=models.CASCADE)
     marks = models.FloatField()
 
     def __str__(self):
-        return f"{self.student.stuid} - {self.exam.examname} - {self.marks_obtained}"
-    
+        return f"{self.stuid.stuid} - {self.examid.examname} - {self.marks}"
