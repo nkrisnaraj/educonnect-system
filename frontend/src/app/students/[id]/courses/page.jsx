@@ -180,8 +180,8 @@ export default function Courses() {
     try {
       const res = await axios.post('http://127.0.0.1:8000/students/payments/upload-receipt/', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'multipart/form-data'
         }
       });
       const data = res.data;
