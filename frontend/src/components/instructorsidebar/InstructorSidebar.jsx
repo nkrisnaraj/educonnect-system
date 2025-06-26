@@ -27,14 +27,14 @@ const menuItems = [
     icon: GraduationCap,
   },
   {
-    title: "Results",
-    url: "/instructor/results",
-    icon: ClipboardList,
-  },
-  {
     title: "Upload Marks",
     url: "/instructor/upload-marks",
     icon: Upload,
+  },
+  {
+    title: "Results",
+    url: "/instructor/results",
+    icon: ClipboardList,
   },
   {
     title: "Reports",
@@ -50,6 +50,11 @@ const menuItems = [
     title: "Notifications",
     url: "/instructor/notifications",
     icon: Bell,
+  },
+  {
+    title: "Settings",
+    url: "/instructor/settings",
+    icon: Settings,
   },
 ]
 
@@ -102,10 +107,6 @@ export function InstructorSidebar() {
           </div>
         </div>
         <div className="space-y-2">
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg">
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
           <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg"
             onClick={()=>
               logout()

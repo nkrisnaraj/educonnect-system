@@ -3,21 +3,33 @@ import { useAuth } from "@/context/AuthContext";
 import { Bell, CreditCard } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function StudentPage() {
   const {user } = useAuth();
   const router = useRouter();
   const {id} = useParams();
 
+  const [selectedChat, setSelectedChat] = useState('instructor');
+  const [instructorMessages, setInstructorMessages] = useState([
+  { sender: 'instructor', text: 'Hello! How can I help you with your coursework today?', time: '10:30 AM' },
+  { sender: 'student', text: 'I have a question about the upcoming assignment deadline.', time: '10:32 AM' },
+  { sender: 'instructor', text: 'Sure, the deadline has been extended to next Friday.', time: '10:35 AM' },
+]);
 
-  const today = new Date();
-  const formatdate = today.toLocaleDateString("en-GB",{
-    weekday:"long",
-    year:"numeric",
-    month:"long",
-    day:"numeric"
-  })
+
+  const [adminMessages, setAdminMessages] = useState([
+  { sender: 'admin', text: 'Hello! How can I assist you with your account?', time: '09:00 AM' },
+  { sender: 'student', text: 'I want to change my registered email address.', time: '09:05 AM' },
+  { sender: 'admin', text: 'Sure, please provide the new email address.', time: '09:10 AM' },
+]);
+
+
+  
+  const [inputMessage, setInputMessage] = useState('');
+  
+
+  
 
   useEffect(()=>{
     const role = localStorage.getItem("userRole");
@@ -29,7 +41,15 @@ export default function StudentPage() {
 
   if (!user) return null; // or a loading spinner
 
+  const today = new Date();
+  const formatdate = today.toLocaleDateString("en-GB",{
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  })
 
+const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
   const courses = [
     {
       title: "Object Oriented Programming",
@@ -42,7 +62,26 @@ export default function StudentPage() {
    
   ];
 
+
   
+
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return;
+
+  const newMessage = {
+      sender: 'student',
+      text: inputMessage,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    if (selectedChat === 'instructor') {
+      setInstructorMessages((prev) => [...prev, newMessage]);
+    } else {
+      setAdminMessages((prev) => [...prev, newMessage]);
+    }
+
+    setInputMessage('');
+  };
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto w-full">
@@ -123,49 +162,71 @@ export default function StudentPage() {
         </div>
 
         {/* Right Content (Chat Box) */}
-        <div className="w-full lg:w-4/12 border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
-          <div className="bg-primary p-3 border-b border-gray-200">
-            <h3 className="font-medium text-white text-md">Chat with instructors</h3>
-          </div>
-          <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
-            {/* Chat messages */}
-            <div className="flex items-start gap-2">
-              <Image src="/placeholder.svg" alt="Instructor" width={32} height={32} className="rounded-full mt-1" />
-              <div className="bg-gray-100 rounded-lg p-2 text-sm max-w-[80%]">
-                <p>Hello! How can I help you with your coursework today?</p>
-                <span className="text-xs text-gray-500 mt-1 block">10:30 AM</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 flex-row-reverse">
-              <div className="bg-purple-100 rounded-lg p-2 text-sm max-w-[80%]">
-                <p>I have a question about the upcoming assignment deadline.</p>
-                <span className="text-xs text-gray-500 mt-1 block">10:32 AM</span>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Image src="/placeholder.svg" alt="Instructor" width={32} height={32} className="rounded-full mt-1" />
-              <div className="bg-gray-100 rounded-lg p-2 text-sm max-w-[80%]">
-                <p>Sure, the deadline has been extended to next Friday.</p>
-                <span className="text-xs text-gray-500 mt-1 block">10:35 AM</span>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 p-3 bg-white">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Type your message..."
-                className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-              <button className="bg-blue-500 text-white rounded-full p-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m22 2-7 20-4-9-9-4Z" />
-                  <path d="M22 2 11 13" />
-                </svg>
-              </button>
+       <div className="w-full lg:w-4/12 border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
+      {/* Header with chat target selector */}
+      <div className="bg-primary p-3 border-b border-gray-200 flex justify-between items-center">
+        <h3 className="font-medium text-white text-md">Chat with {selectedChat === 'instructor' ? 'Instructor' : 'Admin'}</h3>
+        <select
+          value={selectedChat}
+          onChange={(e) => setSelectedChat(e.target.value)}
+          className="text-sm rounded p-1 text-white bg-accent font-semibold"
+        >
+          <option value="instructor">Instructor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      {/* Chat messages */}
+      <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
+        {messages.map((msg, index) => (
+          <div
+            key={index}
+            className={`flex items-start gap-2 ${
+              msg.sender === 'student' ? 'flex-row-reverse' : ''
+            }`}
+          >
+            {msg.sender !== 'student' && (
+              <Image src="/placeholder.svg" alt={msg.sender} width={32} height={32} className="rounded-full mt-1" />
+            )}
+            <div
+              className={`rounded-lg p-2 text-sm max-w-[80%] ${
+                msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
+              }`}
+            >
+              <p>{msg.text}</p>
+              <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Input Box */}
+      <div className="border-t border-gray-200 p-3 bg-white">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Type your message..."
+            className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button className="bg-blue-500 text-white rounded-full p-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
+            </svg>
+          </button>
         </div>
+      </div>
+    </div>
+  
       </div>
     </div>
   );
