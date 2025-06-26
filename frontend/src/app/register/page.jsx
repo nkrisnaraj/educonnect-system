@@ -46,6 +46,12 @@ export default function Register() {
           school_name: form.schoolName,
         }
       };
+      console.log(payload);
+
+      if (!form.yearOfAL) {
+        setMessage("Please fill Year of AL.");
+        return;
+      }
 
       try {
         const res = await axios.post("http://127.0.0.1:8000/api/accounts/register/", payload);
@@ -59,6 +65,7 @@ export default function Register() {
         }
       } catch (err) {
         if (err.response && err.response.data) {
+          console.log(err.response.data)
           setMessage(JSON.stringify(err.response.data));
         } else {
           setMessage("Server error. Try again later.");
@@ -107,7 +114,7 @@ export default function Register() {
               name="username"
               value={form.username}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter Username"
               required
             />
@@ -133,7 +140,7 @@ export default function Register() {
               name="firstName"
               value={form.firstName}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="First Name"
               required
             />
@@ -146,7 +153,7 @@ export default function Register() {
               name="lastName"
               value={form.lastName}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Last Name"
               required
             />
@@ -159,7 +166,7 @@ export default function Register() {
               name="mobile"
               value={form.mobile}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="0771234567"
             />
           </div>
@@ -171,7 +178,7 @@ export default function Register() {
               name="nicNo"
               value={form.nicNo}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="200012345678"
             />
           </div>
@@ -183,7 +190,7 @@ export default function Register() {
               name="yearOfAL"
               value={form.yearOfAL}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="2021"
             />
           </div>
@@ -195,7 +202,7 @@ export default function Register() {
               name="schoolName"
               value={form.schoolName}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="School Name"
             />
           </div>
@@ -206,7 +213,7 @@ export default function Register() {
               name="address"
               value={form.address}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Address"
               rows={2}
             />
@@ -219,7 +226,7 @@ export default function Register() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              className="w-full p-3 rounded border border-gray-300"
+              className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter password"
               required
             />

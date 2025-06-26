@@ -18,7 +18,7 @@ export default function StudentNavbar({ isOpen, onClose }) {
   return (
     <div
       className={`
-        bg-primary text-white p-6 fixed z-40 m-4 rounded-lg top-0 left-0 h-full w-64
+        bg-primary text-white p-6 fixed z-40 m-4 rounded-xl top-0 left-0 h-full w-64
         transform transition-transform duration-300
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:h-auto
@@ -49,19 +49,19 @@ export default function StudentNavbar({ isOpen, onClose }) {
           <BookOpen className="w-5 h-5" />
           <span>Courses</span>
         </Link>
-        <Link href={`students/${id}/results`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/results`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <FileText className="w-5 h-5" />
           <span>Results</span>
         </Link>
-        <Link href={`students/${id}/notice`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/notice`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <Bell className="w-5 h-5" />
           <span>Notice</span>
         </Link>
-        <Link href={`students/${id}/profile`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/profile`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <User className="w-5 h-5" />
           <span>Profile</span>
         </Link>
-        <Link href={`students/${id}/calender`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/calender`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <Calendar className="w-5 h-5" />
           <span>Calendar</span>
         </Link>
