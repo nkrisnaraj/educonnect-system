@@ -55,9 +55,7 @@ const menuItems = [
     title: "Settings",
     url: "/instructor/settings",
     icon: Settings,
-
   },
-
 ]
 
 export function InstructorSidebar() {

@@ -6,8 +6,8 @@
 backend/venv/
 
 # Python cache and compiled files
-backend//_pycache_/
-backend//*.pyc
+backend/**/__pycache__/
+backend/**/*.pyc
 
 # Pytest cache
 backend/backend/.pytest_cache/
@@ -16,8 +16,8 @@ backend/backend/.pytest_cache/
 backend/.env
 
 # Ignore all app-level migrations cache and compiled files
-backend//migrations/_pycache_/
-backend//migrations/*.pyc
+backend/**/migrations/__pycache__/
+backend/**/migrations/*.pyc
 
 # Remove this line if you're not using SQLite locally:
 # backend/db.sqlite3
