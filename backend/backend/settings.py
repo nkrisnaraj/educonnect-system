@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import dj_database_url
 from datetime import timedelta
-
+import tempfile
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,6 +31,10 @@ SECRET_KEY = 'django-insecure-rp(0@=xqhh!a26&b$j-p_u5m()k=5qa23_04u7yexc20&3s9@(
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
+print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
 
 
 # Application definition
@@ -61,6 +65,21 @@ try:
 except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
+
+creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+# Step 5: Write JSON string to a temporary file at runtime
+if creds_json_str:
+    creds_dict = json.loads(creds_json_str)
+    # Create temp file with the credentials
+    temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+    json.dump(creds_dict, temp_file)
+    temp_file.flush()
+
+    # Tell Google library where to find this file
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+
+
 
 AUTH_USER_MODEL = 'accounts.User'
 

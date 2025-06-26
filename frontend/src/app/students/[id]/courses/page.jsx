@@ -1,5 +1,7 @@
 "use client";
+
 import { useEffect, useState, useCallback } from "react";
+
 import axios from "axios";
 import { useParams, useSearchParams } from "next/navigation";
 
@@ -19,17 +21,21 @@ export default function Courses() {
   const [showPaidClassModal, setShowPaidClassModal] = useState(false);
   const [showUnPaidClassModal, setShowUnPaidClassModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
   const { id } = useParams();
 
+
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 
   useEffect(() => {
     if (status === "success") {
@@ -41,7 +47,9 @@ export default function Courses() {
     }
   }, [status]);
 
+  
   useEffect(() => {
+
     try {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("accessToken");
@@ -97,11 +105,13 @@ export default function Courses() {
 
   const handleUnPaidClass = (course) => {
     setSelectedCourse(course);
+
     setShowUnPaidClassModal(true);
   };
 
   const handleJoin = (course) => {
     setSelectedCourse(course);
+
     setShowUnPaidClassModal(false);
     setShowPayModal(true);
     setSelectedPayment(null);
@@ -116,12 +126,14 @@ export default function Courses() {
     setFile(null);
   };
 
+
   const handleReceiptUpload = async (e) => {
     e.preventDefault();
     if (!file || !file.type.includes("image")) {
       alert("Please upload a valid image.");
       return;
     }
+
 
     setIsProcessing(true);
     try {
@@ -139,11 +151,13 @@ export default function Courses() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
+
         }
       );
       alert(response.data.message || "Receipt uploaded successfully!");
       closeAllModals();
     } catch (error) {
+
       alert("❌ Upload failed. Try again.");
     } finally {
       setIsProcessing(false);
@@ -189,10 +203,12 @@ export default function Courses() {
         form.appendChild(input);
       });
 
+
       document.body.appendChild(form);
       form.submit();
       console.log("Payment initiation response:", response.data);
     } catch (err) {
+
       console.log("❌ Payment initiation failed");
     } finally {
       setIsProcessing(false);
@@ -353,3 +369,4 @@ function Modal({ title, children, onClose }) {
     </div>
   );
 }
+
