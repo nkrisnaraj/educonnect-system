@@ -177,10 +177,11 @@ export default function Courses() {
     const formData = new FormData();
     formData.append('image', file);
     console.log(accessToken);
+    console.log(token)
     try {
       const res = await axios.post('http://127.0.0.1:8000/students/payments/upload-receipt/', formData, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
