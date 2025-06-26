@@ -15,7 +15,7 @@ export default function AdminPage() {
     if (!user || !role || role !== 'admin') {
       router.replace("/login");
     }
-  }, [user]);
+  }, []);
 
   if (!user || user.role !== 'admin') {
     return null; // or a loading spinner
