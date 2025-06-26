@@ -19,7 +19,7 @@ from google.cloud import vision
 import pytesseract
 from PIL import Image
 from io import BytesIO
-from instructor.models import Course
+from instructor.models import Class
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
 

@@ -126,8 +126,6 @@ export default function Courses() {
     setFile(null);
   };
 
-  const handlePayNow = async () => {
-    console.log("handlePayNow clicked");
 
   const handleReceiptUpload = async (e) => {
     e.preventDefault();
@@ -371,4 +369,3 @@ function Modal({ title, children, onClose }) {
     </div>
   );
 }
-

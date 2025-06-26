@@ -125,7 +125,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for p
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES':[],
-}
+}   
 
 ROOT_URLCONF = 'backend.urls'
 
