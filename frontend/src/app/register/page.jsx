@@ -31,6 +31,7 @@ export default function Register() {
   };
 
   const handleRegister = async (e) => {
+
     e.preventDefault();
 
     const payload = {
@@ -56,6 +57,7 @@ export default function Register() {
         setTimeout(() => router.push("/login"), 2000);
       } else {
         setMessage(res.data.detail || "Registration failed!");
+
         setIsSuccess(false);
       }
     } catch (err) {
@@ -97,6 +99,7 @@ export default function Register() {
             Create an Account
           </h2>
 
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Username</label>
@@ -111,6 +114,7 @@ export default function Register() {
               />
             </div>
 
+
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Email</label>
               <input
@@ -123,6 +127,7 @@ export default function Register() {
                 required
               />
             </div>
+
 
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">First Name</label>
@@ -222,6 +227,7 @@ export default function Register() {
                 required
               />
             </div>
+
           </div>
 
         <button
