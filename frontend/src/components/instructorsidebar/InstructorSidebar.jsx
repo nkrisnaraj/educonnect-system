@@ -55,11 +55,7 @@ const menuItems = [
     title: "Settings",
     url: "/instructor/settings",
     icon: Settings,
-<<<<<<< HEAD
-  }
-=======
   },
->>>>>>> a8a3ecf80f4383e3046071a59c3ac0906236bf53
 ]
 
 export function InstructorSidebar() {
