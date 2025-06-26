@@ -11,12 +11,15 @@ import {
   Bell,
   LogOut,
   BookOpen,
+  Video,
 } from "lucide-react"
+import Image from "next/image";
 
 const navigation = [
   { name: "Dashboard", id: "dashboard", icon: LayoutDashboard },
   { name: "Students", id: "students", icon: Users },
   { name: "Classes", id: "classes", icon: BookOpen },
+  { name: "Webinars", id: "webinars", icon: Video },
   { name: "Payments", id: "payments", icon: DollarSign },
   { name: "Reports", id: "reports", icon: FileText },
   { name: "Notifications", id: "notifications", icon: Bell },
@@ -29,14 +32,13 @@ export default function Sidebar({ activeSection, onSectionChange }) {
     <div className="flex h-screen w-64 flex-col bg-primary">
       {/* Logo */}
       <div className="flex items-center justify-center py-6">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20">
-            <GraduationCap className="h-8 w-8 text-white" />
+        <div className="flex flex-col items-center space-x-3">
+          <div className="flex items-center justify-center ">
+            <Image src="/logo.png" width={120} height={120} alt="Logo" />
           </div>
-          <div className="text-white">
-            <h1 className="text-xl font-bold">AdminConnect</h1>
-            <p className="text-sm text-blue-200">ADMIN PANEL</p>
-          </div>
+          {/* <div className="text-white flex">
+            <h1 className="text-xl font-bold">EduConnect</h1>
+          </div> */}
         </div>
       </div>
 
@@ -49,9 +51,8 @@ export default function Sidebar({ activeSection, onSectionChange }) {
             <button
               key={item.name}
               onClick={() => onSectionChange(item.id)}
-              className={`group flex w-full items-center rounded-lg px-4 py-3 mx-2 text-sm font-medium transition-colors ${
-                isActive ? "text-white shadow-sm bg-accent" : "text-blue-100 hover:text-white hover:bg-accent"
-              }`}
+              className={`group flex w-full items-center rounded-xl px-4 py-3 mx-2 text-sm font-medium transition-colors ${isActive ? "text-white shadow-sm bg-accent" : "text-blue-100 hover:text-white hover:bg-accent"
+                }`}
             >
               <Icon className="mr-3 h-5 w-5" />
               {item.name}
@@ -61,13 +62,13 @@ export default function Sidebar({ activeSection, onSectionChange }) {
       </nav>
 
       {/* Logout */}
-      <div className="p-4">
-        <button 
-          onClick={()=>
+      <div className="p-4 flex items-center justify-center border-t border-gray-700">
+        <button
+          onClick={() =>
             logout()
           }
-        className="group flex w-full items-center rounded-lg px-4 py-3 mx-2 text-sm font-medium text-blue-100 transition-colors hover:text-white hover:bg-accent">
-          <LogOut className="mr-3 h-5 w-5" />
+          className="group flex w-full items-center rounded-xl px-4 py-3 mx-2 text-lg font-medium text-red-700 transition-colors hover:text-white bg-white hover:bg-red-600">
+          <LogOut className="mr-5 h-8 w-8" />
           Logout
         </button>
       </div>
