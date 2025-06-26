@@ -7,9 +7,9 @@ from students.models import StudentProfile
 
 
 # Create your models here.
-#Course Model
-class Course(models.Model):
-    courseid = models.CharField(max_length=20, unique=True, blank=True)
+#class Model
+class Class(models.Model):
+    classid = models.CharField(max_length=20, unique=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     fee = models.DecimalField(max_digits=10, decimal_places=2)
@@ -21,23 +21,23 @@ class Course(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        if not self.courseid:
-            self.courseid = f"CRS-{uuid.uuid4().hex[:6].upper()}"
+        if not self.classid:
+            self.classid = f"CRS-{uuid.uuid4().hex[:6].upper()}"
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.title} ({self.courseid})"
+        return f"{self.title} ({self.classid})"
 
 
 #Exams Model
 class Exams(models.Model):
     examid = models.CharField(max_length=20, unique=True)
     examname = models.CharField(max_length=100)
-    courseid = models.ForeignKey(Course,on_delete=models.CASCADE)
+    classid = models.ForeignKey(Class,on_delete=models.CASCADE)
     date = models.DateField()
     
     def __str__(self):
-        return f"{self.name} - {self.course.name}"
+        return f"{self.name} - {self.Class.name}"
 
 #Marks Model
 class Marks(models.Model):
