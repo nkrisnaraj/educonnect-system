@@ -9,6 +9,7 @@ import Image from "next/image";
 import "../globals.css";
 import MainNavbar from "@/components/MainNavbar";
 import Footer from "@/components/Footer";
+import Cookies from "js-cookie";
 
 export default function Login() {
   const router = useRouter();
@@ -18,17 +19,20 @@ export default function Login() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
- 
+  
+    const { login } = useAuth();
+
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
-          console.log(username);
-          console.log(password);
+          // console.log(username);
+          // console.log(password);
           const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
           });
           if(response.status === 200){
+
             setMessage("Login Successfully")
             setIsSuccess(true);
 
@@ -59,7 +63,8 @@ export default function Login() {
               } catch (err) {
                 console.error("Router push error:", err);
               }
-              }, 1000);
+            }, 1000);
+
               
           }else{
             setMessage("Login Failed")
@@ -67,12 +72,13 @@ export default function Login() {
             console.log("Login Failed");
           }
         } catch (error) {
-          if(error.response){
-            setMessage(error.response.data?.detail || "Invalid Credentials");
-          }
-          else{
-            setMessage("An Error Occurred")
-          }
+            console.error("Login error:", error);
+            if(error.response){
+              setMessage(error.response.data?.detail || "Invalid Credentials");
+            }
+            else{
+              setMessage("An Error Occurred")
+            }
         }
         
     };
@@ -80,11 +86,10 @@ export default function Login() {
     
 
   return (
+    <>
+    {/* Nav bar */}
+    <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-      {/* Nav bar */}
-      <MainNavbar />
-
-
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">
@@ -92,7 +97,7 @@ export default function Login() {
 
           {message && (
             <div
-              className={`fixed top-5 right-5 w-[350px] max-w-full px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
+              className={` mt-16 mb-6 fixed top-5 right-5 w-[350px] max-w-full px-6 py-4  rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ${
                 isSuccess
                   ? "bg-green-100 text-green-900 border-green-700 dark:bg-green-800 dark:text-green-100 dark:border-green-400"
                   : "bg-red-100 text-red-900 border-red-700 dark:bg-red-800 dark:text-red-100 dark:border-red-400"
@@ -134,7 +139,7 @@ export default function Login() {
                     <button
                         type="submit"
                         className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300"
-                        onClick={handleLogin}
+                        
                     >
                         Login
                     </button>
@@ -154,8 +159,10 @@ export default function Login() {
 
       
 
-<Footer />
+
 
     </div>
+    <Footer />
+    </>
   );
 }
