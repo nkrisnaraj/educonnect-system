@@ -84,11 +84,11 @@ class ReceiptPayment(models.Model):
 class Enrollment(models.Model):
     enrollid = models.AutoField(primary_key=True)
     stuid = models.ForeignKey('students.StudentProfile', on_delete=models.CASCADE)
-    courseid = models.ForeignKey('instructor.Course', on_delete=models.CASCADE)
+    classid = models.ForeignKey('instructor.Class', on_delete=models.CASCADE)
     payid = models.ForeignKey('students.Payment', on_delete=models.CASCADE, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"Enrollment {self.enrollid} - Student {self.stuid} in Course {self.courseid}"
+        return f"Enrollment {self.enrollid} - Student {self.stuid} in Class {self.classid}"
 
 
