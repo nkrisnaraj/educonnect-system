@@ -8,6 +8,6 @@ urlpatterns = [
     path('register/', register_user, name='api-register'),
     path('student/',StudentDetailView.as_view(),name='student-detail'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    #path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     
 ]

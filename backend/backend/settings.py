@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import dj_database_url
 from datetime import timedelta
-
+import tempfile
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -32,6 +32,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
+print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
+
 
 # Application definition
 
@@ -44,7 +48,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    #'rest_framework_simplejwt.token_blacklist',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'students',
     'edu_admin',
@@ -52,6 +57,7 @@ INSTALLED_APPS = [
     # 'accounts',
     'accounts.apps.AccountsConfig',
 ]
+
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
 try:
     ZOOM_ACCOUNTS_JSON = os.getenv("ZOOM_ACCOUNTS_JSON", "{}")  # default to empty JSON
@@ -60,7 +66,26 @@ except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
 
+creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+# Step 5: Write JSON string to a temporary file at runtime
+if creds_json_str:
+    creds_dict = json.loads(creds_json_str)
+    # Create temp file with the credentials
+    temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+    json.dump(creds_dict, temp_file)
+    temp_file.flush()
+
+    # Tell Google library where to find this file
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+
+
+
 AUTH_USER_MODEL = 'accounts.User'
+
+MEDIA_ROOT = BASE_DIR / "media"   #your_project_folder/media/ - #your_project_folder/media/receipts/
+MEDIA_URL = "/media/"     #http://localhost:8000/media/receipts/receipt1.jpg
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
@@ -78,20 +103,20 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
+        #'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     )
 }
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': True,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-# }
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for production

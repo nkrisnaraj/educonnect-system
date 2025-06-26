@@ -145,7 +145,7 @@ export default function InstructorDashboard() {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6">
         {/* Welcome Banner */}
-        <div className="bg-primary rounded-2xl p-6 mb-6 text-white relative overflow-hidden">
+        <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
           <div className="relative z-10">
             <p className="text-purple-200 mb-2">
               {new Date().toLocaleDateString("en-US", {
@@ -166,7 +166,7 @@ export default function InstructorDashboard() {
         {/* First Row: Courses, Notes to Upload, Calendar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Courses */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-purple-600" />
@@ -176,7 +176,7 @@ export default function InstructorDashboard() {
             <div className="p-6">
               <div className="space-y-4">
                 {courses.map((course) => (
-                  <div key={course.id} className="flex items-center justify-between p-3 bg-white/50 rounded-lg">
+                  <div key={course.id} className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full ${course.color}`}></div>
                       <span className="font-medium">{course.name}</span>
@@ -189,7 +189,7 @@ export default function InstructorDashboard() {
           </div>
 
           {/* Notes to Upload */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Upload className="h-5 w-5 text-purple-600" />
@@ -199,7 +199,7 @@ export default function InstructorDashboard() {
             <div className="p-6">
               <div className="space-y-3">
                 {notesToUpload.map((note) => (
-                  <div key={note.id} className="p-3 bg-white/50 rounded-lg border border-purple-100">
+                  <div key={note.id} className="p-3 bg-white/50 rounded-xl border border-purple-100">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm">{note.subject}</h4>
                       <span
@@ -223,7 +223,7 @@ export default function InstructorDashboard() {
           </div>
 
           {/* Calendar */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-purple-600" />
@@ -269,7 +269,7 @@ export default function InstructorDashboard() {
         {/* Second Row: Recent Schedules, Chat Box */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Recent Schedules */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Clock className="h-5 w-5 text-purple-600" />
@@ -279,7 +279,7 @@ export default function InstructorDashboard() {
             <div className="p-6">
               <div className="space-y-3">
                 {recentSchedules.map((schedule) => (
-                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-white/50 rounded-lg">
+                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
                     <div>
                       <h4 className="font-medium text-sm">{schedule.class}</h4>
                       <p className="text-xs text-gray-500">{schedule.type}</p>
@@ -295,7 +295,7 @@ export default function InstructorDashboard() {
           </div>
 
           {/* Chat Box */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <MessageCircle className="h-5 w-5 text-purple-600" />
@@ -305,7 +305,7 @@ export default function InstructorDashboard() {
             <div className="flex flex-col h-64">
               <div className="flex-1 p-4 space-y-3 overflow-y-auto">
                 {chatMessages.map((message) => (
-                  <div key={message.id} className="bg-white/50 rounded-lg p-3">
+                  <div key={message.id} className="bg-white/50 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-sm">{message.sender}</span>
                       <span className="text-xs text-gray-500">{message.time}</span>
@@ -321,12 +321,12 @@ export default function InstructorDashboard() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                     onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   />
                   <button
                     onClick={handleSendMessage}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                    className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700 flex items-center gap-2"
                   >
                     <Send className="h-4 w-4" />
                   </button>
@@ -337,7 +337,7 @@ export default function InstructorDashboard() {
         </div>
 
         {/* Third Row: Student Details Table */}
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
           <div className="p-6 border-b border-purple-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -348,9 +348,9 @@ export default function InstructorDashboard() {
                 <input
                   type="text"
                   placeholder="Search students..."
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-700">Export</button>
+                <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700">Export</button>
               </div>
             </div>
           </div>
