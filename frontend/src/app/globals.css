@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scroll-behavior: smooth;
+}
+
+
 body {
   font-family: 'Inter', sans-serif;
   background-color: rgba(244, 245, 247, 0.896);

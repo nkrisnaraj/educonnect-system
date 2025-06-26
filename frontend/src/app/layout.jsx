@@ -1,6 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
+import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Use correct path
 
 export const metadata = {
   title: "EduConnect",
@@ -12,7 +12,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <AuthProvider>
-          <ThemeProvider> {/* ✅ Wrap children with ThemeProvider */}
+          <ThemeProvider>
             {children}
           </ThemeProvider>
         </AuthProvider>
