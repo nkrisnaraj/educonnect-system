@@ -1,7 +1,6 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-
 import axios from "axios";
 import { useParams, useSearchParams } from "next/navigation";
 
@@ -17,22 +16,23 @@ export default function Courses() {
     { id: 5, title: "Computer Science", description: "Introduction to Programming", amount: 2000 }
   ];
 
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState([]);
   const [showPaidClassModal, setShowPaidClassModal] = useState(false);
   const [showUnPaidClassModal, setShowUnPaidClassModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
-
+  const [selectedCourses, setSelectedCourses] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [totalAmount, setTotalAmount] = useState(0);
 
 
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
   const { id } = useParams();
-
+  const router = useRouter();
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -49,14 +49,12 @@ export default function Courses() {
 
   
   useEffect(() => {
-
     try {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("accessToken");
       console.log("Stored User:", storedUser);
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
-
         setAccessToken(storedToken);
       }
     } catch (e) {
@@ -98,24 +96,19 @@ export default function Courses() {
     return token;
   };
 
+  const toggleCourseSelection = (courseId) => {
+    setSelectedCourses((prev) =>
+      prev.includes(courseId)
+        ? prev.filter((id) => id !== courseId)
+        : [...prev, courseId]
+    );
+  };
+
   const handlePaidClass = (course) => {
     setSelectedCourse(course);
     setShowPaidClassModal(true);
   };
 
-  const handleUnPaidClass = (course) => {
-    setSelectedCourse(course);
-
-    setShowUnPaidClassModal(true);
-  };
-
-  const handleJoin = (course) => {
-    setSelectedCourse(course);
-
-    setShowUnPaidClassModal(false);
-    setShowPayModal(true);
-    setSelectedPayment(null);
-  };
 
   const closeAllModals = () => {
     setShowPaidClassModal(false);
@@ -126,22 +119,26 @@ export default function Courses() {
     setFile(null);
   };
 
-
   const handleReceiptUpload = async (e) => {
     e.preventDefault();
     if (!file || !file.type.includes("image")) {
       alert("Please upload a valid image.");
       return;
     }
-
-
     setIsProcessing(true);
     try {
       const token = await getValidToken();
+      const selectedCourseDetails = allCourses.filter((course) =>
+        selectedCourses.includes(course.id)
+      );
+      const totalAmount = selectedCourseDetails.reduce(
+        (sum, course) => sum + course.amount,
+        0
+      );
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("course_id", selectedCourse.id);
-      formData.append("amount", selectedCourse.amount);
+      formData.append("course_ids", JSON.stringify(selectedCourses)); // Send array of course IDs
+      formData.append("amount", totalAmount);
 
       const response = await axios.post(
         `${API_BASE_URL}/students/payments/upload-receipt/`,
@@ -157,7 +154,7 @@ export default function Courses() {
       alert(response.data.message || "Receipt uploaded successfully!");
       closeAllModals();
     } catch (error) {
-
+      console.error(error);
       alert("❌ Upload failed. Try again.");
     } finally {
       setIsProcessing(false);
@@ -169,7 +166,10 @@ export default function Courses() {
       alert("Missing data");
       return;
     }
-
+    if (selectedCourses.length === 0 || !user) {
+      alert("No courses selected.");
+      return;
+    }
     setIsProcessing(true);
     try {
       const token = await getValidToken();
@@ -177,11 +177,20 @@ export default function Courses() {
       console.log("Token Expired:", isTokenExpired(token));
       // alert("Selected Course:", selectedCourse.amount);
 
+      const selectedCourseDetails = allCourses.filter((course) =>
+        selectedCourses.includes(course.id)
+      );
+
+      const totalAmount = selectedCourseDetails.reduce(
+        (sum, course) => sum + course.amount,
+        0
+      );
+      console.log(totalAmount)
       const response = await axios.post(
         `${API_BASE_URL}/students/payments/create-payhere-url/`,
         {
-          course_id: selectedCourse.id,
-          amount: selectedCourse.amount,
+          course_id: selectedCourses,
+          amount: totalAmount,
         },
         {
           headers: {
@@ -215,6 +224,40 @@ export default function Courses() {
     }
   };
 
+  const selectedCourseDetails = allCourses.filter((course) =>
+    selectedCourses.includes(course.id)
+  );
+
+  const totalSelectedAmount = selectedCourseDetails.reduce(
+    (sum, course) => sum + course.amount,
+    0
+  );
+
+  const proceedpay = (e) => {
+    e.preventDefault();
+    if (selectedCourses.length === 0) {
+      alert("Please select at least one course to pay.");
+      return;
+    }
+    
+    //Calculate selected course details
+    const selectedCourseDetails = allCourses.filter((course) =>
+      selectedCourses.includes(course.id)
+    );
+
+      //Calculate total amount
+    const total = selectedCourseDetails.reduce(
+      (sum, course) => sum + course.amount,
+      0
+    );
+
+    // Save both to state
+    setSelectedCourse(selectedCourseDetails);  // ✅ Now selectedCourse will hold an array of courses
+    setTotalAmount(total);                     // ✅ Save total amount to state
+    setShowPayModal(true);
+    
+  };
+
   return (
     <>
       <div className="bg-gray-50 min-h-screen p-6">
@@ -243,25 +286,51 @@ export default function Courses() {
         {/* Other courses */}
         <section>
           <h2 className="text-2xl font-bold mb-6">Other Courses</h2>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (selectedCourses.length === 0) {
+                alert("Please select at least one course to pay.");
+                return;
+              }
+              setShowPayModal(true);
+            }}
+          >
+          <ul className="space-y-4 max-w-3xl">
             {allCourses.map((course) => (
-              <div
+              <li
                 key={course.id}
-                className="bg-white p-5 rounded-xl shadow border"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-5 rounded-xl shadow border"
               >
-                <h3 className="text-lg font-semibold">{course.title}</h3>
-                <p className="text-sm text-gray-600 mb-2">{course.description}</p>
-                <p className="font-bold text-primary mb-4">LKR {course.amount}</p>
-                <button
-                  onClick={() => handleUnPaidClass(course)}
-                  className="bg-primary text-white px-4 py-2 rounded"
-                >
-                  View More
-                </button>
-              </div>
+
+                {/* Left: Course Info */}
+                <div>
+                  <h3 className="font-semibold">{course.title}</h3>
+                  <p className="text-sm text-gray-600">{course.description}</p>
+                  <p className="text-primary font-bold">LKR {course.amount}</p>
+                </div>
+
+                {/* Right: Checkbox */}
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                  checked={selectedCourses.includes(course.id)}
+                  onChange={() => toggleCourseSelection(course.id)}
+                />
+              </li>
             ))}
-          </div>
-        </section>
+          </ul>
+
+            <button
+              type="submit"
+              className="mt-4 bg-primary text-white px-6 py-2 rounded"
+              onClick={proceedpay}
+            >
+              Proceed to Pay
+            </button>
+          </form>
+        </section>  
+
 
         {/* All modals (same as your existing modals) */}
         {/* Paid Modal */}
@@ -275,44 +344,49 @@ export default function Courses() {
           </Modal>
         )}
 
-        {/* Unpaid Modal */}
-        {showUnPaidClassModal && (
-          <Modal title={selectedCourse?.title} onClose={closeAllModals}>
-            <p className="text-center">Fees: LKR {selectedCourse.amount}<br />Mr. Sivathiran</p>
-            <div className="text-center mt-4">
-              <button
-                onClick={() => handleJoin(selectedCourse)}
-                className="bg-primary text-white px-6 py-2 rounded"
-              >
-                Join Course
-              </button>
-            </div>
-          </Modal>
-        )}
-
+        
         {/* Payment Modal */}
         {showPayModal && (
-          <Modal title={`Payment for ${selectedCourse?.title}`} onClose={closeAllModals}>
+          <Modal title="Payment Summary" onClose={closeAllModals}>
+
+            {/* ✅ List Selected Courses */}
+            <div className="mb-4">
+              <h3 className="font-semibold mb-2">Selected Courses:</h3>
+              <ul className="list-disc list-inside text-gray-700">
+                {selectedCourse.map((course) => (
+                  <li key={course.id}>
+                    {course.title} - LKR {course.amount}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ✅ Total Amount */}
             <p className="text-center text-primary font-bold mb-4">
-              LKR {selectedCourse?.amount}
+              Total Amount: LKR {totalAmount}
             </p>
+
+            {/* ✅ Payment Options */}
             <div className="flex justify-center gap-4 mb-4">
               <button
                 onClick={() => setSelectedPayment("card")}
-                className={`px-4 py-2 rounded ${selectedPayment === "card"
-                    ? "bg-primary text-white" : "bg-gray-200"}`}
+                className={`px-4 py-2 rounded ${
+                  selectedPayment === "card" ? "bg-primary text-white" : "bg-gray-200"
+                }`}
               >
                 💳 Online
               </button>
               <button
                 onClick={() => setSelectedPayment("receipt")}
-                className={`px-4 py-2 rounded ${selectedPayment === "receipt"
-                    ? "bg-primary text-white" : "bg-gray-200"}`}
+                className={`px-4 py-2 rounded ${
+                  selectedPayment === "receipt" ? "bg-primary text-white" : "bg-gray-200"
+                }`}
               >
                 📄 Receipt
               </button>
             </div>
 
+            {/* ✅ Card Payment */}
             {selectedPayment === "card" && (
               <button
                 onClick={handlePayNow}
@@ -323,6 +397,7 @@ export default function Courses() {
               </button>
             )}
 
+            {/* ✅ Receipt Upload */}
             {selectedPayment === "receipt" && (
               <form onSubmit={handleReceiptUpload} className="space-y-4">
                 <input
@@ -342,6 +417,7 @@ export default function Courses() {
             )}
           </Modal>
         )}
+
       </div>
     </>
   );
