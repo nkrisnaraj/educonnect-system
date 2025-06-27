@@ -97,7 +97,9 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                   Welcome to{" "}
+
                   <span className="bg-gradient-to-r from-[#2064d4] via-purple-500 to-[#2064d4] bg-clip-text text-transparent">
+
                     EduConnect
                   </span>
                   !
@@ -127,7 +129,9 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <button 
                   onClick={() => scrollToSection('about')}
+
                   className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
+
                 >
                   Get Started
                 </button>
@@ -228,7 +232,9 @@ export default function HomePage() {
   </div>
 
   {/* Features Section */}
+
   <div className="max-w-6xl mx-auto px-8 p-6 ">
+
     <h3 className="text-2xl font-bold text-center mb-8 text-blue-700 dark:text-blue-400">
       Why Choose EduConnect?
     </h3>
@@ -257,9 +263,11 @@ export default function HomePage() {
       ].map((feature, i) => (
         <div
           key={i}
+
           className="border border-blue-100 border-width-3 bg-[#FAF9F6] dark:border-blue-600  dark:bg-gray-800 p-6 rounded-xl text-center shadow-lg hover:shadow-xl transition-all hover:scale-105"
         >
           <div className="flex  justify-center mb-4">
+
             <div className="w-16 h-16 bg-white border border-primary dark:bg-blue-900 rounded-full flex items-center justify-center">
               <span className="text-2xl">{feature.emoji}</span>
             </div>
