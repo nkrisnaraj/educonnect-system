@@ -3,9 +3,7 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 from django.conf import settings
 from django.utils import timezone
-
-# Extend Django's default user model
-
+from django.contrib.postgres.fields import ArrayField
 
 # Student profile model (additional student-only fields)
 class StudentProfile(models.Model):
@@ -67,6 +65,10 @@ class OnlinePayment(models.Model):
     invoice_no = models.CharField(max_length=100, unique=True)
     #status = models.CharField(max_length=10, choices=[('success', 'Success'), ('fail', 'Fail')])
     verified = models.BooleanField(default=False)
+    # course_ids = ArrayField(models.IntegerField(), blank=True, default=list)
+    course_ids = models.JSONField(blank=True, null=True)  
+    course_summary = models.TextField(blank=True, null=True)
+    initiated_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.onlinepayid:
