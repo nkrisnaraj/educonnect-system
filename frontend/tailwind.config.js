@@ -38,6 +38,10 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        
+      },
+      fontFamily: {
+        lora: ['Lora', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",

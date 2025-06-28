@@ -19,15 +19,43 @@ from google.cloud import vision
 import pytesseract
 from PIL import Image
 from io import BytesIO
-from instructor.models import Course
+from instructor.models import Class
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
 
+import os
+import json
+import tempfile
+from dotenv import load_dotenv
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+load_dotenv()
+
+creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+if creds_json_str:
+    creds_dict = json.loads(creds_json_str)
+    print(creds_dict['private_key'])
+else:
+    print("GOOGLE_APPLICATION_CREDENTIALS_JSON not set")
+
+temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+json.dump(creds_dict, temp_file)
+temp_file.flush()
+
+# Set Google API path
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+
+# ✅ Check Temp File Path + Content for Debugging
+print("✅ Temp Google Auth JSON written at:", temp_file.name)
+print("✅ File exists:", os.path.exists(temp_file.name))
+
+
 User = get_user_model()
 
-# @method_decorator(csrf_exempt, name='dispatch')
+#pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+#payherenotify view
+@method_decorator(csrf_exempt, name='dispatch')
 class PayHereNotifyView(APIView):
     """
     Called by PayHere when payment is completed (success/fail).
@@ -98,7 +126,7 @@ class PayHereNotifyView(APIView):
 
 
 
-
+#Online payment view
 class OnlinePaymentView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -156,13 +184,13 @@ class ReceiptUploadView(APIView):
         if not image:
             return Response({'error': "No image provided"}, status=400)
 
-        # Step 1: Create payment with zero amount
+        #  Create payment with zero amount
         payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
 
-        # Step 2: Setup Google Vision client
+        #  Setup Google Vision client
         client = vision.ImageAnnotatorClient()
 
-        # Step 3: Read uploaded image and send to Vision API
+        #  Read uploaded image and send to Vision API
         image_content = image.read()
         vision_image = vision.Image(content=image_content)
         response = client.text_detection(image=vision_image)
@@ -170,7 +198,7 @@ class ReceiptUploadView(APIView):
         if not response.text_annotations:
             return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
 
-        # Step 4: Extract text and parse details
+        #  Extract text and parse details
         full_text = response.text_annotations[0].description
         print("GOOGLE OCR TEXT:\n", full_text)
 

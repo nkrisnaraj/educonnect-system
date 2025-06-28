@@ -32,9 +32,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
-print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
+#BASE_DIR = Path(__file__).resolve().parent.parent
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
+#print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
 
 
 # Application definition
@@ -66,18 +66,19 @@ except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
 
-creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
 
-# Step 5: Write JSON string to a temporary file at runtime
-if creds_json_str:
-    creds_dict = json.loads(creds_json_str)
-    # Create temp file with the credentials
-    temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
-    json.dump(creds_dict, temp_file)
-    temp_file.flush()
 
-    # Tell Google library where to find this file
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+# creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+# #  Write JSON string to a temporary file at runtime
+# if creds_json_str:
+#     creds_dict = json.loads(creds_json_str)
+#     # Create temp file with the credentials
+#     temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+#     json.dump(creds_dict, temp_file)
+#     temp_file.flush()
+
+#     # Tell Google library where to find this file
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
 
 
 
@@ -124,7 +125,7 @@ CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for p
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES':[],
-}
+}   
 
 ROOT_URLCONF = 'backend.urls'
 
