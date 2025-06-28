@@ -25,6 +25,32 @@ from google.cloud import vision
 from django.db import IntegrityError
 from google.oauth2 import service_account
 
+import os
+import json
+import tempfile
+from dotenv import load_dotenv
+
+load_dotenv()
+
+creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+if creds_json_str:
+    creds_dict = json.loads(creds_json_str)
+    print(creds_dict['private_key'])
+else:
+    print("GOOGLE_APPLICATION_CREDENTIALS_JSON not set")
+
+temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+json.dump(creds_dict, temp_file)
+temp_file.flush()
+
+# Set Google API path
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+
+# ✅ Check Temp File Path + Content for Debugging
+print("✅ Temp Google Auth JSON written at:", temp_file.name)
+print("✅ File exists:", os.path.exists(temp_file.name))
+
 
 User = get_user_model()
 
