@@ -82,9 +82,15 @@ class ReceiptPayment(models.Model):
     receiptid = models.CharField(max_length=20, unique=True, blank=True)
     payid = models.OneToOneField(Payment, on_delete=models.CASCADE)
     image_url = models.ImageField(upload_to='receipts/')
-    transaction_id = models.CharField(unique=True,null=True, blank=True)
     verified = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    record_no = models.CharField(unique=True,null=True, blank=True,max_length=100)
+    paid_date_time = models.DateTimeField(null=True, blank=True)
+    location = models.CharField(max_length=255, null=True, blank=True)
+    paid_amount = models.CharField(max_length=100, null=True, blank=True)
+    account_no = models.CharField(max_length=50, null=True, blank=True)
+    account_name = models.CharField(max_length=255, null=True, blank=True)
+
 
     def save(self, *args, **kwargs):
         if not self.receiptid:
