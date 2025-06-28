@@ -6,14 +6,14 @@ import { useParams, useSearchParams } from "next/navigation";
 
 export default function Courses() {
   const enrolledCourses = [
-    { id: 1, title: "Chemistry", description: "Introduction to Organic Chemistry", amount: 1000 },
-    { id: 2, title: "Physics", description: "Fundamentals of Mechanics", amount: 3000 }
+    { id: 1, title: "2026 June 1", description: "2026 A/L Batch 1", amount: 1000 },
+    { id: 2, title: "2026 June 2", description: "2026 A/L Batch 2", amount: 3000 }
   ];
 
   const allCourses = [
-    { id: 3, title: "Mathematics", description: "Calculus and Algebra", amount: 1000 },
-    { id: 4, title: "Biology", description: "Cell Structure & Function", amount: 4000 },
-    { id: 5, title: "Computer Science", description: "Introduction to Programming", amount: 2000 }
+    { id: 3, title: "2025 MCQ June", description: "Day Batch", amount: 1000 },
+    { id: 4, title: "2025 Part 2", description: "Mon-fri 10.30 to 12.00", amount: 4000 },
+    { id: 5, title: "2027 June", description: "2027 A/L Batch 1", amount: 2000 }
   ];
 
   const [selectedCourse, setSelectedCourse] = useState([]);

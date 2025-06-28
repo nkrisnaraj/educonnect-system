@@ -24,11 +24,13 @@ from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
 from django.db import IntegrityError
 from google.oauth2 import service_account
-
+from django.db import models
 import os
 import json
 import tempfile
 from dotenv import load_dotenv
+from datetime import datetime
+
 
 load_dotenv()
 
@@ -232,21 +234,42 @@ class ReceiptUploadView(APIView):
         print("GOOGLE OCR TEXT:\n", full_text)
 
         # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
-        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
-        amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
-        payment.amount = amount
+        record_no_match = re.search(r'Record No\s*(\d+)', full_text,re.IGNORECASE)
+        location_match = re.search(r'Location\s*(.*)', full_text, re.IGNORECASE)
+        paid_amount_match = re.search(r'RS\.?\s*([\d,\.]+)', full_text, re.IGNORECASE)
+        account_no_match = re.search(r'TO\s*(\d+)', full_text, re.IGNORECASE)
+        account_name_match = re.search(r'TO\s*\d+\s*(.+)', full_text, re.IGNORECASE)
+        date_match = re.search(r'(\d{2}/\d{2}/\d{2})\s+(\d{2}:\d{2})', full_text)
+        
+        if paid_amount_match:
+            amount_str = paid_amount_match.group(1).replace(',', '')
+            payment.amount = float(amount_str)
+        else:
+            payment.amount = 0.0
+
         payment.save()
 
-        # Extract transaction ID (e.g., Transaction ID: ABC123)
-        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
-        transaction_id = transaction_id_match.group(1) if transaction_id_match else None
+        # Parse date and time
+        paid_date_time = None
+        if date_match:
+            date_str = date_match.group(1)
+            time_str = date_match.group(2)
+            try:
+                paid_date_time = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%y %H:%M")
+            except ValueError as e:
+                print(f"Date parsing error: {e}")
 
         # Step 5: Save receipt image + extracted info
         try:
             receipt_payment = ReceiptPayment.objects.create(
                 payid=payment,
                 image_url=image,
-                transaction_id=transaction_id,
+                record_no=record_no_match.group(1) if record_no_match else None,
+                location=location_match.group(1).strip() if location_match else None,
+                paid_amount=paid_amount_match.group(1).replace(',', '') if paid_amount_match else None,
+                account_no=account_no_match.group(1) if account_no_match else None,
+                account_name=account_name_match.group(1).strip() if account_name_match else None,
+                paid_date_time=paid_date_time,
                 verified=False
             )
         except IntegrityError as e:
@@ -258,86 +281,6 @@ class ReceiptUploadView(APIView):
             "data": serializer.data
         }, status=status.HTTP_201_CREATED)
 
-# from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-# #from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
-# from msrest.authentication import CognitiveServicesCredentials
-# import io
-# import os
-# from dotenv import load_dotenv
-
-# load_dotenv()
-
-# AZURE_ENDPOINT = os.getenv('AZURE_OCR_ENDPOINT')
-# AZURE_SUBSCRIPTION_KEY = os.getenv('AZURE_OCR_KEY')
-
-# print("Endpoint:", AZURE_ENDPOINT)
-# print("Subscription Key:", AZURE_SUBSCRIPTION_KEY)
-
-# class ReceiptUploadView(APIView):
-#     authentication_classes = [JWTAuthentication]
-#     permission_classes = [IsAuthenticated]
-#     parser_classes = [MultiPartParser, FormParser]
-
-#     def post(self, request):
-#         user = request.user
-#         image = request.FILES.get("image")
-#         method = 'receipt'
-
-#         if not image:
-#             return Response({'error': "No image provided"}, status=400)
-
-#         # Create payment with zero amount
-#         payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
-
-#         # Initialize Azure Computer Vision Client
-#         client = ComputerVisionClient(
-#             AZURE_ENDPOINT, 
-#             CognitiveServicesCredentials(AZURE_SUBSCRIPTION_KEY)
-#         )
-
-#         # Read image bytes
-#         image_content = image.read()
-
-#         # Use Azure OCR to extract text from image
-#         ocr_result = client.recognize_printed_text_in_stream(image=io.BytesIO(image_content))
-
-#         # Collect all recognized lines into a single text
-#         full_text = ""
-#         for region in ocr_result.regions:
-#             for line in region.lines:
-#                 line_text = " ".join([word.text for word in line.words])
-#                 full_text += line_text + "\n"
-
-#         if not full_text.strip():
-#             return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
-
-#         print("AZURE OCR TEXT:\n", full_text)
-
-#         # Extract amount (same as before)
-#         amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
-#         amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
-#         payment.amount = amount
-#         payment.save()
-
-#         # Extract transaction ID (same as before)
-#         transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
-#         transaction_id = transaction_id_match.group(1) if transaction_id_match else None
-
-#         try:
-#             receipt_payment = ReceiptPayment.objects.create(
-#                 payid=payment,
-#                 image_url=image,
-#                 transaction_id=transaction_id,
-#                 verified=False
-#             )
-#         except IntegrityError:
-#             return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
-
-#         serializer = ReceiptPaymentSerializer(receipt_payment)
-#         return Response({
-#             "message": "Successfully saved details. After verification, you can enroll in class.",
-#             "data": serializer.data
-#         }, status=status.HTTP_201_CREATED)
 
 
 
@@ -354,17 +297,12 @@ class PaymentInfoView(APIView):
 
         payment_list = [] 
 
-        
-
-        
         for payment in payments:
             enrollment = Enrollment.objects.filter(payid=payment)
             coursename = enrollment.courseid.title if enrollment else None
 
             invoice_no = None
-            transaction_id = None
-
-            
+            record_no = None
 
             if payment.method == 'online' :
                 try:
@@ -376,9 +314,9 @@ class PaymentInfoView(APIView):
             elif payment.method == 'receipt':
                 try:
                     receipt_payment = ReceiptPayment.objects.get(payid=payment)
-                    transaction_id = receipt_payment.transaction_id
+                    record_no = receipt_payment.record_no
                 except ReceiptPayment.DoesNotExist:
-                    transaction_id = None
+                     record_no = None
 
             payment_list.append({
                     "payid": payment.payid,
@@ -388,7 +326,7 @@ class PaymentInfoView(APIView):
                     "method": payment.method,
                     "course": coursename,
                     "Invoice_No" : invoice_no,
-                    "Transaction" : transaction_id
+                    "Record_No" : record_no
             })
 
         return Response({"payments" : payment_list})
@@ -410,6 +348,7 @@ class StudentProfileView(APIView):
         print(profile)
         serializer = StudentProfileSerializer(profile)
         return Response(serializer.data)
+    
 import hashlib
 import base64
 import time
