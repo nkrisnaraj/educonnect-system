@@ -252,7 +252,7 @@ export default function PaymentsPage() {
                 <p><strong>Type:</strong> {selectedPayment.type}</p>
                 <p><strong>Method:</strong> {selectedPayment.method}</p>
                 <p><strong>Status:</strong> {selectedPayment.status}</p>
-                <p><strong>Amount:</strong> ${selectedPayment.amount}</p>
+                <p><strong>Amount:</strong> Rs{selectedPayment.amount}</p>
                 <p><strong>Description:</strong> {selectedPayment.description}</p>
               </div>
               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">

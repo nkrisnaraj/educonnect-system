@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 
 import axios from "axios";
 import { useParams, useSearchParams } from "next/navigation";
+import PayButton from "@/components/paybutton";
+import { useAuth } from "@/context/AuthContext";
+
 
 export default function Courses() {
   const enrolledCourses = [
@@ -24,7 +27,7 @@ export default function Courses() {
 
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [user, setUser] = useState(null);
-  const [accessToken, setAccessToken] = useState(null);
+
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -47,7 +50,7 @@ export default function Courses() {
     }
   }, [status]);
 
-  
+
   useEffect(() => {
 
     try {
@@ -164,57 +167,123 @@ export default function Courses() {
     }
   };
 
-  const handlePayNow = async () => {
-    if (!selectedCourse || !user) {
-      alert("Missing data");
-      return;
-    }
+  // const handlePayNow = async () => {
+  //   if (!selectedCourse || !user) {
+  //     alert("Missing data");
+  //     return;
+  //   }
 
-    setIsProcessing(true);
-    try {
-      const token = await getValidToken();
-      console.log("Access Token:", token);
-      console.log("Token Expired:", isTokenExpired(token));
-      // alert("Selected Course:", selectedCourse.amount);
+  //   setIsProcessing(true);
+  //   try {
+  //     const token = await getValidToken();
+  //     console.log("Access Token:", token);
+  //     console.log("Token Expired:", isTokenExpired(token));
+  //     // alert("Selected Course:", selectedCourse.amount);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/students/payments/create-payhere-url/`,
-        {
-          course_id: selectedCourse.id,
-          amount: selectedCourse.amount,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  //     const response = await axios.post(
+  //       `${API_BASE_URL}/students/payments/create-payhere-url/`,
+  //       {
+  //         course_id: selectedCourse.id,
+  //         amount: selectedCourse.amount,
+  //       },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
 
-      const { url, params } = response.data;
+  //     const { url, params } = response.data;
 
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = url;
-      Object.entries(params).forEach(([key, value]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-      });
+  //     const form = document.createElement("form");
+  //     form.method = "POST";
+  //     form.action = url;
+  //     Object.entries(params).forEach(([key, value]) => {
+  //       const input = document.createElement("input");
+  //       input.type = "hidden";
+  //       input.name = key;
+  //       input.value = value;
+  //       form.appendChild(input);
+  //     });
 
 
-      document.body.appendChild(form);
-      form.submit();
-      console.log("Payment initiation response:", response.data);
-    } catch (err) {
+  //     document.body.appendChild(form);
+  //     form.submit();
+  //     console.log("Payment initiation response:", response.data);
+  //   } catch (err) {
 
-      console.log("❌ Payment initiation failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  //     console.log("❌ Payment initiation failed");
+  //   } finally {
+  //     setIsProcessing(false);
+  //   }
+  // };
 
+      const { accessToken } = useAuth();
+      const handlePayment = async () => {
+  
+          const paymentDetails = {
+              order_id: `order_${Date.now()}`,
+              amount: '500.00',
+              currency: 'LKR',
+              first_name: 'Charith',
+              last_name: 'Wickramasinghe',
+              email: 'charith@zhake.live',
+              phone: '01162234050',
+              address: '123 Main St',
+              city: 'Colombo',
+              country: 'Sri Lanka',
+          };
+  
+          try {
+              // ✅ Request hash from Django backend
+              if (!accessToken) {
+                  alert("You're not logged in. Please login first.");
+                  return;
+              }
+  
+              const res = await fetch('http://127.0.0.1:8000/students/api/initiate-payment/', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${accessToken}`,
+                  },
+  
+                  body: JSON.stringify(paymentDetails),
+              });
+  
+              const { merchant_id, hash } = await res.json();
+  
+              const payment = {
+                  sandbox: true,
+                  merchant_id,
+                  return_url: `${window.location.origin}/students/payment/success`,
+                  cancel_url: `${window.location.origin}/students/payment/cancel`,
+                  notify_url: `https://francisco-saving-roots-suggests.trycloudflare.com/students/api/payment/notify/`,
+                  order_id: paymentDetails.order_id,
+                  items: 'Class Fees',
+                  amount: paymentDetails.amount,
+                  currency: paymentDetails.currency,
+                  ...paymentDetails,
+                  hash,
+              };
+              if (!merchant_id || !hash || !paymentDetails.order_id || !paymentDetails.amount) {
+                  console.error("Invalid PayHere payload:", payment);
+                  alert("Invalid payment data. Please try again.");
+                  return;
+              }
+  
+  
+              if (window.payhere) {
+                  console.log("PayHere payload:", payment);
+                  window.payhere.startPayment(payment);
+              } else {
+                  alert("PayHere SDK not loaded");
+              }
+          } catch (err) {
+              console.error('Payment error', err);
+              alert("Payment failed");
+          }
+      };
   return (
     <>
       <div className="bg-gray-50 min-h-screen p-6">
@@ -300,27 +369,37 @@ export default function Courses() {
               <button
                 onClick={() => setSelectedPayment("card")}
                 className={`px-4 py-2 rounded ${selectedPayment === "card"
-                    ? "bg-primary text-white" : "bg-gray-200"}`}
+                  ? "bg-primary text-white" : "bg-gray-200"}`}
               >
                 💳 Online
               </button>
               <button
                 onClick={() => setSelectedPayment("receipt")}
                 className={`px-4 py-2 rounded ${selectedPayment === "receipt"
-                    ? "bg-primary text-white" : "bg-gray-200"}`}
+                  ? "bg-primary text-white" : "bg-gray-200"}`}
               >
                 📄 Receipt
               </button>
             </div>
 
             {selectedPayment === "card" && (
-              <button
-                onClick={handlePayNow}
-                className="w-full bg-green-600 text-white px-4 py-3 rounded"
-                disabled={isProcessing}
-              >
-                {isProcessing ? "Processing..." : "Pay with PayHere"}
-              </button>
+              // <button
+              //   onClick={handlePayNow}
+              //   className="w-full bg-green-600 text-white px-4 py-3 rounded"
+              //   disabled={isProcessing}
+              // >
+              //   {isProcessing ? "Processing..." : "Pay with PayHere"}
+              // </button>
+              <div className="max-w-md mx-auto mt-20 p-6 bg-slate-700 rounded-lg shadow-md">
+                <h1 className="text-2xl font-bold text-center mb-6">Checkout</h1>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <h2 className="font-semibold">Pay Class Fees</h2>
+                    <p>LKR 2500.00</p>
+                  </div>
+                  <PayButton />
+                </div>
+              </div>
             )}
 
             {selectedPayment === "receipt" && (

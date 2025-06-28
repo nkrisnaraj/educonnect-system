@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
+from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment, PaymentTest
 import uuid
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -22,6 +22,13 @@ from io import BytesIO
 from instructor.models import Class
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+import hashlib
+from django.conf import settings
+
 
 import os
 import json
@@ -54,76 +61,50 @@ User = get_user_model()
 
 #pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-#payherenotify view
-@method_decorator(csrf_exempt, name='dispatch')
-class PayHereNotifyView(APIView):
-    """
-    Called by PayHere when payment is completed (success/fail).
-    It updates OnlinePayment status accordingly.
-    """
-    authentication_classes = []
-    permission_classes = []
+merchant_id = settings.PAYHERE_MERCHANT_ID
+merchant_secret = settings.PAYHERE_MERCHANT_SECRET
 
-    def post(self, request, *args, **kwargs):
+
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])  
+def payment_notify(request):
+
+    print("DEBUG: Received payment notification")
+    data = request.data
+
+    order_id = data.get('order_id')
+    amount = data.get('payhere_amount')
+    currency = data.get('payhere_currency')
+    status_code = data.get('status_code')  # 2 = Success
+    received_sig = data.get('md5sig')
+
+    # merchant_id = settings.PAYHERE_MERCHANT_ID
+    # merchant_secret = settings.PAYHERE_MERCHANT_SECRET
+
+    if not all([order_id, amount, currency, status_code, received_sig]):
+        return Response({"error": "Missing payment fields"}, status=400)
+
+    # ✅ Verify the signature
+    hash_string = f"{merchant_id}{order_id}{amount}{currency}{status_code}{hashlib.md5(merchant_secret.encode()).hexdigest().upper()}"
+    expected_sig = hashlib.md5(hash_string.encode()).hexdigest().upper()
+
+    if received_sig == expected_sig and status_code == '2':
         try:
-            order_id = request.data.get('order_id')  # Format: CLASS-COURSEID-USERID
-            status_code = request.data.get('status')  # ⚠️ Use correct field name
-            payhere_amount = request.data.get('payhere_amount')
-
-            print("Received from PayHere Data:", request.data)
-
-            if status_code == '2':
-                payment_status = 'success'
-            elif status_code == '1':
-                payment_status = 'fail'
-            else:
-                payment_status = "pending"
-
-            if not order_id or not status_code:
-                return Response({"error": "Missing required fields"}, status=400)
-
-            # Extract course_id and user_id
-            parts = order_id.split('-')
-            if len(parts) != 3:
-                return Response({"error": "Invalid order_id format"}, status=400)
-
-            course_id = int(parts[1])
-            user_id = int(parts[2])
-            user = User.objects.get(id=user_id)
-
-            # Find corresponding Payment
-            payment = Payment.objects.filter(
-                stuid=user,
-                method='online',
-                status='pending',
-                amount=payhere_amount
-            ).order_by('-date').first()
-
-            if not payment:
-                return Response({"error": "Payment not found"}, status=404)
-
-            payment.status = payment_status
+            payment = PaymentTest.objects.get(order_id=order_id)
+            payment.status = 'completed'
             payment.save()
-
-            online_payment = OnlinePayment.objects.get(payid=payment)
-            online_payment.verified = payment_status
-            online_payment.save()
-
-            if payment_status == "success":
-                Enrollment.objects.create(
-                    stuid=user,
-                    courseid=course_id,
-                    payid=payment
-                )
-
-            return HttpResponse("Payment notification processed successfully.", status=200)
-
-        except Exception as e:
-            print("Notify error:", e)
-            return Response({"error": str(e)}, status=400)  
-
-
-
+            print(f"✅ Payment verified and updated: {order_id}")
+            return Response("Payment verified", status=200)
+        except PaymentTest.DoesNotExist:
+            print(f"❌ Payment not found for order: {order_id}")
+            return Response("Payment not found", status=404)
+    else:
+        print("❌ Invalid signature or failed status code")
+        return Response("Invalid signature", status=400)
 
 #Online payment view
 class OnlinePaymentView(APIView):
@@ -174,8 +155,6 @@ class ReceiptUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        #print(os.path.exists(os.path.join(BASE_DIR, 'backend', 'vision-key.json')))
-
         user = request.user
         image = request.FILES.get("image")
         method = 'receipt'
@@ -183,47 +162,56 @@ class ReceiptUploadView(APIView):
         if not image:
             return Response({'error': "No image provided"}, status=400)
 
-        #  Create payment with zero amount
-        payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
+        # Validate file size (max 5MB)
+        if image.size > 5 * 1024 * 1024:
+            return Response({'error': "File too large. Maximum size is 5MB"}, status=400)
 
-        #  Setup Google Vision client
-        client = vision.ImageAnnotatorClient()
+        # Validate file type
+        allowed_types = ['image/jpeg', 'image/png', 'image/jpg']
+        if image.content_type not in allowed_types:
+            return Response({'error': "Invalid file type. Only JPEG and PNG are allowed"}, status=400)
 
-        #  Read uploaded image and send to Vision API
-        image_content = image.read()
-        vision_image = vision.Image(content=image_content)
-        response = client.text_detection(image=vision_image)
+        try:
+            # Create payment with zero amount in transaction
+            with transaction.atomic():
+                payment = Payment.objects.create(
+                    stuid=user, 
+                    method=method, 
+                    amount=0.0,
+                    status='pending'
+                )
 
-        if not response.text_annotations:
-            return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+                # Setup Google Vision client with error handling
+                try:
+                    client = vision.ImageAnnotatorClient()
+                except Exception as e:
+                    logger.error(f"Failed to initialize Vision client: {str(e)}")
+                    return Response({'error': "OCR service unavailable"}, status=503)
 
-        #  Extract text and parse details
-        full_text = response.text_annotations[0].description
-        print("GOOGLE OCR TEXT:\n", full_text)
+                # Read uploaded image and send to Vision API
+                try:
+                    image_content = image.read()
+                    vision_image = vision.Image(content=image_content)
+                    response = client.text_detection(image=vision_image)
+                except Exception as e:
+                    logger.error(f"Vision API error: {str(e)}")
+                    return Response({'error': "Failed to process image"}, status=500)
 
-        # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
-        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
-        amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
-        payment.amount = amount
-        payment.save()
+                if not response.text_annotations:
+                    payment.status = 'failed'
+                    payment.save()
+                    return Response({
+                        'error': "Could not detect text in image. Please upload a clearer receipt."
+                    }, status=400)
 
-        # Extract transaction ID (e.g., Transaction ID: ABC123)
-        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
-        transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
+                # Process OCR results here...
+                # Add your existing OCR processing logic
 
-        # Step 5: Save receipt image + extracted info
-        receipt_payment = ReceiptPayment.objects.create(
-            payid=payment,
-            image_url=image,
-            transaction_id=transaction_id,
-            verified=False
-        )
+                return Response({'message': "Receipt uploaded successfully"}, status=201)
 
-        serializer = ReceiptPaymentSerializer(receipt_payment)
-        return Response({
-            "message": "Successfully saved details. After verification, you can enroll in class.",
-            "data": serializer.data
-        }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Receipt upload error: {str(e)}")
+            return Response({'error': "Failed to process receipt"}, status=500)
 
 
 # class ReceiptUploadView(APIView):
@@ -317,6 +305,9 @@ class PaymentInfoView(APIView):
                     "amount": float(payment.amount),
                     "status": payment.status,
                     "method": payment.method,
+
+
+
                     "course": coursename,
                     "Invoice_No" : invoice_no,
                     "Transaction" : transaction_id
@@ -341,71 +332,54 @@ class StudentProfileView(APIView):
         print(profile)
         serializer = StudentProfileSerializer(profile)
         return Response(serializer.data)
-import hashlib
-import base64
-import time
-from django.conf import settings
-from rest_framework.views import APIView
+
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from django.utils.decorators import method_decorator
-# from django.views.decorators.csrf import csrf_exempt
+import hashlib
+from django.conf import settings
+from .models import PaymentTest  # Use your actual model name
 
-# @method_decorator(csrf_exempt, name='dispatch')
-class CreatePayHereCheckoutUrl(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        print("AUTH HEADER:", request.headers.get("Authorization"))
-        print("USER:", request.user)
-        print("IS AUTHENTICATED:", request.user.is_authenticated)
-
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def initiate_payment(request):
+    try:
         user = request.user
-        course_id = request.data.get("course_id")
-        amount = request.data.get("amount")
+        print(f"DEBUG: Received payment request from {user}")
 
-        if not course_id or not amount:
-            return Response({"error": "course_id and amount are required"}, status=400)
+        data = request.data
+        order_id = data.get("order_id")
+        amount = data.get("amount")
+        currency = data.get("currency")
 
-        try:
-            amount_float = float(amount)
-        except ValueError:
-            return Response({"error": "Invalid amount format"}, status=400)
+        merchant_id = settings.PAYHERE_MERCHANT_ID
+        merchant_secret = settings.PAYHERE_MERCHANT_SECRET
 
-        order_id = f"ORDER-{user.id}-{course_id}-{int(time.time())}"
-        currency = "LKR"
-        merchant_id = "1230994"
-        # merchant_secret = "MzkwOTE0MzEzNDE5MjQwNjA2NzI4ODA3Mzk0MzE2MTY5MjYyMzI="
-        merchant_secret_base64 = "MzY1ODM3ODU5MjI2MTg3MjI1MjU2ODM5OTczMzM5NzQwMzg3ODc="
-        merchant_secret = base64.b64decode(merchant_secret_base64).decode("utf-8")
+        # Validate fields
+        if not all([order_id, amount, currency]):
+            return Response({"error": "Missing payment fields"}, status=400)
 
-        hash_string = f"{merchant_id}{order_id}{amount_float:.2f}{currency}{merchant_secret}"
-        print(hash_string)
-        hashed = hashlib.sha256(hash_string.encode("utf-8")).hexdigest().upper()
+        # ✅ Save payment to DB (status = pending)
+        PaymentTest.objects.create(
+            user=user,
+            order_id=order_id,
+            amount=amount,
+            currency=currency,
+            status="pending"
+        )
 
-        payload = {
-            "merchant_id": merchant_id,
-            "return_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=success",
-            "cancel_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=cancel",
-            # "notify_url": "https://rnfky-101-2-191-32.a.free.pinggy.link/students/payhere-notify",
-            "notify_url": "https://google.com",
-            "order_id": order_id,
-            "items": "Course Fee",
-            "amount": "%.2f" % amount_float,
-            "currency": currency,
-            "hash": hashed,
-            "first_name": user.first_name or "Student",
-            "last_name": user.last_name or "",
-            "email": user.email or "",
-            "phone": getattr(user.student_profile, "mobile", "0771234567"),
-            "address": getattr(user.student_profile, "address", "N/A"),
-            "city": "Colombo",
-            "country": "Sri Lanka",
-        }
-        print("PAYHERE Payload:", json.dumps(payload, indent=2))
+        # ✅ Generate hash
+        hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
+        hash_data = f"{merchant_id}{order_id}{amount}{currency}{hash_secret}"
+        hash_ = hashlib.md5(hash_data.encode("utf-8")).hexdigest().upper()
 
         return Response({
-            "url": "https://sandbox.payhere.lk/pay/checkout",
-            "params": payload
+            "merchant_id": merchant_id,
+            "hash": hash_
         })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
