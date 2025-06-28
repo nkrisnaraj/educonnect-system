@@ -183,54 +183,6 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Bell className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Notifications</p>
-              <p className="text-xl font-bold">{notifications.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Unread</p>
-              <p className="text-xl font-bold">{unreadCount}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">High Priority</p>
-              <p className="text-xl font-bold">{notifications.filter((n) => n.priority === "high").length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Today</p>
-              <p className="text-xl font-bold">{notifications.filter((n) => n.time.includes("hour")).length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Filters and Search */}
       <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">

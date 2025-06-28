@@ -22,12 +22,6 @@ export default function InstructorDashboard() {
     { id: 4, name: "Mathematics", students: 41, color: "bg-orange-500" },
   ]
 
-  const UploadedNotes = [
-    { id: 1, subject: "Physics", topic: "Quantum Mechanics", dueDate: "2024-06-20"},
-    { id: 2, subject: "Chemistry", topic: "Organic Chemistry", dueDate: "2024-06-22"},
-    { id: 3, subject: "Biology", topic: "Cell Biology", dueDate: "2024-06-25"},
-  ]
-
   const recentSchedules = [
     { id: 1, class: "2025 A/L Physics", time: "8:00 AM", date: "Today"},
     { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today"},
@@ -121,7 +115,7 @@ export default function InstructorDashboard() {
         </div>
 
         {/* First Row: Courses, Notes to Upload, Calendar */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
           {/* Courses */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
@@ -139,40 +133,6 @@ export default function InstructorDashboard() {
                       <span className="font-medium">{course.name}</span>
                     </div>
                     <span className="text-sm text-gray-500">{course.students} students</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Uploaded Notes */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-            <div className="p-6 border-b border-purple-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Upload className="h-5 w-5 text-purple-600" />
-                Uploaded Notes
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-3">
-                {UploadedNotes.map((note) => (
-                  <div key={note.id} className="p-3 bg-white/50 rounded-xl border border-purple-100">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-sm">{note.subject}</h4>
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          note.priority === "high"
-                            ? "bg-red-100 text-red-800"
-                            : note.priority === "medium"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {note.priority}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">{note.topic}</p>
-                    <p className="text-xs text-gray-500">Due: {note.dueDate}</p>
                   </div>
                 ))}
               </div>

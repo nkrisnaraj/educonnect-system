@@ -17,7 +17,6 @@ export default function CoursesPage() {
       students: 45,
       lessons: 24,
       progress: 75,
-      status: "active",
       startDate: "2024-01-15",
       endDate: "2024-12-15"
     },
@@ -30,7 +29,6 @@ export default function CoursesPage() {
       students: 38,
       lessons: 20,
       progress: 60,
-      status: "active",
       startDate: "2024-02-01",
       endDate: "2024-11-30"
     },
@@ -43,7 +41,6 @@ export default function CoursesPage() {
       students: 52,
       lessons: 28,
       progress: 85,
-      status: "active",
       startDate: "2024-01-10",
       endDate: "2024-12-10"
     },
@@ -56,7 +53,6 @@ export default function CoursesPage() {
       students: 41,
       lessons: 32,
       progress: 45,
-      status: "active",
       startDate: "2024-01-20",
       endDate: "2024-12-20"
     },
@@ -69,7 +65,6 @@ export default function CoursesPage() {
       students: 35,
       lessons: 30,
       progress: 30,
-      status: "draft",
       startDate: "2024-03-01",
       endDate: "2024-12-30"
     },
@@ -103,22 +98,14 @@ export default function CoursesPage() {
           </div>
         </div>
         <div className="p-6">
-          {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
-            
-          </div>
-
           {/* Course Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredCourses.map((course) => (
+            {courses.map((course) => (
               <div key={course.id} className="bg-white/50 border border-primary rounded-lg p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="text-lg font-semibold text-gray-900">{course.name}</h4>
-                      <span className="px-2 py-1 text-xs rounded-full">
-                        {course.status}
-                      </span>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">
                       {course.code} • {course.subject}
@@ -157,23 +144,6 @@ export default function CoursesPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-primary h-2 rounded-full" style={{ width: `${course.progress}%` }}></div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{course.batch}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                      <Upload className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               </div>
