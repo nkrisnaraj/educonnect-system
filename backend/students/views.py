@@ -22,6 +22,8 @@ from io import BytesIO
 from instructor.models import Class
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
+from django.db import IntegrityError
+from google.oauth2 import service_account
 
 import os
 import json
@@ -52,7 +54,6 @@ print("✅ File exists:", os.path.exists(temp_file.name))
 
 User = get_user_model()
 
-#pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 #payherenotify view
 @method_decorator(csrf_exempt, name='dispatch')
@@ -167,6 +168,34 @@ class OnlinePaymentView(APIView):
 
 
 ##ocr related
+import os
+import json
+import tempfile
+from dotenv import load_dotenv
+
+load_dotenv()
+
+creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+
+if creds_json_str:
+    creds_json_str = creds_json_str.strip("'")
+    
+    try:
+        creds_dict = json.loads(creds_json_str)
+        print(creds_dict['private_key'])
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            print(creds_dict['private_key'])
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
+            json.dump(creds_dict, temp_file)
+            temp_file_path = temp_file.name
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file_path
+        print(f"✅ Google credentials written to temp file at: {temp_file_path}")
+    except json.JSONDecodeError as e:
+        print("❌ Error parsing GOOGLE_APPLICATION_CREDENTIALS_JSON:", e)
+
+else:
+    print("GOOGLE_APPLICATION_CREDENTIALS_JSON not set")
 
 class ReceiptUploadView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -188,6 +217,7 @@ class ReceiptUploadView(APIView):
 
         #  Setup Google Vision client
         client = vision.ImageAnnotatorClient()
+        
 
         #  Read uploaded image and send to Vision API
         image_content = image.read()
@@ -209,15 +239,18 @@ class ReceiptUploadView(APIView):
 
         # Extract transaction ID (e.g., Transaction ID: ABC123)
         transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
-        transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
+        transaction_id = transaction_id_match.group(1) if transaction_id_match else None
 
         # Step 5: Save receipt image + extracted info
-        receipt_payment = ReceiptPayment.objects.create(
-            payid=payment,
-            image_url=image,
-            transaction_id=transaction_id,
-            verified=False
-        )
+        try:
+            receipt_payment = ReceiptPayment.objects.create(
+                payid=payment,
+                image_url=image,
+                transaction_id=transaction_id,
+                verified=False
+            )
+        except IntegrityError as e:
+            return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
 
         serializer = ReceiptPaymentSerializer(receipt_payment)
         return Response({
@@ -225,52 +258,88 @@ class ReceiptUploadView(APIView):
             "data": serializer.data
         }, status=status.HTTP_201_CREATED)
 
+# from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+# #from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
+# from msrest.authentication import CognitiveServicesCredentials
+# import io
+# import os
+# from dotenv import load_dotenv
+
+# load_dotenv()
+
+# AZURE_ENDPOINT = os.getenv('AZURE_OCR_ENDPOINT')
+# AZURE_SUBSCRIPTION_KEY = os.getenv('AZURE_OCR_KEY')
+
+# print("Endpoint:", AZURE_ENDPOINT)
+# print("Subscription Key:", AZURE_SUBSCRIPTION_KEY)
 
 # class ReceiptUploadView(APIView):
 #     authentication_classes = [JWTAuthentication]
 #     permission_classes = [IsAuthenticated]
-#     parser_classes = [MultiPartParser,FormParser]
-
-
+#     parser_classes = [MultiPartParser, FormParser]
 
 #     def post(self, request):
 #         user = request.user
 #         image = request.FILES.get("image")
 #         method = 'receipt'
-        
 
 #         if not image:
-#             return Response({'error':"No image provided"},status=400)
-        
-#         payment = Payment.objects.create(stuid=user, method=method,amount=0.0)
+#             return Response({'error': "No image provided"}, status=400)
 
-#         #OCR the receipt
-#         ocr_image = Image.open(image)
-#         text = pytesseract.image_to_string(ocr_image)
+#         # Create payment with zero amount
+#         payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
 
-#         print("OCR TEXT:\n",text)
+#         # Initialize Azure Computer Vision Client
+#         client = ComputerVisionClient(
+#             AZURE_ENDPOINT, 
+#             CognitiveServicesCredentials(AZURE_SUBSCRIPTION_KEY)
+#         )
 
-#         amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', text)
-#         amount = float(amount_match.group(2).replace(',', ''))if amount_match else 0.0
+#         # Read image bytes
+#         image_content = image.read()
+
+#         # Use Azure OCR to extract text from image
+#         ocr_result = client.recognize_printed_text_in_stream(image=io.BytesIO(image_content))
+
+#         # Collect all recognized lines into a single text
+#         full_text = ""
+#         for region in ocr_result.regions:
+#             for line in region.lines:
+#                 line_text = " ".join([word.text for word in line.words])
+#                 full_text += line_text + "\n"
+
+#         if not full_text.strip():
+#             return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+
+#         print("AZURE OCR TEXT:\n", full_text)
+
+#         # Extract amount (same as before)
+#         amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
+#         amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
 #         payment.amount = amount
 #         payment.save()
 
-#         transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', text)
-#         transaction_id = transaction_id_match.group(1) if transaction_id_match else ""
-        
-        
+#         # Extract transaction ID (same as before)
+#         transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
+#         transaction_id = transaction_id_match.group(1) if transaction_id_match else None
 
-#         receipt_payment = ReceiptPayment.objects.create(
-#             payid = payment,
-#             image_url = image,
-#             transaction_id=transaction_id,
-#             verified = False
-#         )
+#         try:
+#             receipt_payment = ReceiptPayment.objects.create(
+#                 payid=payment,
+#                 image_url=image,
+#                 transaction_id=transaction_id,
+#                 verified=False
+#             )
+#         except IntegrityError:
+#             return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
 
 #         serializer = ReceiptPaymentSerializer(receipt_payment)
-#         return Response({"message":"Successfully Saved Details","data":serializer.data},status=status.HTTP_201_CREATED)
+#         return Response({
+#             "message": "Successfully saved details. After verification, you can enroll in class.",
+#             "data": serializer.data
+#         }, status=status.HTTP_201_CREATED)
 
-    
+
 
 
 #Payment Info
