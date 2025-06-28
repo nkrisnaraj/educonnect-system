@@ -66,6 +66,8 @@ except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
 
+# settings.py
+GOOGLE_APPLICATION_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDS_JSON")
 
 
 # creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
