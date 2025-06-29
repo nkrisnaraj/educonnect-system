@@ -88,7 +88,7 @@ class ReceiptPayment(models.Model):
     image_url = models.ImageField(upload_to='receipts/')
     verified = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    record_no = models.CharField(unique=True,null=True, blank=True,max_length=100)
+    record_no = models.CharField(null=True, blank=True, max_length=100)
     paid_date_time = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     paid_amount = models.CharField(max_length=100, null=True, blank=True)
