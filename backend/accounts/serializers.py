@@ -11,7 +11,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StudentProfile
-        fields = ['mobile', 'nic_no', 'address', 'year_of_al', 'school_name']
+        fields = ['mobile', 'nic_no', 'address', 'city','address','district','year_of_al', 'school_name']
 
 
 
@@ -58,6 +58,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         profile.mobile = student_profile_data.get('mobile')
         profile.nic_no = student_profile_data.get('nic_no')
         profile.address = student_profile_data.get('address')
+        profile.city = student_profile_data.get('city')
+        profile.district = student_profile_data.get('district')
         profile.year_of_al = student_profile_data.get('year_of_al')
         profile.school_name = student_profile_data.get('school_name')
         profile.save()
