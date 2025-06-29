@@ -13,6 +13,12 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet" />
+        <script
+          src="https://www.payhere.lk/lib/payhere.js"
+          async
+          defer
+        ></script>
+
       </head>
       <body>
         <AuthProvider>

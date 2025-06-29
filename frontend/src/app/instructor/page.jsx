@@ -167,7 +167,7 @@ export default function InstructorDashboard() {
               </div>
             </div>
           </div>
-
+              
           {/* Chat Box */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
@@ -209,6 +209,7 @@ export default function InstructorDashboard() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )
