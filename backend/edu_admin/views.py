@@ -77,7 +77,11 @@ class SyncZoomWebinarsView(APIView):
             return Response({"error": str(e)}, status=500)
         
         
+from rest_framework.permissions import IsAuthenticated
+
 class WebinarListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         webinars = ZoomWebinar.objects.all().order_by('-start_time')
         serializer = ZoomWebinarSerilizer(webinars, many=True)
