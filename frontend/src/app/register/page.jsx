@@ -24,6 +24,8 @@ export default function Register() {
     address: "",
     yearOfAL: "",
     schoolName: "",
+    city:"",
+    district:""
   });
 
   const handleChange = (e) => {
@@ -46,6 +48,8 @@ export default function Register() {
         address: form.address,
         year_of_al: form.yearOfAL,
         school_name: form.schoolName,
+        city: form.city,
+        district: form.district
       }
     };
 
@@ -74,9 +78,7 @@ export default function Register() {
     <>
     <MainNavbar />
     <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-       {/* Nav bar */}
        
-      
       {/* Registration Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         {message && (
@@ -113,7 +115,6 @@ export default function Register() {
                 required
               />
             </div>
-
 
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Email</label>
@@ -203,7 +204,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Address</label>
               <textarea
                 name="address"
@@ -214,8 +215,30 @@ export default function Register() {
                 rows={2}
               />
             </div>
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">City</label>
+              <textarea
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="City"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">district</label>
+              <textarea
+                name="district"
+                value={form.district}
+                onChange={handleChange}
+                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="District"
+                rows={2}
+              />
+            </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Password</label>
               <input
                 type="password"
