@@ -6,7 +6,7 @@ const paymentsData = [
   {
     id: 1,
     studentName: "John Smith",
-    amount: "$1,200",
+    amount: "Rs 1,200",
     status: "completed",
     date: "Dec 15, 2024",
     type: "Tuition Fee",
@@ -14,7 +14,7 @@ const paymentsData = [
   {
     id: 2,
     studentName: "Sarah Johnson",
-    amount: "$800",
+    amount: "Rs 800",
     status: "pending",
     date: "Dec 14, 2024",
     type: "Lab Fee",
@@ -22,7 +22,7 @@ const paymentsData = [
   {
     id: 3,
     studentName: "Mike Davis",
-    amount: "$1,500",
+    amount: "Rs 1,500",
     status: "completed",
     date: "Dec 13, 2024",
     type: "Tuition Fee",
@@ -30,7 +30,7 @@ const paymentsData = [
   {
     id: 4,
     studentName: "Emily Brown",
-    amount: "$600",
+    amount: "Rs 600",
     status: "failed",
     date: "Dec 12, 2024",
     type: "Library Fee",
@@ -38,7 +38,7 @@ const paymentsData = [
   {
     id: 5,
     studentName: "David Wilson",
-    amount: "$1,200",
+    amount: "Rs 1,200",
     status: "pending",
     date: "Dec 11, 2024",
     type: "Tuition Fee",
@@ -46,7 +46,7 @@ const paymentsData = [
   {
     id: 6,
     studentName: "Lisa Anderson",
-    amount: "$950",
+    amount: "Rs 950",
     status: "completed",
     date: "Dec 10, 2024",
     type: "Lab Fee",

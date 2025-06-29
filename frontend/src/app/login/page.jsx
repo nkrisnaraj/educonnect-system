@@ -27,7 +27,7 @@ export default function Login() {
         try {
           // console.log(username);
           // console.log(password);
-          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
+          const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/accounts/login/`,{
             username,
             password
           });

@@ -167,7 +167,7 @@ export default function InstructorDashboard() {
               </div>
             </div>
           </div>
-
+              
           {/* Chat Box */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
             <div className="p-6 border-b border-purple-200">
@@ -209,6 +209,86 @@ export default function InstructorDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Third Row: Student Details Table */}
+        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+          <div className="p-6 border-b border-purple-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Users className="h-5 w-5 text-purple-600" />
+                A/L Student Details
+              </h3>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Search students..."
+                  className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700">Export</button>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Name</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Email</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">School</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Subjects</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Batch</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id} className="border-b border-gray-100 hover:bg-white/50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-purple-600">
+                              {student.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </span>
+                          </div>
+                          <span className="font-medium">{student.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">{student.email}</td>
+                      <td className="py-3 px-4 text-gray-600">{student.school}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {student.subjects.map((subject, index) => (
+                            <span key={index} className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {student.batch}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <button className="p-1 text-blue-600 hover:bg-blue-100 rounded">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
   )
