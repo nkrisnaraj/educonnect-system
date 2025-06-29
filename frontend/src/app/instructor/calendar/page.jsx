@@ -134,38 +134,31 @@ export default function CalendarPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">A/L Class Calendar</h1>
         </div>
-        <button
-          onClick={() => setIsEventModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add Event
-        </button>
       </div>
 
       {/* Calendar Header */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-xl">
+              <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <h2 className="text-xl font-semibold">
                 {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
               </h2>
-              <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-xl">
+              <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentDate(new Date())}
-                className="px-3 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Today
               </button>
-              <div className="flex bg-gray-100 rounded-xl p-1">
+              <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("month")}
                   className={`px-3 py-1 rounded text-sm ${
@@ -238,7 +231,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Event Legend */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-6">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Event Types</h3>
         <div className="flex flex-wrap gap-4">
           {eventTypes.map((type) => (
@@ -251,7 +244,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Upcoming Events */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <h3 className="text-lg font-semibold">Upcoming A/L Events</h3>
           <p className="text-gray-600">Your scheduled classes and activities</p>
@@ -261,7 +254,7 @@ export default function CalendarPage() {
             {events.slice(0, 5).map((event) => (
               <div
                 key={event.id}
-                className="flex items-center gap-4 p-4 bg-white/50 rounded-xl border border-purple-100"
+                className="flex items-center gap-4 p-4 bg-white/50 rounded-lg border border-purple-100"
               >
                 <div className={`w-4 h-4 rounded ${event.color}`}></div>
                 <div className="flex-1">
@@ -289,116 +282,6 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
-
-      {/* Add Event Modal */}
-      {isEventModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Add New A/L Event</h2>
-              <button onClick={() => setIsEventModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <p className="text-gray-600 mb-6">Schedule a new event for your A/L students</p>
-
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Title</label>
-                  <input
-                    type="text"
-                    placeholder="Enter event title"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="">Choose type</option>
-                    {eventTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <input
-                    type="time"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                  <input
-                    type="number"
-                    placeholder="60"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Batch</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="">Choose batch</option>
-                    <option value="2025 A/L">2025 A/L</option>
-                    <option value="2026 A/L">2026 A/L</option>
-                    <option value="All">All Batches</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary">
-                    <option value="">Choose subject</option>
-                    <option value="Physics">Physics</option>
-                    <option value="Chemistry">Chemistry</option>
-                    <option value="Biology">Biology</option>
-                    <option value="Mathematics">Mathematics</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea
-                  placeholder="Event description and notes"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setIsEventModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setIsEventModalOpen(false)}
-                className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700"
-              >
-                Add Event
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
