@@ -71,8 +71,6 @@ export default function MainNavbar() {
       }
     };
 
-
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHomePage]);
@@ -104,7 +102,7 @@ useEffect(() => {
     <header
   className={`fixed top-0 left-0 text-primary right-0 z-50 flex justify-between items-center p-4 shadow-md transition-all duration-300 ${
     isScrolled
-      ? "bg-white/10 backdrop-blur-md dark:bg-blue-900/70"
+      ? "bg-white/30 backdrop-blur-md dark:bg-blue-900/70"
       : "bg-transparent"
   }`}
 >

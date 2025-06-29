@@ -21,7 +21,7 @@ import hashlib
 from django.conf import settings
 from django.db import IntegrityError
 from .utils.google_creds import setup_google_credentials  # Utility function to setup Google API creds
-
+from datetime import datetime
 # Initialize Google Cloud credentials once when module loads
 setup_google_credentials()
 
@@ -96,6 +96,7 @@ class ReceiptUploadView(APIView):
 
         # Initialize Google Vision API client
         client = vision.ImageAnnotatorClient()
+        
 
         # Read image content from uploaded file
         image_content = image.read()
@@ -111,26 +112,46 @@ class ReceiptUploadView(APIView):
         # Extract full text from first annotation
         full_text = response.text_annotations[0].description
 
-        # Use regex to find amount in text (like Rs. 1250.00 or 1,250.00)
-        amount_match = re.search(r'(Rs\.?|LKR)?\s*([\d,]+(?:\.\d{2})?)', full_text)
-        amount = float(amount_match.group(2).replace(',', '')) if amount_match else 0.0
-        payment.amount = amount
-        payment.save()  # Update payment amount in DB
+        # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
+        record_no_match = re.search(r'Record No\s*(\d+)', full_text,re.IGNORECASE)
+        location_match = re.search(r'Location\s*(.*)', full_text, re.IGNORECASE)
+        paid_amount_match = re.search(r'RS\.?\s*([\d,\.]+)', full_text, re.IGNORECASE)
+        account_no_match = re.search(r'TO\s*(\d+)', full_text, re.IGNORECASE)
+        account_name_match = re.search(r'TO\s*\d+\s*(.+)', full_text, re.IGNORECASE)
+        date_match = re.search(r'(\d{2}/\d{2}/\d{2})\s+(\d{2}:\d{2})', full_text)
+        
+        if paid_amount_match:
+            amount_str = paid_amount_match.group(1).replace(',', '')
+            payment.amount = float(amount_str)
+        else:
+            payment.amount = 0.0
 
-        # Extract transaction ID from text (e.g., "Transaction ID: ABC123")
-        transaction_id_match = re.search(r'Transaction ID[:\- ]+(\w+)', full_text)
-        transaction_id = transaction_id_match.group(1) if transaction_id_match else None
+        payment.save()
 
+        # Parse date and time
+        paid_date_time = None
+        if date_match:
+            date_str = date_match.group(1)
+            time_str = date_match.group(2)
+            try:
+                paid_date_time = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%y %H:%M")
+            except ValueError as e:
+                print(f"Date parsing error: {e}")
+
+        # Step 5: Save receipt image + extracted info
         try:
-            # Save ReceiptPayment with image and extracted transaction ID, initially not verified
             receipt_payment = ReceiptPayment.objects.create(
                 payid=payment,
                 image_url=image,
-                transaction_id=transaction_id,
+                record_no=record_no_match.group(1) if record_no_match else None,
+                location=location_match.group(1).strip() if location_match else None,
+                paid_amount=paid_amount_match.group(1).replace(',', '') if paid_amount_match else None,
+                account_no=account_no_match.group(1) if account_no_match else None,
+                account_name=account_name_match.group(1).strip() if account_name_match else None,
+                paid_date_time=paid_date_time,
                 verified=False
             )
-        except IntegrityError:
-            # Likely due to duplicate transaction ID constraint
+        except IntegrityError as e:
             return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
 
         # Serialize and return saved receipt payment details
@@ -141,6 +162,10 @@ class ReceiptUploadView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+
+
+
+#Payment Info
 class PaymentInfoView(APIView):
     """
     API view to fetch all payments of the authenticated user with related details
@@ -160,10 +185,9 @@ class PaymentInfoView(APIView):
             coursename = enrollment.courseid.title if enrollment else None
 
             invoice_no = None
-            transaction_id = None
+            record_no = None
 
-            # Get invoice or transaction depending on payment method
-            if payment.method == 'online':
+            if payment.method == 'online' :
                 try:
                     online_payment = OnlinePayment.objects.get(payid=payment)
                     invoice_no = online_payment.invoice_no
@@ -173,20 +197,20 @@ class PaymentInfoView(APIView):
             elif payment.method == 'receipt':
                 try:
                     receipt_payment = ReceiptPayment.objects.get(payid=payment)
-                    transaction_id = receipt_payment.transaction_id
+                    record_no = receipt_payment.record_no
                 except ReceiptPayment.DoesNotExist:
-                    transaction_id = None
+                     record_no = None
 
             # Append payment details to list
             payment_list.append({
-                "payid": payment.payid,
-                "date": payment.date.strftime('%Y-%m-%d'),
-                "amount": float(payment.amount),
-                "status": payment.status,
-                "method": payment.method,
-                "course": coursename,
-                "Invoice_No": invoice_no,
-                "Transaction": transaction_id
+                    "payid": payment.payid,
+                    "date": payment.date.strftime('%Y-%m-%d'),
+                    "amount": float(payment.amount),
+                    "status": payment.status,
+                    "method": payment.method,
+                    "course": coursename,
+                    "Invoice_No" : invoice_no,
+                    "Record_No" : record_no
             })
 
         return Response({"payments": payment_list})
@@ -197,6 +221,34 @@ class StudentProfileView(APIView):
     API view to get student profile details of authenticated user
     """
     authentication_classes = [JWTAuthentication]
+    @permission_classes([IsAuthenticated])
+    
+    def get(self,request):
+        user = request.user
+        print(user)
+        print(user.role)
+
+        if user.role != "student":
+            return Response({"error":"Only Students allowed"},status=403)
+    
+        profile = user.student_profile
+        print(profile)
+        serializer = StudentProfileSerializer(profile)
+        return Response(serializer.data)
+    
+import hashlib
+import base64
+import time
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils.decorators import method_decorator
+# from django.views.decorators.csrf import csrf_exempt
+
+# @method_decorator(csrf_exempt, name='dispatch')
+class CreatePayHereCheckoutUrl(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
