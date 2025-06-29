@@ -119,54 +119,6 @@ export default function ResultsPage() {
         </button>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ClipboardList className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total A/L Results</p>
-              <p className="text-xl font-bold">24</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-xl">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Avg Performance</p>
-              <p className="text-xl font-bold">87.2%</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-xl">
-              <Users className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Pass Rate</p>
-              <p className="text-xl font-bold">94.2%</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Pending Results</p>
-              <p className="text-xl font-bold">3</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Results Table */}
         <div className="lg:col-span-3 bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
