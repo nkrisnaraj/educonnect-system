@@ -27,19 +27,9 @@ const menuItems = [
     icon: GraduationCap,
   },
   {
-    title: "Upload Marks",
-    url: "/instructor/upload-marks",
-    icon: Upload,
-  },
-  {
     title: "Results",
     url: "/instructor/results",
     icon: ClipboardList,
-  },
-  {
-    title: "Reports",
-    url: "/instructor/reports",
-    icon: BarChart3,
   },
   {
     title: "Calendar",
@@ -97,15 +87,6 @@ export function InstructorSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-purple-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">SJ</span>
-          </div>
-          <div className="flex-1">
-            <p className="text-m text-white font-medium">Dr. Sarah Johnson</p>
-            <p className="text-m text-white">Senior Instructor</p>
-          </div>
-        </div>
         <div className="space-y-2">
           <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg"
             onClick={()=>

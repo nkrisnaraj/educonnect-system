@@ -1,10 +1,11 @@
 import json
+import re
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
+from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment, StudentProfile
 import uuid
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -14,224 +15,102 @@ from django.utils.decorators import method_decorator
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .serializers import ReceiptPaymentSerializer
-import re
-from google.cloud import vision
-import pytesseract
-from PIL import Image
-from io import BytesIO
-from instructor.models import Class
 from accounts.serializers import StudentProfileSerializer
 from google.cloud import vision
+import hashlib
+from django.conf import settings
 from django.db import IntegrityError
-from google.oauth2 import service_account
-from django.db import models
-import os
-import json
-import tempfile
-from dotenv import load_dotenv
+from .utils.google_creds import setup_google_credentials  # Utility function to setup Google API creds
 from datetime import datetime
+# Initialize Google Cloud credentials once when module loads
+setup_google_credentials()
 
+User = get_user_model()  # Get the User model used by Django project
 
-load_dotenv()
+merchant_id = settings.PAYHERE_MERCHANT_ID
+merchant_secret = settings.PAYHERE_MERCHANT_SECRET
 
-creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-
-if creds_json_str:
-    creds_dict = json.loads(creds_json_str)
-    print(creds_dict['private_key'])
-else:
-    print("GOOGLE_APPLICATION_CREDENTIALS_JSON not set")
-
-temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
-json.dump(creds_dict, temp_file)
-temp_file.flush()
-
-# Set Google API path
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
-
-# ✅ Check Temp File Path + Content for Debugging
-print("✅ Temp Google Auth JSON written at:", temp_file.name)
-print("✅ File exists:", os.path.exists(temp_file.name))
-
-
-User = get_user_model()
-
-
-#payherenotify view
-@method_decorator(csrf_exempt, name='dispatch')
-class PayHereNotifyView(APIView):
-    """
-    Called by PayHere when payment is completed (success/fail).
-    It updates OnlinePayment status accordingly.
-    """
-    authentication_classes = []
-    permission_classes = []
-
-    def post(self, request, *args, **kwargs):
-        try:
-            order_id = request.data.get('order_id')  # Format: CLASS-COURSEID-USERID
-            status_code = request.data.get('status')  # ⚠️ Use correct field name
-            payhere_amount = request.data.get('payhere_amount')
-
-            print("Received from PayHere Data:", request.data)
-
-            if status_code == '2':
-                payment_status = 'success'
-            elif status_code == '1':
-                payment_status = 'fail'
-            else:
-                payment_status = "pending"
-
-            if not order_id or not status_code:
-                return Response({"error": "Missing required fields"}, status=400)
-
-            # Extract course_id and user_id
-            parts = order_id.split('-')
-            if len(parts) != 3:
-                return Response({"error": "Invalid order_id format"}, status=400)
-
-            course_id = int(parts[1])
-            user_id = int(parts[2])
-            user = User.objects.get(id=user_id)
-
-            # Find corresponding Payment
-            payment = Payment.objects.filter(
-                stuid=user,
-                method='online',
-                status='pending',
-                amount=payhere_amount
-            ).order_by('-date').first()
-
-            if not payment:
-                return Response({"error": "Payment not found"}, status=404)
-
-            payment.status = payment_status
-            payment.save()
-
-            online_payment = OnlinePayment.objects.get(payid=payment)
-            online_payment.verified = payment_status
-            online_payment.save()
-
-            if payment_status == "success":
-                Enrollment.objects.create(
-                    stuid=user,
-                    courseid=course_id,
-                    payid=payment
-                )
-
-            return HttpResponse("Payment notification processed successfully.", status=200)
-
-        except Exception as e:
-            print("Notify error:", e)
-            return Response({"error": str(e)}, status=400)  
-
-
-
-
-#Online payment view
 class OnlinePaymentView(APIView):
+    """
+    API view to handle creation of online payment records
+    """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def post(self, request) :
-        print("User in request:", request.user)
-        print("Is authenticated:", request.user.is_authenticated)
-        print("User in request:", request.user)
+    def post(self, request):
+        # Check if user is authenticated (redundant with permission but explicit here)
         if not request.user.is_authenticated:
             return Response({"error": "User not authenticated"}, status=401)
+
         user = request.user
         amount = request.data.get("amount")
 
         try:
-            #create Payment record
+            # Create a new Payment object with method='online'
             payment = Payment.objects.create(
-                stuid = user,
+                stuid=user,
                 method="online",
                 amount=amount,
-                
             )
 
-            #Create onlinePayment record
+            # Generate a unique invoice number
             invoice_no = f"INV-{uuid.uuid4().hex[:8].upper()}"
+
+            # Create associated OnlinePayment record with generated invoice number
             online_payment = OnlinePayment.objects.create(
                 payid=payment,
                 invoice_no=invoice_no,
                 status=""
             )
+            # Return created payment info
             return Response({
                 "payid": payment.payid,
                 "invoice_no": invoice_no,
                 "amount": amount
-            },status=status.HTTP_201_CREATED)
-        
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
-             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # Return error if anything goes wrong
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-##ocr related
-import os
-import json
-import tempfile
-from dotenv import load_dotenv
-
-load_dotenv()
-
-creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-
-if creds_json_str:
-    creds_json_str = creds_json_str.strip("'")
-    
-    try:
-        creds_dict = json.loads(creds_json_str)
-        print(creds_dict['private_key'])
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            print(creds_dict['private_key'])
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json') as temp_file:
-            json.dump(creds_dict, temp_file)
-            temp_file_path = temp_file.name
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file_path
-        print(f"✅ Google credentials written to temp file at: {temp_file_path}")
-    except json.JSONDecodeError as e:
-        print("❌ Error parsing GOOGLE_APPLICATION_CREDENTIALS_JSON:", e)
-
-else:
-    print("GOOGLE_APPLICATION_CREDENTIALS_JSON not set")
 
 class ReceiptUploadView(APIView):
+    """
+    API view to upload receipt images and process them with Google Vision OCR
+    """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser]  # Support multipart/form-data for file upload
 
     def post(self, request):
-        #print(os.path.exists(os.path.join(BASE_DIR, 'backend', 'vision-key.json')))
-
         user = request.user
         image = request.FILES.get("image")
         method = 'receipt'
 
         if not image:
+            # No image file was sent in the request
             return Response({'error': "No image provided"}, status=400)
 
-        #  Create payment with zero amount
+        # Create initial Payment record with zero amount (to be updated after OCR)
         payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
 
-        #  Setup Google Vision client
+        # Initialize Google Vision API client
         client = vision.ImageAnnotatorClient()
         
 
-        #  Read uploaded image and send to Vision API
+        # Read image content from uploaded file
         image_content = image.read()
         vision_image = vision.Image(content=image_content)
+
+        # Use Google Vision API to detect text in image
         response = client.text_detection(image=vision_image)
 
+        # If no text detected, return a message to re-upload
         if not response.text_annotations:
             return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
 
-        #  Extract text and parse details
+        # Extract full text from first annotation
         full_text = response.text_annotations[0].description
-        print("GOOGLE OCR TEXT:\n", full_text)
 
         # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
         record_no_match = re.search(r'Record No\s*(\d+)', full_text,re.IGNORECASE)
@@ -275,6 +154,7 @@ class ReceiptUploadView(APIView):
         except IntegrityError as e:
             return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
 
+        # Serialize and return saved receipt payment details
         serializer = ReceiptPaymentSerializer(receipt_payment)
         return Response({
             "message": "Successfully saved details. After verification, you can enroll in class.",
@@ -287,18 +167,21 @@ class ReceiptUploadView(APIView):
 
 #Payment Info
 class PaymentInfoView(APIView):
+    """
+    API view to fetch all payments of the authenticated user with related details
+    """
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    
-    def get(self,request):
+
+    def get(self, request):
         user = request.user
-        print("request user: ", user)
         payments = Payment.objects.filter(stuid=user)
 
-        payment_list = [] 
+        payment_list = []
 
         for payment in payments:
-            enrollment = Enrollment.objects.filter(payid=payment)
+            # Try to get Enrollment related to this payment
+            enrollment = Enrollment.objects.filter(payid=payment).first()
             coursename = enrollment.courseid.title if enrollment else None
 
             invoice_no = None
@@ -310,7 +193,7 @@ class PaymentInfoView(APIView):
                     invoice_no = online_payment.invoice_no
                 except OnlinePayment.DoesNotExist:
                     invoice_no = None
-                
+
             elif payment.method == 'receipt':
                 try:
                     receipt_payment = ReceiptPayment.objects.get(payid=payment)
@@ -318,6 +201,7 @@ class PaymentInfoView(APIView):
                 except ReceiptPayment.DoesNotExist:
                      record_no = None
 
+            # Append payment details to list
             payment_list.append({
                     "payid": payment.payid,
                     "date": payment.date.strftime('%Y-%m-%d'),
@@ -329,10 +213,13 @@ class PaymentInfoView(APIView):
                     "Record_No" : record_no
             })
 
-        return Response({"payments" : payment_list})
+        return Response({"payments": payment_list})
 
 
 class StudentProfileView(APIView):
+    """
+    API view to get student profile details of authenticated user
+    """
     authentication_classes = [JWTAuthentication]
     @permission_classes([IsAuthenticated])
     
@@ -364,56 +251,156 @@ from django.utils.decorators import method_decorator
 class CreatePayHereCheckoutUrl(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        print("AUTH HEADER:", request.headers.get("Authorization"))
-        print("USER:", request.user)
-        print("IS AUTHENTICATED:", request.user.is_authenticated)
-
+    def get(self, request):
         user = request.user
-        course_id = request.data.get("course_id")
-        amount = request.data.get("amount")
+        # Only allow users with 'student' role to access
+        if user.role != "student":
+            return Response({"error": "Only Students allowed"}, status=403)
 
-        if not course_id or not amount:
-            return Response({"error": "course_id and amount are required"}, status=400)
+        profile = user.student_profile
+        serializer = StudentProfileSerializer(profile)
+        return Response(serializer.data)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def initiate_payment(request):
+    user = request.user
+    data = request.data
+    order_id = data.get('order_id')
+    amount = data.get('amount')
+    currency = data.get('currency')
+    course_ids = data.get('course_ids')
+    course_summary = data.get('items', '')
+
+    if not all([order_id, amount, currency, course_ids]):
+        return Response({'error': 'Missing data'}, status=400)
+
+    # Create Payment record
+    payment = Payment.objects.create(
+        stuid=user,
+        method='online',
+        amount=amount,
+        status='pending',
+    )
+
+    OnlinePayment.objects.create(
+        payid=payment,
+        invoice_no=payment.payid,
+        course_ids=course_ids,
+        course_summary=course_summary,
+    )
+
+    merchant_id = settings.PAYHERE_MERCHANT_ID
+    merchant_secret = settings.PAYHERE_MERCHANT_SECRET
+
+    # Correct hash generation
+    hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
+    hash_data = f"{merchant_id}{order_id}{amount}{currency}{hash_secret}"
+    hash_ = hashlib.md5(hash_data.encode("utf-8")).hexdigest().upper()
+
+    return Response({
+        'merchant_id': merchant_id,
+        'hash': hash_,
+        'order_id': order_id,
+    })
+
+
+
+@csrf_exempt
+@api_view(['POST'])
+def payment_notify(request):
+    """
+    Webhook endpoint called by PayHere to notify payment status
+    """
+    data = request.data
+    order_id = data.get('order_id')
+    amount = data.get('payhere_amount')
+    currency = data.get('payhere_currency')
+    status_code = data.get('status_code')
+    received_sig = data.get('md5sig')
+
+    merchant_id = settings.PAYHERE_MERCHANT_ID
+    merchant_secret = settings.PAYHERE_MERCHANT_SECRET
+
+    # Create expected signature hash to verify authenticity
+    hash_string = f"{merchant_id}{order_id}{amount}{currency}{status_code}{hashlib.md5(merchant_secret.encode()).hexdigest().upper()}"
+    expected_sig = hashlib.md5(hash_string.encode()).hexdigest().upper()
+
+    # Verify signature and status_code (2 = success)
+    if received_sig == expected_sig and status_code == '2':
         try:
-            amount_float = float(amount)
-        except ValueError:
-            return Response({"error": "Invalid amount format"}, status=400)
+            payment = Payment.objects.get(order_id=order_id)
+            payment.status = 'success'
+            payment.save()
 
-        order_id = f"ORDER-{user.id}-{course_id}-{int(time.time())}"
-        currency = "LKR"
-        merchant_id = "1230994"
-        # merchant_secret = "MzkwOTE0MzEzNDE5MjQwNjA2NzI4ODA3Mzk0MzE2MTY5MjYyMzI="
-        merchant_secret_base64 = "MzY1ODM3ODU5MjI2MTg3MjI1MjU2ODM5OTczMzM5NzQwMzg3ODc="
-        merchant_secret = base64.b64decode(merchant_secret_base64).decode("utf-8")
+            # Mark OnlinePayment as verified
+            online = OnlinePayment.objects.get(payid=payment)
+            online.verified = True
+            online.save()
 
-        hash_string = f"{merchant_id}{order_id}{amount_float:.2f}{currency}{merchant_secret}"
-        print(hash_string)
-        hashed = hashlib.sha256(hash_string.encode("utf-8")).hexdigest().upper()
+            # Get student profile linked to user
+            student_profile = StudentProfile.objects.get(user=payment.stuid)
 
-        payload = {
-            "merchant_id": merchant_id,
-            "return_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=success",
-            "cancel_url": "https://rnykx-101-2-191-32.a.free.pinggy.link/students/courses?status=cancel",
-            # "notify_url": "https://rnfky-101-2-191-32.a.free.pinggy.link/students/payhere-notify",
-            "notify_url": "https://google.com",
-            "order_id": order_id,
-            "items": "Course Fee",
-            "amount": "%.2f" % amount_float,
-            "currency": currency,
-            "hash": hashed,
-            "first_name": user.first_name or "Student",
-            "last_name": user.last_name or "",
-            "email": user.email or "",
-            "phone": getattr(user.student_profile, "mobile", "0771234567"),
-            "address": getattr(user.student_profile, "address", "N/A"),
-            "city": "Colombo",
-            "country": "Sri Lanka",
-        }
-        print("PAYHERE Payload:", json.dumps(payload, indent=2))
+            # Enroll student to all classes in the payment's course_ids
+            for class_id in online.course_ids:
+                Enrollment.objects.create(
+                    stuid=student_profile,
+                    classid_id=class_id,
+                    payid=payment
+                )
+
+            return Response("Payment verified and student enrolled", status=200)
+        except Payment.DoesNotExist:
+            return Response("Payment not found", status=404)
+
+    # Return error if signature invalid or status_code not success
+    return Response("Invalid signature", status=400)
+
+
+
+'''
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def initiate_payment(request):
+    try:
+        user = request.user
+        print(f"DEBUG: Received payment request from {user}")
+
+
+        data = request.data
+        order_id = data.get("order_id")
+        amount = data.get("amount")
+        currency = data.get("currency")
+
+
+        merchant_id = settings.PAYHERE_MERCHANT_ID
+        merchant_secret = settings.PAYHERE_MERCHANT_SECRET
+
+
+        # Validate fields
+        if not all([order_id, amount, currency]):
+            return Response({"error": "Missing payment fields"}, status=400)
+
+
+        # ✅ Save payment to DB (status = pending)
+
+        # ✅ Generate hash
+        hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
+        hash_data = f"{merchant_id}{order_id}{amount}{currency}{hash_secret}"
+        hash_ = hashlib.md5(hash_data.encode("utf-8")).hexdigest().upper()
+
 
         return Response({
-            "url": "https://sandbox.payhere.lk/pay/checkout",
-            "params": payload
+            "merchant_id": merchant_id,
+            "hash": hash_
         })
+
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+'''
+
