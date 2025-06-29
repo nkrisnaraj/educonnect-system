@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'instructor',
     # 'accounts',
     'accounts.apps.AccountsConfig',
+    'multiselectfield',
 ]
 
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))

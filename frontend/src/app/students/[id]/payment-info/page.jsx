@@ -128,7 +128,7 @@ console.log(accessToken);
                     {p.date}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-900 font-medium">
-                    ${p.amount}
+                    Rs.{p.amount}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-700">
                     {p.coursename}
@@ -164,7 +164,7 @@ console.log(accessToken);
             </h2>
             <p className="text-lg"><strong>Payment ID:</strong> {selectedPayment?.payid}</p>
             <p className="text-lg"><strong>Date:</strong> {selectedPayment?.date}</p>
-            <p className="text-lg"><strong>Amount:</strong> ${selectedPayment?.amount}</p>
+            <p className="text-lg"><strong>Amount:</strong> Rs.{selectedPayment?.amount}</p>
             <p className="text-lg"><strong>Class:</strong> {selectedPayment?.class}</p>
             <p className="text-lg"><strong>Payment Method:</strong> {selectedPayment?.method}</p>
             <p className="text-lg"><strong>Payment Status:</strong> {selectedPayment?.status}</p>

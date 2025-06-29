@@ -44,12 +44,12 @@ export default function Login() {
 
             login(data); // this replace all loalstorage
             
-            //localStorage.setItem("user", JSON.stringify(userObject));
-            //localStorage.setItem("userRole",data.user.role);
-            //localStorage.setItem("accessToken", response.data.access);
-            //localStorage.setItem("refreshToken", response.data.refresh);
+            //sessionStorage.setItem("user", JSON.stringify(userObject));
+            //sessionStorage.setItem("userRole",data.user.role);
+            //sessionStorage.setItem("accessToken", response.data.access);
+            //sessionStorage.setItem("refreshToken", response.data.refresh);
 
-            //const userrole = localStorage.getItem("userRole");
+            //const userrole = sessionStorage.getItem("userRole");
             console.log(data.user.id);
             setTimeout(() => {
               try {
@@ -89,7 +89,7 @@ export default function Login() {
     <>
     {/* Nav bar */}
     <MainNavbar />
-    <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div className="font-sans bg-white mx-auto text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">

@@ -11,7 +11,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
+    const role = sessionStorage.getItem("userRole");
     if (!user || !role || role !== 'admin') {
       router.replace("/login");
     }

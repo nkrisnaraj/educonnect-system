@@ -152,7 +152,7 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#2064d4]/10 to-purple-600/10 rounded-2xl"></div>
                 
                 {/* Main Image Container */}
-                <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-2xl">
+                <div className="relative rounded-2xl p-6 shadow-2xl">
                   <img
                     src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
                     alt="Student Learning Online"

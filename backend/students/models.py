@@ -11,6 +11,8 @@ class StudentProfile(models.Model):
     mobile = models.CharField(max_length=15)
     nic_no = models.CharField(max_length=15,unique=True)
     address = models.TextField()
+    city = models.CharField(max_length=50, blank=True, null=True)
+    district = models.CharField(max_length=50, blank=True, null=True)
     year_of_al = models.CharField()
     school_name = models.CharField(max_length=100)
     stuid = models.CharField(max_length=20, unique=True, blank=True)
