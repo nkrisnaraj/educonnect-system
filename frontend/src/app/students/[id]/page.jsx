@@ -32,8 +32,8 @@ export default function StudentPage() {
   
 
   useEffect(()=>{
-    const role = localStorage.getItem("userRole");
-    const token = localStorage.getItem("accessToken");
+    const role = sessionStorage.getItem("userRole");
+    const token = sessionStorage.getItem("accessToken");
     if(!token || !user || role !== "student"){
       router.push("/login");
     }

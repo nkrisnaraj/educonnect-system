@@ -19,10 +19,10 @@ export const AuthProvider = ({ children }) => {
   // const [richUser,setRichuser] = useState(null);
 
   useEffect(() => {
-    // Load tokens & user from localStorage on mount
-    const userJson = localStorage.getItem("user");
-    const token = localStorage.getItem("accessToken");
-    const refresh = localStorage.getItem("refreshToken")
+    // Load tokens & user from sessionStorage on mount
+    const userJson = sessionStorage.getItem("user");
+    const token = sessionStorage.getItem("accessToken");
+    const refresh = sessionStorage.getItem("refreshToken")
     if (userJson) setUser(JSON.parse(userJson));
     if (token) setAccessToken(token);
     if(refresh) setRefreshToken(refresh);
@@ -37,25 +37,25 @@ export const AuthProvider = ({ children }) => {
       refreshToken:userData.refresh
     }
     
-    localStorage.setItem("user",JSON.stringify(userData.user));
-    localStorage.setItem("userRole", userData.user.role);
-    localStorage.setItem("accessToken", userData.access);
-    localStorage.setItem("refreshToken", userData.refresh);
+    sessionStorage.setItem("user",JSON.stringify(userData.user));
+    sessionStorage.setItem("userRole", userData.user.role);
+    sessionStorage.setItem("accessToken", userData.access);
+    sessionStorage.setItem("refreshToken", userData.refresh);
     setUser(userData.user);
     setAccessToken(userData.access);
     setRefreshToken(userData.refresh);
-    //localStorage.setItem("richUser",JSON.stringify(enrichedUser));
+    //sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
     //setRichuser(enrichedUser);
 };
 
   const logout = () => {
     Cookies.remove("accessToken");
 
-    localStorage.removeItem("user");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.clear();
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("refreshToken");
+    sessionStorage.clear();
     setUser(null);
     setAccessToken(null);
     setRefreshToken(null)
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       })
 
       const newAccessToken = res.data.access;
-      localStorage.setItem("accessToken",newAccessToken);
+      sessionStorage.setItem("accessToken",newAccessToken);
       setAccessToken(newAccessToken);
       return newAccessToken;
 

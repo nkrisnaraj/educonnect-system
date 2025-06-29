@@ -50,15 +50,15 @@ export default function Courses() {
   
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem("user");
-      const storedToken = localStorage.getItem("accessToken");
+      const storedUser = sessionStorage.getItem("user");
+      const storedToken = sessionStorage.getItem("accessToken");
       console.log("Stored User:", storedUser);
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
         setAccessToken(storedToken);
       }
     } catch (e) {
-      localStorage.clear();
+      sessionStorage.clear();
     }
   }, []);
 
@@ -73,15 +73,15 @@ export default function Courses() {
 
   const refreshAccessToken = async () => {
     try {
-      const refreshToken = localStorage.getItem("refreshToken");
+      const refreshToken = sessionStorage.getItem("refreshToken");
       const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
         refresh: refreshToken,
       });
       const newAccessToken = response.data.access;
-      localStorage.setItem("accessToken", newAccessToken);
+      sessionStorage.setItem("accessToken", newAccessToken);
       return newAccessToken;
     } catch {
-      localStorage.clear();
+      sessionStorage.clear();
       alert("Session expired. Please log in again.");
       return null;
     }
