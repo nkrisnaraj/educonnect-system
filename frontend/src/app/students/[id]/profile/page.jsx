@@ -1,108 +1,258 @@
 "use client";
 
 import Image from "next/image";
+import { Camera, User, Mail, MapPin, Phone, GraduationCap, CreditCard, Calendar, Lock, Check } from 'lucide-react';
+import { useState } from "react";
 
 export default function EditProfilePage() {
-  return (
-    <div className="max-w-6xl bg-white px-4 py-6 shadow-lg sm:px-6 lg:px-8 rounded-2xl">
-        {/* Header and profile image */}
-        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center md:text-left">
-            Edit Profile
-          </h1>
+const [formData, setFormData] = useState({
+    firstName: '',  
+    lastName: '',
+    email: '',
+    address: '',
+    mobile: '',
+    school: '',
+    nic: '',
+    yearAL: '',
+    password: ''
+  });
 
-          <div className="flex flex-col items-center">
-            <div className="relative w-20 h-20 mb-2">
-              <Image
-                src="/placeholder.svg?height=80&width=80"
-                alt="Profile"
-                width={80}
-                height={80}
-                className="rounded-full object-cover border border-primary"
-              />
+const handleInputChange = (e) => {
+    setFormData({...formData,[e.target.name]: e.target.value});`~`
+  };
+
+  // const handleCancel = () => {
+  //   toast.info('Changes cancelled');
+  // };
+
+  const handleCancel = () => {
+    // Reset form data to initial state
+    setFormData({
+      firstName: '',  
+      lastName: '',
+      email: '',
+      address: '',
+      mobile: '',
+      school: '',
+      nic: '',
+      yearAL: '',
+      password: ''
+    });
+  }
+
+  return (
+    <div className="w-full max-w-4xl ">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-200/30 to-pink-200/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
+      <div className="relative bg-white/80 backdrop-blur-lg border border-white/20 shadow-2xl rounded-3xl p-8 animate-fade-in">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-3 mb-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+              <User className="w-6 h-6 text-white" />
             </div>
-            <label className="text-sm text-blue-600 font-medium cursor-pointer hover:underline">
-              Change Profile
-              <input type="file" accept="image/*" className="hidden" />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              Edit Profile
+            </h1>
+          </div>
+          <p className="text-gray-600 text-lg">Update your personal information and preferences</p>
+        </div>
+
+        {/* Profile Image Section */}
+        <div className="flex justify-center mb-8">
+          <div className="relative group">
+            <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl group-hover:scale-105 transition-transform duration-300">
+              <img
+                src=""
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                <Camera className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            <label className="absolute -bottom-2 -right-2 p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full cursor-pointer hover:scale-110 transition-transform duration-200 shadow-lg">
+              <Camera className="w-4 h-4 text-white" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                // onChange={handleImageChange}
+              />
             </label>
           </div>
         </div>
 
-        {/* Form */}
-        <form>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Form Section */}
+        <form className="space-y-6">
+          {/* Name Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="firstName" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-500" />
+                First Name
+              </label>
+              <input
+                id="firstName"
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="lastName" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-500" />
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your last name"
+              />
+            </div>
+          </div>
+
+          {/* Email Field */}
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-blue-500" />
+              Email Address
+            </label>
             <input
-              type="text"
-              placeholder="First Name"
-              className="p-3 border border-gray-300 rounded-md w-full"
-            />
-            <input
-              type="text"
-              placeholder="Last Name"
-              className="p-3 border border-gray-300 rounded-md w-full"
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+              placeholder="Enter your email address"
             />
           </div>
 
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full mb-6 p-3 border border-gray-300 rounded-md"
-          />
-
-          <input
-            type="text"
-            placeholder="Address"
-            className="w-full mb-6 p-3 border border-gray-300 rounded-md"
-          />
-
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Address Field */}
+          <div className="space-y-2">
+            <label htmlFor="address" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-500" />
+              Address
+            </label>
             <input
-              type="tel"
-              placeholder="Mobile No"
-              className="p-3 border border-gray-300 rounded-md w-full"
-            />
-            <input
+              id="address"
               type="text"
-              placeholder="School Name"
-              className="p-3 border border-gray-300 rounded-md w-full"
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+              className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+              placeholder="Enter your full address"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Mobile and School Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="mobile" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-blue-500" />
+                Mobile Number
+              </label>
+              <input
+                id="mobile"
+                type="tel"
+                value={formData.mobile}
+                onChange={(e) => handleInputChange('mobile', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your mobile number"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="school" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-blue-500" />
+                School Name
+              </label>
+              <input
+                id="school"
+                type="text"
+                value={formData.school}
+                onChange={(e) => handleInputChange('school', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your school name"
+              />
+            </div>
+          </div>
+
+          {/* NIC and Year Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label htmlFor="nic" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-blue-500" />
+                NIC Number
+              </label>
+              <input
+                id="nic"
+                type="text"
+                value={formData.nic}
+                onChange={(e) => handleInputChange('nic', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your NIC number"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="yearAL" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-blue-500" />
+                Year of A/L
+              </label>
+              <input
+                id="yearAL"
+                type="text"
+                value={formData.yearAL}
+                onChange={(e) => handleInputChange('yearAL', e.target.value)}
+                className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+                placeholder="Enter your A/L year"
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-blue-500" />
+              New Password
+            </label>
             <input
-              type="text"
-              placeholder="NIC No"
-              className="p-3 border border-gray-300 rounded-md w-full"
-            />
-            <input
-              type="text"
-              placeholder="Year_of_A/L"
-              className="p-3 border border-gray-300 rounded-md w-full"
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              className="h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl transition-colors duration-200"
+              placeholder="Enter new password (optional)"
             />
           </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full mb-8 p-3 border border-gray-300 rounded-md"
-          />
-
-          <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <button
               type="button"
-              className="px-6 py-3 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition"
+              variant="outline"
+              onClick={handleCancel}
+              className="h-12 px-8 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl font-semibold transition-all duration-200 hover:scale-105"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+              className="h-12 px-8 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
             >
-              Save
+              <Check className="w-4 h-4 mr-2" />
+              Save Changes
             </button>
           </div>
         </form>
-      
+      </div>
     </div>
   );
 }

@@ -268,6 +268,10 @@ export default function Register() {
           </p>
         </form>
       </div>
+
+      
+    
+      
     </div>
     <Footer />
     
