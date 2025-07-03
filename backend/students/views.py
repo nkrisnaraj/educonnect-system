@@ -15,7 +15,7 @@ from django.utils.decorators import method_decorator
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .serializers import ReceiptPaymentSerializer
-from accounts.serializers import StudentProfileSerializer
+from accounts.serializers import StudentProfileSerializer, UserSerializer
 from google.cloud import vision
 import hashlib
 from django.conf import settings
@@ -365,6 +365,27 @@ def payment_notify(request):
     return Response("Invalid signature", status=400)
 
 
+
+class EditStudentProfileView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role != "student":
+            return Response({"error": "Only Students allowed"}, status=403)
+
+        
+        user_serializer = UserSerializer(user)
+        return Response(user_serializer.data,status=200)
+     
+    def put(self, request):
+        user = request.user
+        if user.role != "student":
+            return Response({"error": "Only Students allowed"}, status=403)
+
+        user_serializer = UserSerializer(user)
+        return Response(user_serializer.data, status=200)
 
 '''
 @api_view(['POST'])

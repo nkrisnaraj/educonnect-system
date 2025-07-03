@@ -27,7 +27,7 @@ export default function Login() {
         try {
           // console.log(username);
           // console.log(password);
-          const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/accounts/login/`,{
+          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
           });
@@ -131,9 +131,12 @@ export default function Login() {
             </div>
 
             <div className="text-right text-sm">
-              <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
-                Forgot Password?
-              </span>
+              <Link href="/otp">
+                <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
+                  Forgot Password?
+                </span>
+              </Link>
+              
             </div>
 
                     <button

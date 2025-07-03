@@ -77,10 +77,10 @@ export default function Register() {
   return (
     <>
     <MainNavbar />
-    <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div className="font-sans mx-auto mt-24 min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
        
       {/* Registration Form */}
-      <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
+      <div className="flex items-center justify-center px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         {message && (
           <div
             className={`fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
@@ -260,9 +260,9 @@ export default function Register() {
           Register
         </button>
 
-          <p className="text-sm mt-4 text-center text-gray-700 dark:text-gray-300">
+          <p className="text-md mt-4 font-semibold text-center text-gray-700 dark:text-gray-300">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-500 dark:text-blue-400 hover:underline">
+            <Link href="/login" className="text-primary font-semibold dark:text-blue-400 hover:underline">
               Login
             </Link>
           </p>

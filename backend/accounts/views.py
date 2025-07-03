@@ -56,6 +56,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
+
 @api_view(['POST'])
 def register_user(request):
     nic_no = request.data.get('student_profile', {}).get('nic_no')
@@ -88,3 +89,29 @@ def login_user(request):
             "access": tokens['access']
         }, status=status.HTTP_200_OK)
     return Response({'error': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+from .models import PasswordResetOTP
+import random
+from django.core.mail import send_mail
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_otp(request):
+    email = request.data.get('email')
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'User with this email does not exist'}, status=status.HTTP_404_NOT_FOUND)
+    
+    otp = str(random.randint(100000, 999999))  
+    PasswordResetOTP.objects.create(user=user, otp=otp)
+
+    send_mail(
+        subject="Your Password Reset OTP",
+        message=f"Your OTP is {otp}. It is valid for 10 minutes.",
+        from_email="no-reply@example.com",
+        recipient_list=[email],
+    )
+
+    return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)    

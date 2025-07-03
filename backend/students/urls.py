@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import OnlinePaymentView, ReceiptUploadView
 from .views import PaymentInfoView,StudentProfileView
-
+from .views import EditStudentProfileView
 from . import views
 
 
@@ -20,6 +20,7 @@ urlpatterns = [
     # path("payments/create-payhere-url/", CreatePayHereCheckoutUrl.as_view()),
     path('api/initiate-payment/', views.initiate_payment),
     path('api/payment/notify/', views.payment_notify),
+    path('profile/',EditStudentProfileView.as_view(), name='student-edit-profile'),
     
 ]
 

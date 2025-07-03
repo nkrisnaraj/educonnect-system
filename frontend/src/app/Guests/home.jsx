@@ -132,19 +132,22 @@ export default function HomePage() {
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <button 
-                  onClick={() => scrollToSection('about')}
+                <Link href="/login">
+                  <button 
                   className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
                 >
                   Get Started
                 </button>
-
-                <button 
+                </Link>
+                <Link href="/help">
+                  <button 
                   onClick={() => console.log('Watch Demo clicked')}
                   className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm"
                 >
                   Watch Demo
                 </button>
+                </Link>
+                
               </div>
 
 
