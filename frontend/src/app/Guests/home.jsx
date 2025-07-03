@@ -76,13 +76,20 @@ export default function HomePage() {
     <MainNavbar />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Hero Section */}
-      <section 
-        id="home" 
-        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden"
+      <section
+        id="home"
+        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden bg-no-repeat"
+        style={{
+          backgroundImage: "url('/home.png')",
+          backgroundPosition: "right",
+          backgroundSize: "55vw auto",   // 20% of viewport width
+          height: "100vh",
+          width: "100%",
+        }}
       >
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
         </div>
@@ -97,7 +104,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                   Welcome to{" "}
-                  <span className="bg-gradient-to-r from-[#2064d4] via-purple-500 to-[#2064d4] bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-[#2064d4] via-blue-500 to-[#2064d4] bg-clip-text text-transparent">
                     EduConnect
                   </span>
                   !
@@ -125,19 +132,22 @@ export default function HomePage() {
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <button 
-                  onClick={() => scrollToSection('about')}
+                <Link href="/login">
+                  <button 
                   className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
                 >
                   Get Started
                 </button>
-
-                <button 
+                </Link>
+                <Link href="/help">
+                  <button 
                   onClick={() => console.log('Watch Demo clicked')}
                   className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm"
                 >
                   Watch Demo
                 </button>
+                </Link>
+                
               </div>
 
 
@@ -145,16 +155,16 @@ export default function HomePage() {
             </div>
 
             {/* Image Section */}
-            <div className="relative animate-fade-in delay-300">
+            {/* <div className="relative animate-fade-in delay-300">
               <div className="relative">
                 {/* Decorative Elements */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-[#2064d4]/20 to-purple-600/20 rounded-3xl blur-2xl"></div>
+                {/* <div className="absolute -inset-4 bg-gradient-to-r from-[#2064d4]/20 to-purple-600/20 rounded-3xl blur-2xl"></div>
                 <div className="absolute inset-0 bg-gradient-to-r from-[#2064d4]/10 to-purple-600/10 rounded-2xl"></div>
-                
+                 */}
                 {/* Main Image Container */}
-                <div className="relative rounded-2xl p-6 shadow-2xl">
+                {/* <div className="relative">
                   <img
-                    src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80"
+                    src="home.png"
                     alt="Student Learning Online"
                     className="w-full h-auto rounded-xl shadow-lg"
                   />
@@ -162,7 +172,7 @@ export default function HomePage() {
                  
                 </div>
               </div>
-            </div>
+            </div> */} 
           </div>
         </div>
 

@@ -7,3 +7,4 @@ from .models import Marks
 admin.site.register(Class)
 admin.site.register(Exams)
 admin.site.register(Marks)
+
