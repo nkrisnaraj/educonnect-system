@@ -16,17 +16,15 @@ export default function InstructorDashboard() {
   }
 
   const courses = [
-    { id: 1, name: "Physics", students: 45, color: "bg-blue-500" },
-    { id: 2, name: "Chemistry", students: 38, color: "bg-green-500" },
-    { id: 3, name: "Biology", students: 52, color: "bg-purple-500" },
-    { id: 4, name: "Mathematics", students: 41, color: "bg-orange-500" },
+    { id: 1, name: "2025 A/L Chemistry", students: 45, color: "bg-blue-500" },
+    { id: 2, name: "2026 A/L Chemistry", students: 38, color: "bg-green-500" },
+    { id: 3, name: "2027 A/L Chemistry", students: 52, color: "bg-purple-500" },
   ]
 
   const recentSchedules = [
-    { id: 1, class: "2025 A/L Physics", time: "8:00 AM", date: "Today"},
+    { id: 1, class: "2025 A/L Chemistry", time: "8:00 AM", date: "Today"},
     { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today"},
-    { id: 3, class: "2025 A/L Biology", time: "2:00 PM", date: "Tomorrow"},
-    { id: 4, class: "2025 A/L Day Batch", time: "4:00 PM", date: "Tomorrow"},
+    { id: 3, class: "2027 A/L Chemistry", time: "2:00 PM", date: "Tomorrow"},
   ]
 
   const chatMessages = [

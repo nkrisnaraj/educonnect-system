@@ -10,9 +10,9 @@ export default function CoursesPage() {
   const courses = [
     {
       id: 1,
-      name: "Advanced Physics - 2025 A/L",
-      code: "PHY2025",
-      subject: "Physics",
+      name: "Chemistry - 2025 A/L",
+      code: "CHE2025",
+      subject: "Chemistry",
       batch: "2025 A/L",
       students: 45,
       lessons: 24,
@@ -22,7 +22,7 @@ export default function CoursesPage() {
     },
     {
       id: 2,
-      name: "Organic Chemistry - 2026 A/L",
+      name: "Chemistry - 2026 A/L",
       code: "CHE2026",
       subject: "Chemistry",
       batch: "2026 A/L",
@@ -34,9 +34,9 @@ export default function CoursesPage() {
     },
     {
       id: 3,
-      name: "Cell Biology & Genetics - 2025 A/L",
-      code: "BIO2025",
-      subject: "Biology",
+      name: "Chemistry - 2027 A/L",
+      code: "CHE2027",
+      subject: "Chemistry",
       batch: "2025 A/L",
       students: 52,
       lessons: 28,
@@ -44,34 +44,7 @@ export default function CoursesPage() {
       startDate: "2024-01-10",
       endDate: "2024-12-10"
     },
-    {
-      id: 4,
-      name: "Pure Mathematics - 2025 A/L",
-      code: "MAT2025",
-      subject: "Mathematics",
-      batch: "2025 A/L",
-      students: 41,
-      lessons: 32,
-      progress: 45,
-      startDate: "2024-01-20",
-      endDate: "2024-12-20"
-    },
-    {
-      id: 5,
-      name: "Applied Mathematics - 2026 A/L",
-      code: "AMAT2026",
-      subject: "Applied Mathematics",
-      batch: "2026 A/L",
-      students: 35,
-      lessons: 30,
-      progress: 30,
-      startDate: "2024-03-01",
-      endDate: "2024-12-30"
-    },
   ]
-
-  const subjects = ["Physics", "Chemistry", "Biology", "Mathematics", "Applied Mathematics"]
-  const batches = ["2025 A/L", "2026 A/L"]
 
   return (
     <div className="p-6 space-y-6">
