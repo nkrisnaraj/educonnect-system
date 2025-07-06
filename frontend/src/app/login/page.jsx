@@ -112,9 +112,20 @@ export default function Login() {
     <MainNavbar />
     <div className="font-sans bg-white mx-auto text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
       {/* Login Form */}
-      <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
+      <div className="flex mt-12 items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">
-          <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white">Login</h1>
+          {/* Logo & Welcome */}
+            <div className="flex flex-col items-center mb-6">
+              <Image
+                src="/logo.png"
+                alt="EduConnect Logo"
+                width={100}
+                height={80}
+                className="mb-2"
+              />
+              
+              <p className="text-primary dark:text-gray-300 text-lg font-semibold">Welcome back to EduConnect !</p>
+            </div>
 
           {message && (
             <div

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
 from django.contrib.auth import get_user_model #Django's built-in auth system.
-from .models import calendarEvent  # Importing calendarEvent model
+from .models import CalendarEvent  # Importing calendarEvent model
 User = get_user_model()
 
 class PaymentSerializer(serializers.ModelSerializer):
