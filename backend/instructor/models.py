@@ -1,10 +1,8 @@
 import uuid
 from django.conf import settings
 from django.db import models
+from django.contrib.auth.models import User
 from students.models import StudentProfile  
-
-
-
 
 # Create your models here.
 #class Model
@@ -48,3 +46,16 @@ class Marks(models.Model):
 
     def __str__(self):
         return f"{self.stuid.stuid} - {self.examid.examname} - {self.marks}"
+
+class InstructorProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='instructor_profile'
+    )
+    phone = models.CharField(max_length=10, blank=True)
+    address = models.TextField(blank=True)
+    profile_image = models.ImageField(upload_to='instructor/', blank=True)
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"

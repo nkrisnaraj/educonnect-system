@@ -74,7 +74,7 @@ export default function CoursesPage() {
           {/* Course Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {courses.map((course) => (
-              <div key={course.id} className="bg-white/50 border border-primary rounded-lg p-6">
+              <div key={course.id} className="bg-white/50 border border-primary rounded-lg p-6 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
