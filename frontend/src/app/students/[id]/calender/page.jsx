@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Play } from "lucide-react"
 import axios from "axios"
-import { headers } from "next/headers"
 
 const events = {
   "2025-06-02": [
@@ -118,8 +117,12 @@ export default function Calendar() {
 
     return days
   }
+
+  const token =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("accessToken")
+      : null;
   useEffect(() => {
-    const token = sessionStorage.getItem("accessToken");
     if (!token) {
       console.error("No access token found in session storage");
     }
