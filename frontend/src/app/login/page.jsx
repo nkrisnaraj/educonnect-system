@@ -18,15 +18,14 @@ export default function Login() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showEmailModel, setShowEmailModel] = useState(false);
+  const [email, setEmail] = useState("");
 
-  
-    const { login } = useAuth();
+  const { login } = useAuth();
 
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
-          // console.log(username);
-          // console.log(password);
           const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
@@ -64,8 +63,6 @@ export default function Login() {
                 console.error("Router push error:", err);
               }
             }, 1000);
-
-              
           }else{
             setMessage("Login Failed")
             setIsSuccess(false);
@@ -79,9 +76,33 @@ export default function Login() {
             else{
               setMessage("An Error Occurred")
             }
-        }
-        
+        } 
     };
+
+    const handleforgotPassword = () => {
+      setShowEmailModel(true);
+    }
+
+    const handleOTP = async () => {
+      setShowEmailModel(false);
+      if (!email) {
+        alert("Please enter your email.");
+        return;
+      }
+      try {
+        const response = await axios.post("http://127.0.0.1:8000/api/accounts/send-otp/",{ email });
+        console.log(email);
+        if (response.status === 200) {
+          alert("Check your email address for the OTP.");
+          sessionStorage.setItem("reset_email", email);
+          router.push("/otp");
+        }
+      } catch (error) {
+        console.error(error);
+        alert(error.response?.data?.error || "Failed to send OTP.");
+      }
+    };
+
 
     
 
@@ -131,22 +152,15 @@ export default function Login() {
             </div>
 
             <div className="text-right text-sm">
-              <Link href="/otp">
-                <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
+                <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline" onClick={handleforgotPassword}>
                   Forgot Password?
                 </span>
-              </Link>
-              
             </div>
-
-                    <button
-                        type="submit"
-                        className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300"
-                        
-                    >
-                        Login
-                    </button>
-                </form>
+            <button type="submit"
+              className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300">
+              Login
+            </button>
+            </form>
 
           <p className="mt-6 mb-6 text-center text-gray-700 dark:text-gray-300">
             Don't have an account?{" "}
@@ -159,12 +173,33 @@ export default function Login() {
           </p>
         </div>
       </div>
-
-      
-
-
-
     </div>
+    {showEmailModel && (
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+          {/* <h2 className="text-xl font-semibold mb-4">Forgot Password</h2> */}
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Please Enter the Email to send your OTP
+          </p>
+          <input
+            type="email"
+            className="border p-2 w-full mb-4"
+            placeholder="Enter your email"
+            value={email}
+            required
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            // onClick={() => {router.push("/otp")}}
+            type="button"
+            onClick={handleOTP}
+            className="bg-primary text-white px-4 py-2 rounded"
+          >
+            Send 
+          </button>
+        </div>
+      </div>
+    )}
     <Footer />
     </>
   );

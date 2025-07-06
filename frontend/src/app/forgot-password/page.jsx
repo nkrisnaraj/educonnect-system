@@ -1,46 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import MainNavbar from '@/components/MainNavbar';
+import Footer from '@/components/Footer';
+import axios from 'axios';
 
 const ResetPassword = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const email = searchParams.get('email') || '';
-  const otp = searchParams.get('otp') || '';
+  // const searchParams = useSearchParams();
+  // const email = searchParams.get('email') || '';
+  // const otp = searchParams.get('otp') || '';
 
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newpassword, setNewPassword] = useState('');
+  const [confirmpassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    const savedEmail = sessionStorage.getItem("reset_email");
+    console.log("Saved Email:", savedEmail);
+    if (!savedEmail) {
+      router.push("/login"); // if no email, redirect
+    } else {
+      setEmail(savedEmail);
+    }
+  },[]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!password || !confirmPassword) {
+    if (!newpassword || !confirmpassword) {
       setError('Please fill in all fields.');
       return;
     }
-
-    if (password !== confirmPassword) {
+    if (newpassword !== confirmpassword) {
       setError('Passwords do not match.');
       return;
     }
-
     setIsLoading(true);
-    setError('');
-    setSuccess('');
-
+    
     try {
-      // Simulate API request
-      await new Promise((res) => setTimeout(res, 1000));
-
-      // Example success response
+      console.log('Email:', email);
+      console.log('New Password:', newpassword);    
+      console.log('Confirm Password:', confirmpassword);
+      const response = await axios.post("http://127.0.0.1:8000/api/accounts/reset-password", {email, newpassword, confirmpassword});
+      if(response.status == 200) {
+        console.log("Password changed successfully");
+        alert("Password changed successfully");
+      }
       setSuccess('Password changed successfully!');
       setTimeout(() => {
         router.push('/login');
-      }, 1500);
+      }, 1000);
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -49,8 +63,10 @@ const ResetPassword = () => {
   };
 
   return (
+    <>
+    <MainNavbar />
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white shadow-md rounded-lg p-6">
+      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
         <h2 className="text-2xl font-bold text-center mb-4">Reset Password</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -59,8 +75,8 @@ const ResetPassword = () => {
             <input
               type="password"
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={newpassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               required
             />
           </div>
@@ -70,7 +86,7 @@ const ResetPassword = () => {
             <input
               type="password"
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={confirmPassword}
+              value={confirmpassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
             />
@@ -81,7 +97,7 @@ const ResetPassword = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            className="w-full bg-primary text-white py-2 rounded hover:bg-blue-700"
             disabled={isLoading}
           >
             {isLoading ? 'Changing...' : 'Change Password'}
@@ -89,6 +105,8 @@ const ResetPassword = () => {
         </form>
       </div>
     </div>
+    <Footer/>
+    </>
   );
 };
 

@@ -38,10 +38,10 @@ export default function Courses() {
 
   useEffect(() => {
     if (status === "success") {
-      alert("✅ Payment Successful!");
+      alert(" Payment Successful!");
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (status === "cancel") {
-      alert("❌ Payment Cancelled.");
+      alert(" Payment Cancelled.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [status]);

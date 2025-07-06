@@ -384,8 +384,38 @@ class EditStudentProfileView(APIView):
         if user.role != "student":
             return Response({"error": "Only Students allowed"}, status=403)
 
-        user_serializer = UserSerializer(user)
-        return Response(user_serializer.data, status=200)
+        data = request.data
+        files = request.FILES
+
+        # Update User fields
+        user.first_name = data.get("first_name", user.first_name)
+        user.last_name = data.get("last_name", user.last_name)
+        user.email = data.get("email", user.email)
+
+        if "password" in data and data.get("password"):
+            user.set_password(data["password"])
+
+        user.save()
+
+        # Update StudentProfile fields
+        profile = user.student_profile
+        profile.address = data.get("address", profile.address)
+        profile.city = data.get("city", profile.city)
+        profile.district = data.get("district", profile.district)
+        profile.mobile = data.get("mobile", profile.mobile)
+        profile.nic_no = data.get("nic_no", profile.nic_no)
+        profile.school_name = data.get("school_name", profile.school_name)
+        profile.year_of_al = data.get("year_of_al", profile.year_of_al)
+
+        if "profile_image" in files:
+            profile.profile_image = files["profile_image"]
+
+        profile.save()
+
+        # Return updated data
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=200)
+
 
 '''
 @api_view(['POST'])

@@ -12,6 +12,8 @@ export default function EditProfilePage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [image, setImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -67,7 +69,8 @@ export default function EditProfilePage() {
           school: profile?.school_name || '',
           nic: profile?.nic_no || '',
           yearAL: profile?.year_of_al || '',
-          password: ''
+          password: '',
+          profile_image: profile?.profile_image || ''
       });
         console.log(response.data);
       } catch (error) {
@@ -78,10 +81,6 @@ export default function EditProfilePage() {
     }
     fetchProfile();
   },[accessToken,refreshAccessToken]);
-
-
-
-  
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -98,11 +97,27 @@ export default function EditProfilePage() {
           console.error('No access token available after refresh. Please login again.');
           return;
         }
-      const res = await axios.put('http://127.0.0.1:8000/students/profile/',formData,{
+        const data = new FormData();
+        data.append("first_name", formData.firstName);
+        data.append("last_name", formData.lastName);
+        data.append("email", formData.email);
+        data.append("address", formData.address);
+        data.append("city", formData.city);
+        data.append("district", formData.district);
+        data.append("mobile", formData.mobile);
+        data.append("school_name", formData.school);
+        data.append("nic_no", formData.nic);
+        data.append("year_of_al", formData.yearAL);
+        if (formData.password) data.append("password", formData.password);
+        if (selectedImage) data.append("profile_image", selectedImage);
+
+      const res = await axios.put('http://127.0.0.1:8000/students/profile/',data,{
         headers:{
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
         }
       });
+      
       if(res.status === 200){
         alert('Profile updated successfully!');
       }
@@ -126,8 +141,11 @@ export default function EditProfilePage() {
       school: '',
       nic: '',
       yearAL: '',
-      password: ''
+      password: '',
+      profile_image: ''
+
     });
+    setSelectedImage(null);
   };
 
   if (loading) {
@@ -160,11 +178,25 @@ export default function EditProfilePage() {
         <div className="flex justify-center mb-8">
           <div className="relative group">
             <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl group-hover:scale-105 transition-transform duration-300">
-              <img
-                src="/images/icons/profile1.png"
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              {selectedImage ? (
+                <img
+                  src={URL.createObjectURL(selectedImage)}
+                  alt="Profile Preview"
+                  className="w-full h-full object-cover"
+                />
+              ) : formData.profile_image ? (
+                  <img
+                    src={`http://127.0.0.1:8000${formData.profile_image}`}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) :(
+                <img
+                  src="/images/icons/profile1.png"
+                  alt="Default Profile"
+                  className="w-full h-full object-cover"
+                />
+              )}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                 <Camera className="w-8 h-8 text-white" />
               </div>
@@ -175,7 +207,11 @@ export default function EditProfilePage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                // onChange={handleImageChange}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setSelectedImage(e.target.files[0]);
+                  }
+                }}
               />
             </label>
           </div>

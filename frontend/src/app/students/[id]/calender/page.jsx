@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Play } from "lucide-react"
+import axios from "axios"
+import { headers } from "next/headers"
 
 const events = {
   "2025-06-02": [
@@ -116,6 +118,25 @@ export default function Calendar() {
 
     return days
   }
+  useEffect(() => {
+    const token = sessionStorage.getItem("accessToken");
+    if (!token) {
+      console.error("No access token found in session storage");
+    }
+    const fetchdetails = async () => {
+      try {
+        const response = await axios.get("http://127.0.0.1:8000/edu_admin/calender/",{
+        headers:{
+          Authorization:`Bearer ${token}`,
+        },
+      }); 
+      } catch (error) {
+        console.error("Failed to fetch calendar details", error);
+      }
+    }
+      
+    fetchdetails();
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

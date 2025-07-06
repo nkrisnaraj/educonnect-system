@@ -91,6 +91,7 @@ def login_user(request):
     return Response({'error': 'Invalid username or password'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
+#OTP Send 
 from .models import PasswordResetOTP
 import random
 from django.core.mail import send_mail
@@ -110,8 +111,65 @@ def send_otp(request):
     send_mail(
         subject="Your Password Reset OTP",
         message=f"Your OTP is {otp}. It is valid for 10 minutes.",
-        from_email="no-reply@example.com",
+         from_email="no-reply@example.com", # settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
     )
 
-    return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)    
+    return Response({'message': 'OTP sent successfully','otp':otp}, status=status.HTTP_200_OK)    
+
+
+# Note: The email backend is set to console for development purposes.
+
+#Verify OTP
+from datetime import timedelta
+from django.utils import timezone
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+    print("Email:", email)
+    print("OTP:", otp)
+    if not email or not otp:
+        return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "User with this email does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    otp_record = PasswordResetOTP.objects.filter(user=user, otp=otp).first()
+    print("OTP Record:", otp_record)
+    if not otp_record:
+        return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if otp_record.created_at + timedelta(minutes=10) < timezone.now():
+        return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"message": "OTP is valid"}, status=status.HTTP_200_OK)
+
+
+#Reset Password
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request):
+    email = request.data.get('email')
+    new_password = request.data.get('newpassword')
+    confirm_password = request.data.get('confirmpassword')
+
+    if not all([email, new_password, confirm_password]):
+        return Response({"error": "All fields are required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if new_password != confirm_password:
+        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid email"}, status=404)
+    
+    user.set_password(new_password)
+    user.save()
+
+    return Response({"message": "Password reset successfully"}, status=status.HTTP_200_OK)
+    

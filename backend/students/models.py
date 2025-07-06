@@ -15,6 +15,7 @@ class StudentProfile(models.Model):
     district = models.CharField(max_length=50, blank=True, null=True)
     year_of_al = models.CharField()
     school_name = models.CharField(max_length=100)
+    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     stuid = models.CharField(max_length=20, unique=True, blank=True)
 
     def save(self, *args, **kwargs):

@@ -14,6 +14,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [richUser,setRichuser]=useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken,setRefreshToken] = useState(null)
   
@@ -31,13 +32,8 @@ export const AuthProvider = ({ children }) => {
 
 
 // Login saves tokens and user info
-  const login = (userData) => {
-    const enrichedUser = {
-      ...userData.user,
-      accessToken:userData.access,
-      refreshToken:userData.refresh
-    }
-    
+  const login = async(userData) => {
+
     sessionStorage.setItem("user",JSON.stringify(userData.user));
     sessionStorage.setItem("userRole", userData.user.role);
     sessionStorage.setItem("accessToken", userData.access);
@@ -45,8 +41,22 @@ export const AuthProvider = ({ children }) => {
     setUser(userData.user);
     setAccessToken(userData.access);
     setRefreshToken(userData.refresh);
-    //sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
-    //setRichuser(enrichedUser);
+
+    const res = await axios.get("http://127.0.0.1:8000/students/profile/", {
+      headers: { Authorization: `Bearer ${userData.access}` }
+    });
+
+    const studentProfile = res.data.student_profile;
+    const enrichedUser = {
+      ...userData.user,
+      accessToken:userData.access,
+      refreshToken:userData.refresh,
+      student_profile: studentProfile
+    }
+  
+   
+    sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
+    setRichuser(enrichedUser);
 };
 
   const logout = () => {
@@ -81,9 +91,20 @@ export const AuthProvider = ({ children }) => {
       console.log(err);
     }
   }
+  useEffect(() => {
+    const userJson = sessionStorage.getItem("user");
+    const richUserJson = sessionStorage.getItem("richUser");
+    const token = sessionStorage.getItem("accessToken");
+    const refresh = sessionStorage.getItem("refreshToken");
+
+    if (userJson) setUser(JSON.parse(userJson));
+    if (richUserJson) setRichuser(JSON.parse(richUserJson));   // <- add this!
+    if (token) setAccessToken(token);
+    if (refresh) setRefreshToken(refresh);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, refreshToken, login, logout,refreshAccessToken, }}>
+    <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, }}>
       {children}
     </AuthContext.Provider>
   );
