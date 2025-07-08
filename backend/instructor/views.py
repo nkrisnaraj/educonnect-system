@@ -57,4 +57,5 @@ def instructor_profile(request):
             serializer.save()
             return Response({"message": "Profile updated successfully.", "data": serializer.data})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     

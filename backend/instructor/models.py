@@ -58,4 +58,4 @@ class InstructorProfile(models.Model):
     profile_image = models.ImageField(upload_to='instructor/', blank=True)
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.user.first_name} {self.user.last_name}"

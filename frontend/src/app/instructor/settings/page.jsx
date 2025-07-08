@@ -28,14 +28,12 @@ export default function SettingsPage() {
     phone: "",
     address: "",
     profileImage: "",
-    profileImageFile: null,
   });
-
 
   const fetchProfile = async (token) => {
     try {
       const res = await axios.get("http://127.0.0.1:8000/instructor/profile/", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`},
       });
 
       const data = res.data;
@@ -47,7 +45,6 @@ export default function SettingsPage() {
         phone: data.phone,
         address: data.address,
         profileImage: data.profile_image,
-        profileImageFile: null,
       });
     } catch (err) {
       if (err.response?.status === 401) {
@@ -184,7 +181,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <img
-                  src={profileData.profileImage || "/file.svg"}
+                  src={profileData.profileImage ? profileData.profileImage : "/file.svg"}
                   alt="Profile"
                   className="w-24 h-24 rounded-full object-cover border-4 border-purple-200"
                 />
@@ -263,7 +260,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email
@@ -282,6 +279,7 @@ export default function SettingsPage() {
                     {profileData.email}
                   </p>
                 )}
+              </div>
               </div>
 
               <div>
@@ -323,7 +321,6 @@ export default function SettingsPage() {
                   </p>
                 )}
               </div>
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -355,7 +352,7 @@ export default function SettingsPage() {
                 </button>
                 <button
                   onClick={handleProfileUpdate}
-                  className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl hover:bg-accent"
+                  className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-accent"
                 >
                   <Save className="h-4 w-4" />
                   Save Changes
@@ -398,7 +395,7 @@ export default function SettingsPage() {
                 />
                 <label
                   htmlFor="image-upload"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-accent cursor-pointer inline-block"
+                  className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent cursor-pointer inline-block"
                 >
                   Choose File
                 </label>
@@ -417,5 +414,5 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }
