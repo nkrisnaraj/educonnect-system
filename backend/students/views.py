@@ -15,7 +15,7 @@ from django.utils.decorators import method_decorator
 from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .serializers import ReceiptPaymentSerializer
-from accounts.serializers import StudentProfileSerializer
+from accounts.serializers import StudentProfileSerializer, UserSerializer
 from google.cloud import vision
 import hashlib
 from django.conf import settings
@@ -293,6 +293,13 @@ def initiate_payment(request):
 
     merchant_id = settings.PAYHERE_MERCHANT_ID
     merchant_secret = settings.PAYHERE_MERCHANT_SECRET
+     
+    print("merchant_id:", merchant_id)
+    print("merchant_secret:", merchant_secret)
+    
+    if not merchant_secret:
+        return Response({"error": "Merchant secret not configured"}, status=500)
+
 
     # Correct hash generation
     hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
@@ -357,6 +364,57 @@ def payment_notify(request):
     # Return error if signature invalid or status_code not success
     return Response("Invalid signature", status=400)
 
+
+
+class EditStudentProfileView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role != "student":
+            return Response({"error": "Only Students allowed"}, status=403)
+
+        
+        user_serializer = UserSerializer(user)
+        return Response(user_serializer.data,status=200)
+     
+    def put(self, request):
+        user = request.user
+        if user.role != "student":
+            return Response({"error": "Only Students allowed"}, status=403)
+
+        data = request.data
+        files = request.FILES
+
+        # Update User fields
+        user.first_name = data.get("first_name", user.first_name)
+        user.last_name = data.get("last_name", user.last_name)
+        user.email = data.get("email", user.email)
+
+        if "password" in data and data.get("password"):
+            user.set_password(data["password"])
+
+        user.save()
+
+        # Update StudentProfile fields
+        profile = user.student_profile
+        profile.address = data.get("address", profile.address)
+        profile.city = data.get("city", profile.city)
+        profile.district = data.get("district", profile.district)
+        profile.mobile = data.get("mobile", profile.mobile)
+        profile.nic_no = data.get("nic_no", profile.nic_no)
+        profile.school_name = data.get("school_name", profile.school_name)
+        profile.year_of_al = data.get("year_of_al", profile.year_of_al)
+
+        if "profile_image" in files:
+            profile.profile_image = files["profile_image"]
+
+        profile.save()
+
+        # Return updated data
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=200)
 
 
 '''

@@ -15,6 +15,7 @@ class StudentProfile(models.Model):
     district = models.CharField(max_length=50, blank=True, null=True)
     year_of_al = models.CharField()
     school_name = models.CharField(max_length=100)
+    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     stuid = models.CharField(max_length=20, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -24,7 +25,6 @@ class StudentProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.stuid}"
-
 
 
 #Payment Model
@@ -46,7 +46,6 @@ class Payment(models.Model):
     
 from django.db import models
 from django.contrib.auth import get_user_model
-
 User = get_user_model()
 
 class PaymentTest(models.Model):
@@ -117,3 +116,24 @@ class Enrollment(models.Model):
         return f"Enrollment {self.enrollid} - Student {self.stuid} in Class {self.classid}"
 
 
+
+class CalendarEvent(models.Model):
+    EVENT_TYPES = [
+        ('webinar', 'Webinar'),
+        ('notes', 'Notes Uploaded'),
+        ('exam', 'Exam Scheduled'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    date = models.DateField()
+    time = models.TimeField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    classid = models.ForeignKey("instructor.Class", on_delete=models.CASCADE, related_name="calendar_events")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.classid.title} - {self.date}"

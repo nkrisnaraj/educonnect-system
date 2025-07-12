@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Play } from "lucide-react"
+import axios from "axios"
 
 const events = {
   "2025-06-02": [
@@ -29,6 +30,14 @@ const events = {
     },
   ],
 }
+
+// const eventTypeColors = {
+//   webinar: "bg-purple-500",
+//   exam: "bg-blue-500",
+//   notes: "bg-green-500",
+// };
+// const color = eventTypeColors[event.event_type] || "bg-gray-400";
+
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 1)) // June 2025
@@ -116,6 +125,30 @@ export default function Calendar() {
 
     return days
   }
+
+  const token =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("accessToken")
+      : null;
+      
+  // useEffect(() => {
+  //   if (!token) {
+  //     console.error("No access token found in session storage");
+  //   }
+  //   const fetchdetails = async () => {
+  //     try {
+  //       const response = await axios.get("http://127.0.0.1:8000/edu_admin/calender/",{
+  //       headers:{
+  //         Authorization:`Bearer ${token}`,
+  //       },
+  //     }); 
+  //     } catch (error) {
+  //       console.error("Failed to fetch calendar details", error);
+  //     }
+  //   }
+      
+  //   fetchdetails();
+  // }, [token]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

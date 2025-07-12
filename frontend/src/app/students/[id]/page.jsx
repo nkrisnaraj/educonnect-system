@@ -27,9 +27,6 @@ export default function StudentPage() {
 
   
   const [inputMessage, setInputMessage] = useState('');
-  
-
-  
 
   useEffect(()=>{
     const role = sessionStorage.getItem("userRole");
@@ -63,24 +60,22 @@ const messages = selectedChat === 'instructor' ? instructorMessages : adminMessa
   ];
 
 
-  
-
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
 
-  const newMessage = {
-      sender: 'student',
-      text: inputMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+    const newMessage = {
+        sender: 'student',
+        text: inputMessage,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
 
-    if (selectedChat === 'instructor') {
-      setInstructorMessages((prev) => [...prev, newMessage]);
-    } else {
-      setAdminMessages((prev) => [...prev, newMessage]);
-    }
+      if (selectedChat === 'instructor') {
+        setInstructorMessages((prev) => [...prev, newMessage]);
+      } else {
+        setAdminMessages((prev) => [...prev, newMessage]);
+      }
 
-    setInputMessage('');
+      setInputMessage('');
   };
 
   return (
@@ -94,7 +89,7 @@ const messages = selectedChat === 'instructor' ? instructorMessages : adminMessa
         </div>
         <div className="absolute right-4 bottom-0 hidden sm:block">
           <Image
-            src="/student.png"
+            src={"/student.png"}
             alt="Student illustration"
             width={280}
             height={150}

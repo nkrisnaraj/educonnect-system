@@ -29,6 +29,7 @@ export default function Courses() {
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [accessToken, setAccessToken] = useState(null);
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
   const { id } = useParams();
@@ -37,10 +38,10 @@ export default function Courses() {
 
   useEffect(() => {
     if (status === "success") {
-      alert("✅ Payment Successful!");
+      alert(" Payment Successful!");
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (status === "cancel") {
-      alert("❌ Payment Cancelled.");
+      alert(" Payment Cancelled.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [status]);
@@ -52,7 +53,7 @@ export default function Courses() {
       console.log("Stored User:", storedUser);
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
-        // setAccessToken(storedToken);
+        setAccessToken(storedToken);
       }
     } catch (e) {
       sessionStorage.clear();
@@ -158,7 +159,7 @@ export default function Courses() {
     }
   };
 
-  const { accessToken } = useAuth();
+  
   const handlePayment = async () => {
 
     if (!selectedCourse || !user) {

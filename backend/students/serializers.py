@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
 from django.contrib.auth import get_user_model #Django's built-in auth system.
-
+from .models import CalendarEvent  # Importing calendarEvent model
 User = get_user_model()
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -23,3 +23,17 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = ['enrollid', 'stuid' , 'classid', 'payid','timestamp']
+
+from rest_framework import serializers
+from .models import CalendarEvent
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class_title = serializers.CharField(source='classid.title', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'id','title','description','event_type','date','time','created_by','created_by_username','classid','class_title','created_at','updated_at',
+        ]
+
