@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Plus, BookOpen, Users, Clock, Eye, Edit, X, Upload } from "lucide-react"
 
-export default function CoursesPage() {
+export default function ClassesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTab, setSelectedTab] = useState("all")
 

@@ -12,8 +12,8 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "My Courses",
-    url: "/instructor/courses",
+    title: "Classes",
+    url: "/instructor/classes",
     icon: BookOpen,
   },
   {

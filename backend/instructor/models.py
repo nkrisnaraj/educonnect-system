@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
 from students.models import StudentProfile  
+from edu_admin.models import ZoomWebinar 
 
 # Create your models here.
 #class Model
@@ -59,3 +60,18 @@ class InstructorProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
+
+class StudyNote(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    batch = models.CharField(max_length=50)
+    file = models.FileField(upload_to='study_notes')
+    upload_date = models.DateField(auto_now_add=True)
+
+    # Relations
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    related_class = models.ForeignKey(ZoomWebinar, on_delete=models.CASCADE, related_name="notes")
+
+    def __str__(self):
+        return f"{self.title} ({self.related_class.topic})"
+

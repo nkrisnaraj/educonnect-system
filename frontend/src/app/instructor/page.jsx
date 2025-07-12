@@ -1,59 +1,105 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import {Search, Bell, BookOpen, Upload, Calendar, Clock, MessageCircle, Send, Users, Eye} from "lucide-react"
-import { useAuth } from "@/context/AuthContext"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react";
+import {
+  Search,
+  Bell,
+  BookOpen,
+  Clock,
+  MessageCircle,
+  Send,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function InstructorDashboard() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [newMessage, setNewMessage] = useState("")
-
-  // Mock data
-  const instructorData = {
-    name: "Dr. Sarah Johnson",
-    role: "Senior Instructor",
-  }
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newMessage, setNewMessage] = useState("");
+  const [instructorName, setInstructorName] = useState("");
+  const { accessToken, user, refreshAccessToken, logout } = useAuth();
+  const router = useRouter();
 
   const courses = [
     { id: 1, name: "2025 A/L Chemistry", students: 45, color: "bg-blue-500" },
     { id: 2, name: "2026 A/L Chemistry", students: 38, color: "bg-green-500" },
     { id: 3, name: "2027 A/L Chemistry", students: 52, color: "bg-purple-500" },
-  ]
+  ];
 
   const recentSchedules = [
-    { id: 1, class: "2025 A/L Chemistry", time: "8:00 AM", date: "Today"},
-    { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today"},
-    { id: 3, class: "2027 A/L Chemistry", time: "2:00 PM", date: "Tomorrow"},
-  ]
+    { id: 1, class: "2025 A/L Chemistry", time: "8:00 AM", date: "Today" },
+    { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today" },
+    { id: 3, class: "2027 A/L Chemistry", time: "2:00 PM", date: "Tomorrow" },
+  ];
 
   const chatMessages = [
-    { id: 1, sender: "Kasun Perera", message: "Sir, when is the next Physics practical?", time: "10:30 AM" },
-    { id: 2, sender: "Nimali Silva", message: "Can you share the Chemistry notes?", time: "11:15 AM" },
-    { id: 3, sender: "Tharindu Fernando", message: "Thank you for the Biology revision session!", time: "2:45 PM" },
-  ]
+    {
+      id: 1,
+      sender: "Kasun Perera",
+      message: "Sir, when is the next Physics practical?",
+      time: "10:30 AM",
+    },
+    {
+      id: 2,
+      sender: "Nimali Silva",
+      message: "Can you share the Chemistry notes?",
+      time: "11:15 AM",
+    },
+    {
+      id: 3,
+      sender: "Tharindu Fernando",
+      message: "Thank you for the Biology revision session!",
+      time: "2:45 PM",
+    },
+  ];
+
+  const fetchInstructorName = async (token) => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/instructor/profile/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setInstructorName(res.data.last_name); // Only first_name is required
+    } catch (err) {
+      if (err.response?.status === 401) {
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            fetchInstructorName(newToken);
+          } else {
+            logout();
+          }
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
+          logout();
+        }
+      } else {
+        console.error("Failed to load instructor profile:", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    if (!role || role !== "instructor") {
+      router.replace("/login");
+      return;
+    }
+    if (accessToken) {
+      fetchInstructorName(accessToken);
+    }
+  }, [accessToken]);
+
+  if (!user || user.role !== "instructor") {
+    return null; // or a loading spinner
+  }
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
       // Add message logic here
-      setNewMessage("")
+      setNewMessage("");
     }
-  }
+  };
 
-  
-    const {user } = useAuth();
-    const router = useRouter();
-  
-    useEffect(() => {
-      const role = localStorage.getItem("userRole");
-      if (!role || role !== 'instructor') {
-        router.replace("/login");
-      }
-    }, []);
-  
-    if (!user || user.role !== 'instructor') {
-      return null; // or a loading spinner
-    }
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -64,7 +110,7 @@ export default function InstructorDashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search students, courses, reports..."
+                placeholder="Search students, courses"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 w-80 bg-white/50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -83,8 +129,8 @@ export default function InstructorDashboard() {
                 <span className="text-white text-lg font-medium">SJ</span>
               </div>
               <div className="text-right">
-                <p className="text-lg font-medium">{instructorData.name}</p>
-                <p className="text-base text-gray-500">{instructorData.role}</p>
+                <p className="text-lg font-medium">{instructorName}</p>
+                <p className="text-base text-gray-500">Instructor</p>
               </div>
             </div>
           </div>
@@ -104,8 +150,12 @@ export default function InstructorDashboard() {
                 day: "numeric",
               })}
             </p>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {instructorData.name.split(" ")[1]}!</h1>
-            <p className="text-purple-100 text-lg">Ready to inspire and educate your A/L students today</p>
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome back, {instructorName}!
+            </h1>
+            <p className="text-purple-100 text-lg">
+              Ready to inspire and educate your A/L students today
+            </p>
           </div>
           <div className="absolute right-4 top-4 opacity-20">
             <BookOpen className="h-24 w-24" />
@@ -125,12 +175,19 @@ export default function InstructorDashboard() {
             <div className="p-6">
               <div className="space-y-4">
                 {courses.map((course) => (
-                  <div key={course.id} className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
+                  <div
+                    key={course.id}
+                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${course.color}`}></div>
+                      <div
+                        className={`w-3 h-3 rounded-full ${course.color}`}
+                      ></div>
                       <span className="font-medium text-lg">{course.name}</span>
                     </div>
-                    <span className="text-lg text-gray-500">{course.students} students</span>
+                    <span className="text-lg text-gray-500">
+                      {course.students} students
+                    </span>
                   </div>
                 ))}
               </div>
@@ -151,7 +208,10 @@ export default function InstructorDashboard() {
             <div className="p-6">
               <div className="space-y-3">
                 {recentSchedules.map((schedule) => (
-                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-white/50 rounded-xl">
+                  <div
+                    key={schedule.id}
+                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
+                  >
                     <div>
                       <h4 className="font-medium text-lg">{schedule.class}</h4>
                     </div>
@@ -178,8 +238,12 @@ export default function InstructorDashboard() {
                 {chatMessages.map((message) => (
                   <div key={message.id} className="bg-white/50 rounded-xl p-3">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-medium text-lg">{message.sender}</span>
-                      <span className="text-lg text-gray-500">{message.time}</span>
+                      <span className="font-medium text-lg">
+                        {message.sender}
+                      </span>
+                      <span className="text-lg text-gray-500">
+                        {message.time}
+                      </span>
                     </div>
                     <p className="text-lg text-gray-700">{message.message}</p>
                   </div>
@@ -208,5 +272,5 @@ export default function InstructorDashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }

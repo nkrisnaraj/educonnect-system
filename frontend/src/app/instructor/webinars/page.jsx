@@ -1,64 +1,67 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Clock } from "lucide-react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 export default function WebinarsPage() {
   const [selectedTab, setSelectedTab] = useState("upcoming");
+  const [webinars, setWebinars] = useState([]);
+  const { accessToken, refreshAccessToken, logout } = useAuth();
 
-  const webinars = [
-    {
-      id: 1,
-      title: "Calculations",
-      batch: "2025 A/L",
-      date: "2024-06-25",
-      time: "14:00",
-      duration: "90 minutes",
-      status: "upcoming",
-      description:
-        "Deep dive into quantum mechanics principles and applications",
-      meetingLink: "https://meet.google.com/abc-defg-hij",
-      webinar_id: "12345678",
-    },
-    {
-      id: 2,
-      title: "Organic Chemistry Reactions",
-      batch: "2026 A/L",
-      date: "2024-06-22",
-      time: "16:00",
-      duration: "60 minutes",
-      status: "upcoming",
-      description: "Understanding organic reaction mechanisms and synthesis",
-      meetingLink: "https://zoom.us/j/123456789",
-      webinar_id: "12345678",
-    },
-    {
-      id: 3,
-      title: "Inorganic Chemistry",
-      batch: "2025 A/L",
-      date: "2024-06-18",
-      time: "15:00",
-      duration: "75 minutes",
-      status: "completed",
-      description:
-        "Comprehensive overview of cellular processes and genetic principles",
-      meetingLink: "https://teams.microsoft.com/l/meetup-join/...",
-      webinar_id: "12345678",
-    },
-    {
-      id: 4,
-      title: "General Chemistry",
-      batch: "2025 A/L",
-      date: "2024-06-15",
-      time: "10:00",
-      duration: "120 minutes",
-      status: "completed",
-      description:
-        "Real-world applications of differential and integral calculus",
-      meetingLink: "https://meet.google.com/xyz-uvwx-rst",
-      webinar_id: "12345678",
-    },
-  ];
+  const processWebinars = (webinarsData) => {
+    const now = new Date();
+    return webinarsData.map((webinar) => {
+      const startTime = new Date(webinar.start_time);
+      const status = startTime > now ? "upcoming" : "completed";
+
+      const [date, time] = webinar.start_time.split("T"); // Split to get date and time
+      const formattedTime = time ? time.split("+")[0].slice(0, 5) : ""; // "14:30"
+
+      return {
+        ...webinar,
+        status,
+        date,
+        time: formattedTime,
+      };
+    });
+  };
+
+  const fetchWebinars = async (token = accessToken) => {
+    try {
+      const res = await axios.get(
+        "http://127.0.0.1:8000/edu_admin/webinars-list/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const processedWebinars = processWebinars(res.data);
+      setWebinars(processedWebinars); // assuming the backend returns an array of webinars
+    } catch (error) {
+      if (error.response?.status === 401) {
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            await fetchWebinars(newToken);
+          } else {
+            logout();
+          }
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
+          logout();
+        }
+      } else {
+        console.error("Error fetching webinars:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken) {
+      fetchWebinars(accessToken);
+    }
+  }, [accessToken]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -70,6 +73,19 @@ export default function WebinarsPage() {
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getBatchColor = (batch) => {
+    switch (batch) {
+      case "2025 A/L":
+        return "bg-blue-200 text-blue-800";
+      case "2026 A/L":
+        return "bg-green-200 text-green-800";
+      case "2027 A/L":
+        return "bg-gray-200 text-gray-800";
+      default:
+        return "bg-gray-200 text-gray-800";
     }
   };
 
@@ -123,14 +139,14 @@ export default function WebinarsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredWebinars.map((webinar) => (
               <div
-                key={webinar.id}
+                key={`${webinar.id}-${webinar.webinar_id}-${webinar.start_time}`}
                 className="bg-white/50 border border-primary rounded-xl p-6 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="text-lg font-semibold text-gray-900">
-                        {webinar.title}
+                        {webinar.topic}
                       </h4>
                       <span
                         className={`px-2 py-1 text-lg rounded-full ${getStatusColor(
@@ -139,10 +155,13 @@ export default function WebinarsPage() {
                       >
                         {webinar.status}
                       </span>
+                      {/* <span className={`px-2 py-1 text-lg rounded-full ${getBatchColor(
+                        webinar.batch
+                      )}`}>{webinar.batch}</span> */}
                     </div>
-                    <p className="text-base text-gray-500">
+                    {/* <p className="text-base text-gray-500">
                       {webinar.description}
-                    </p>
+                    </p> */}
                   </div>
                 </div>
 
@@ -153,7 +172,8 @@ export default function WebinarsPage() {
                       <span className="text-lg text-gray-600">Date & Time</span>
                     </div>
                     <p className="text-base font-medium text-gray-500">
-                      {new Date(webinar.date).toLocaleDateString()} - {webinar.time}
+                      {/* {new Date(webinar.date).toLocaleDateString()} - {webinar.time} */}
+                      {webinar.date} - {webinar.time}
                     </p>
                   </div>
                   <div className="text-center">
@@ -161,29 +181,24 @@ export default function WebinarsPage() {
                       <Clock className="h-4 w-4 text-gray-400" />
                       <span className="text-lg text-gray-600">Duration</span>
                     </div>
-                    <p className="text-base text-gray-500">{webinar.duration}</p>
+                    <p className="text-base text-gray-500">
+                      {webinar.duration} minutes
+                    </p>
                   </div>
                 </div>
 
                 {/* Webinar Info */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between text-lg text-gray-600">
-                    <span>Meeting Link: </span>
-                    <a
+                    <span>Webinar ID: </span>
+                    {/* <a
                       href={webinar.meetingLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-purple-600 hover:text-purple-700 truncate max-w-32"
-                    >
-                      Join Meeting
-                    </a>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-lg text-gray-600">
-                    <span>Webinar id: </span>
-                        <div className="text-gray-500">{webinar.webinar_id}</div>
+                    > */}
+                    {webinar.webinar_id}
+                    {/* </a> */}
                   </div>
                 </div>
               </div>

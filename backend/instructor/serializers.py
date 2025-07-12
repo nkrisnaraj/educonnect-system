@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Class, InstructorProfile
+from .models import Class, InstructorProfile, StudyNote
 from django.contrib.auth.models import User
+from edu_admin.models import ZoomWebinar
 
 class CourseSerializer(serializers.ModelSerializer):
     instructor_name = serializers.CharField(source='instructor.username', read_only=True)
@@ -45,3 +46,26 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+class ZoomWebinarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ZoomWebinar
+        fields = ['id', 'topic']  # For displaying available classes
+
+class StudyNoteSerializer(serializers.ModelSerializer):
+    class_name = serializers.CharField(source='related_class.topic', read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudyNote
+        fields = ['id', 'title', 'description', 'batch', 'upload_date', 'file_url', 'class_name', 'related_class', 'file']
+        extra_kwargs = {
+            'file': {'write_only': True},
+            'related_class': {'write_only': True},
+        }
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if obj.file:
+            return request.build_absolute_uri(obj.file.url)
+        return None

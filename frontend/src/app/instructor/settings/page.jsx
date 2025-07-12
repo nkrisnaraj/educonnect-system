@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { accessToken, refreshAccessToken, logout } = useAuth();
+  const {accessToken, refreshAccessToken, logout } = useAuth();
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
