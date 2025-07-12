@@ -188,7 +188,7 @@ export default function PaymentsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Student</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Type</th>
+                {/* <th className="text-left py-3 px-4 font-medium text-gray-600">Type</th> */}
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Method</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Amount</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
@@ -202,7 +202,7 @@ export default function PaymentsPage() {
                     <p className="font-medium text-gray-900">{p.studentName}</p>
                     <p className="text-sm text-gray-500">{p.studentId}</p>
                   </td>
-                  <td className="py-3 px-4">{p.type}</td>
+                  {/* <td className="py-3 px-4">{p.type}</td> */}
                   <td className="py-3 px-4">{p.method}</td>
                   <td className="py-3 px-4">${p.amount.toLocaleString()}</td>
                   <td className="py-3 px-4">
@@ -249,7 +249,7 @@ export default function PaymentsPage() {
               </div>
               <div className="space-y-4">
                 <p><strong>Student:</strong> {selectedPayment.studentName} ({selectedPayment.studentId})</p>
-                <p><strong>Type:</strong> {selectedPayment.type}</p>
+                {/* <p><strong>Type:</strong> {selectedPayment.type}</p> */}
                 <p><strong>Method:</strong> {selectedPayment.method}</p>
                 <p><strong>Status:</strong> {selectedPayment.status}</p>
                 <p><strong>Amount:</strong> Rs{selectedPayment.amount}</p>

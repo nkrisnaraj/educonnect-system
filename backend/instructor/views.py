@@ -34,3 +34,4 @@ def get_all_students(request):
         })
 
     return Response({"students": data})
+
