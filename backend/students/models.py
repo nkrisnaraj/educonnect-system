@@ -137,3 +137,16 @@ class CalendarEvent(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.classid.title} - {self.date}"
+
+
+class ChatRoom(models.Model):
+    name = models.CharField(max_length=255)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatrooms_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Message(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_status = models.BooleanField(default=False)

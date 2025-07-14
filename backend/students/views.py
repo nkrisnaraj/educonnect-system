@@ -417,6 +417,57 @@ class EditStudentProfileView(APIView):
         return Response(serializer.data, status=200)
 
 
+from .models import ChatRoom, Message
+from .serializers import MessageSerializer
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_chat_messages(request, recipient_role):
+    student = request.user
+
+    if recipient_role not in ['instructor', 'admin']:
+        return Response({"error": "Invalid chat target"}, status=400)
+
+    # Get or create chat room for this student + recipient
+    chat_room, created = ChatRoom.objects.get_or_create(
+        created_by=student,
+        name=recipient_role
+    )
+
+    messages = Message.objects.filter(
+        chat_room=chat_room
+    ).order_by('created_at')
+
+    serializer = MessageSerializer(messages, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_chat_message(request, recipient_role):
+    student = request.user
+
+    if recipient_role not in ['instructor', 'admin']:
+        return Response({"error": "Invalid chat target"}, status=400)
+
+    message_text = request.data.get('message')
+    if not message_text:
+        return Response({"error": "Message text is required"}, status=400)
+
+    chat_room, created = ChatRoom.objects.get_or_create(
+        created_by=student,
+        name=recipient_role
+    )
+
+    message = Message.objects.create(
+        chat_room=chat_room,
+        sender=student,
+        message=message_text
+    )
+
+    serializer = MessageSerializer(message)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 '''
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

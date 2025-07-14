@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
 from django.contrib.auth import get_user_model #Django's built-in auth system.
-from .models import CalendarEvent  # Importing calendarEvent model
+from .models import CalendarEvent 
+from .models import ChatRoom, Message
+from accounts.serializers import UserSerializer  
+ 
 User = get_user_model()
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -37,3 +40,17 @@ class CalendarEventSerializer(serializers.ModelSerializer):
             'id','title','description','event_type','date','time','created_by','created_by_username','classid','class_title','created_at','updated_at',
         ]
 
+class ChatRoomSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(read_only=True)  # Nested user info
+
+    class Meta:
+        model = ChatRoom
+        fields = ['id', 'name', 'created_by', 'created_at']
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserSerializer(read_only=True)  # Nested sender info
+
+    class Meta:
+        model = Message
+        fields = ['id', 'chat_room', 'sender', 'message', 'created_at', 'read_status']
+        read_only_fields = ['created_at', 'read_status']

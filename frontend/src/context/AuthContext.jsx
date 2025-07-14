@@ -1,12 +1,8 @@
-// src/context/AuthContext.js
 "use client";
-
 import { createContext, useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import axios from "axios";
-
-
 
 
 const AuthContext = createContext();
@@ -14,20 +10,24 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [richUser,setRichuser]=useState(null);
+  const [richUser,setRichUser]=useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken,setRefreshToken] = useState(null)
+  const [loading, setLoading] = useState(true);
   
-  // const [richUser,setRichuser] = useState(null);
+  
 
   useEffect(() => {
     // Load tokens & user from sessionStorage on mount
     const userJson = sessionStorage.getItem("user");
     const token = sessionStorage.getItem("accessToken");
     const refresh = sessionStorage.getItem("refreshToken")
+    const richUserJson = sessionStorage.getItem("richUser");
     if (userJson) setUser(JSON.parse(userJson));
+    if (richUserJson) setRichUser(JSON.parse(richUserJson));
     if (token) setAccessToken(token);
-    if(refresh) setRefreshToken(refresh);
+    if (refresh) setRefreshToken(refresh);
+    setLoading(false);
   }, []);
 
 
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
   
    
     sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
-    setRichuser(enrichedUser);
+    setRichUser(enrichedUser);
 };
 
   const logout = () => {
@@ -68,6 +68,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem("refreshToken");
     sessionStorage.clear();
     setUser(null);
+    setRichUser(null);
     setAccessToken(null);
     setRefreshToken(null)
     router.push("/login");
@@ -91,20 +92,20 @@ export const AuthProvider = ({ children }) => {
       console.log(err);
     }
   }
-  useEffect(() => {
-    const userJson = sessionStorage.getItem("user");
-    const richUserJson = sessionStorage.getItem("richUser");
-    const token = sessionStorage.getItem("accessToken");
-    const refresh = sessionStorage.getItem("refreshToken");
+  // useEffect(() => {
+  //   const userJson = sessionStorage.getItem("user");
+  //   const richUserJson = sessionStorage.getItem("richUser");
+  //   const token = sessionStorage.getItem("accessToken");
+  //   const refresh = sessionStorage.getItem("refreshToken");
 
-    if (userJson) setUser(JSON.parse(userJson));
-    if (richUserJson) setRichuser(JSON.parse(richUserJson));   // <- add this!
-    if (token) setAccessToken(token);
-    if (refresh) setRefreshToken(refresh);
-  }, []);
+  //   if (userJson) setUser(JSON.parse(userJson));
+  //   if (richUserJson) setRichUser(JSON.parse(richUserJson));   // <- add this!
+  //   if (token) setAccessToken(token);
+  //   if (refresh) setRefreshToken(refresh);
+  // }, []);
 
   return (
-    <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, }}>
+    <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, loading}}>
       {children}
     </AuthContext.Provider>
   );
