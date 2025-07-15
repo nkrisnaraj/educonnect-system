@@ -267,9 +267,9 @@ console.log("messages:", messages);
               msg.sender === 'student' ? 'flex-row-reverse' : ''
             }`}
           >
-            {msg.sender !== 'student' && (
-              <Image src="/placeholder.svg" alt={msg.sender} width={32} height={32} className="rounded-full mt-1" />
-            )}
+            {/* {msg.sender !== 'student' && (
+              <Image src="/images/icons/profile1.png" alt={msg.sender} width={40} height={40} className="rounded-full mt-1" />
+            )} */}
             <div
               className={`rounded-lg p-2 text-sm max-w-[80%] ${
                 msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'

@@ -41,11 +41,12 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         ]
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    created_by = UserSerializer(read_only=True)  # Nested user info
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.username', read_only=True)
 
     class Meta:
         model = ChatRoom
-        fields = ['id', 'name', 'created_by', 'created_at']
+        fields = ['id', 'sender', 'sender_name', 'receiver', 'receiver_name', 'message', 'timestamp']
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)  # Nested sender info
