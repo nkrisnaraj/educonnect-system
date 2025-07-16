@@ -34,6 +34,8 @@ export default function Courses() {
   const status = searchParams.get("status");
   const { id } = useParams();
   const router = useRouter();
+  const [classes, setClasses] = useState([]);
+  const [enrolledClasses, setEnrolledClasses] = useState([]);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
   useEffect(() => {
@@ -102,6 +104,28 @@ export default function Courses() {
     );
   };
 
+
+  const fetchAllClasses = async () => {
+    try {
+      const token = await getValidToken();
+      if (!token) return;     
+      const response = await axios.get("http://127.0.0.1:8000/students/classes/", {
+        headers: {      
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("Fetched Courses:", response.data);
+      setClasses(response.data.others);
+      setEnrolledClasses(response.data.enrolled)
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      alert("Failed to fetch courses. Please try again later.");
+    }
+
+    useEffect(()=> {
+      fetchAllClasses();
+    },[])
+
   const handlePaidClass = (course) => {
     setSelectedCourse(course);
     setShowPaidClassModal(true);
@@ -161,15 +185,12 @@ export default function Courses() {
 
   
   const handlePayment = async () => {
-
     if (!selectedCourse || !user) {
       alert("Missing data");
     }
     else {
       console.log("Selected Course:", selectedCourse);
     }
-
-
     const paymentDetails = {
       order_id: `order_${Date.now()}`,
       amount: totalAmount.toFixed(2),
@@ -279,17 +300,17 @@ export default function Courses() {
       <div className="bg-gray-50 min-h-screen p-6">
         {/* Enrolled courses */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Enrolled Courses</h2>
+          <h2 className="text-2xl font-bold mb-6">Enrolled Classes</h2>
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {enrolledCourses.map((course) => (
+            {enrolledClasses.map((clz) => (
               <div
-                key={course.id}
+                key={clz.id}
                 className="bg-white p-5 rounded-xl shadow border"
               >
-                <h3 className="text-lg font-semibold">{course.title}</h3>
-                <p className="text-sm text-gray-600 mb-4">{course.description}</p>
+                <h3 className="text-lg font-semibold">{clz.title}</h3>
+                <p className="text-sm text-gray-600 mb-4">{clz.description}</p>
                 <button
-                  onClick={() => handlePaidClass(course)}
+                  onClick={() => handlePaidClass(clz)}
                   className="bg-primary text-white px-4 py-2 rounded"
                 >
                   View More
@@ -301,7 +322,7 @@ export default function Courses() {
 
         {/* Other courses */}
         <section>
-          <h2 className="text-2xl font-bold mb-6">Other Courses</h2>
+          <h2 className="text-2xl font-bold mb-6">Other Classes</h2>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -313,25 +334,25 @@ export default function Courses() {
             }}
           >
             <ul className="space-y-4 max-w-3xl">
-              {allCourses.map((course) => (
+              {classes.map((clz) => (
                 <li
-                  key={course.id}
+                  key={clz.id}
                   className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-5 rounded-xl shadow border"
                 >
 
                   {/* Left: Course Info */}
                   <div>
-                    <h3 className="font-semibold">{course.title}</h3>
-                    <p className="text-sm text-gray-600">{course.description}</p>
-                    <p className="text-primary font-bold">LKR {course.amount}</p>
+                    <h3 className="font-semibold">{clz.title}</h3>
+                    <p className="text-sm text-gray-600">{clz.description}</p>
+                    <p className="text-primary font-bold">LKR {clz.amount}</p>
                   </div>
 
                   {/* Right: Checkbox */}
                   <input
                     type="checkbox"
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                    checked={selectedCourses.includes(course.id)}
-                    onChange={() => toggleCourseSelection(course.id)}
+                    checked={selectedCourses.includes(clz.id)}
+                    onChange={() => toggleCourseSelection(clz.id)}
                   />
                 </li>
               ))}
@@ -406,17 +427,6 @@ export default function Courses() {
               >
                 {isProcessing ? "Processing..." : "Pay with PayHere"}
               </button>
-
-              // <div className="max-w-md mx-auto mt-20 p-6 bg-slate-700 rounded-lg shadow-md">
-              //   <h1 className="text-2xl font-bold text-center mb-6">Checkout</h1>
-              //   <div className="space-y-4">
-              //     <div className="p-4 border rounded-lg">
-              //       <h2 className="font-semibold">Pay Class Fees</h2>
-              //       <p>LKR 2500.00</p>
-              //     </div>
-              //     <PayButton />
-              //   </div>
-              // </div>
             )}
 
             {/* Receipt Upload */}
@@ -466,4 +476,5 @@ function Modal({ title, children, onClose }) {
       </div>
     </div>
   );
+}
 }

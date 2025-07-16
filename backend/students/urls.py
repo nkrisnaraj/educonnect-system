@@ -24,6 +24,7 @@ urlpatterns = [
     path('profile/',EditStudentProfileView.as_view(), name='student-edit-profile'),
     path('messages/<str:recipient_role>/',views.get_chat_messages, name='get_chat_messages'),
     path('messages/<str:recipient_role>/send/', views.send_chat_message, name='send_chat_message'),
+    path('classes/', views.student_classess, name='get_classes'),
     
 ]
 

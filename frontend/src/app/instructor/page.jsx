@@ -285,7 +285,7 @@ const handleSendMessage = async () => {
                       <div
                         key={msg.id}
                         className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-md mb-2 flex flex-col
-                          ${msg.sender.id === user.id ? 'ml-auto bg-primary text-right border border-purple-200' : 'mr-auto bg-white border border-gray-200'}`}
+                          ${msg.sender.id === user.id ? 'ml-auto bg-white text-right border border-purple-200' : 'mr-auto bg-white border border-gray-200'}`}
                       >
                         <div className="text-xs font-semibold text-purple-600 mb-1">
                           {msg.sender.username}

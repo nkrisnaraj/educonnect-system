@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from .models import Class
 
-class CourseSerializer(serializers.ModelSerializer):
+class ClassSerializer(serializers.ModelSerializer):
     instructor_name = serializers.CharField(source='instructor.username', read_only=True)
 
     class Meta:
         model = Class
-        fields = ['classid', 'title', 'description', 'fee', 'instructor_name']
+        fields = ['id','classid', 'title', 'description', 'fee', 'instructor_name']
 

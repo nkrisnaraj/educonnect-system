@@ -163,8 +163,6 @@ class ReceiptUploadView(APIView):
 
 
 
-
-
 #Payment Info
 class PaymentInfoView(APIView):
     """
@@ -281,7 +279,7 @@ def initiate_payment(request):
         stuid=user,
         method='online',
         amount=amount,
-        status='pending',
+        status='pending', #change to verified
     )
 
     OnlinePayment.objects.create(
@@ -467,6 +465,27 @@ def send_chat_message(request, recipient_role):
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+from instructor.serializers import ClassSerializer
+from instructor.models import Class
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_classess(request):
+    student = request.user.studentprofile
+    enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related('classid')
+    enrolled_classes = [e.classid for e in enrolled_enrollments]
+
+    enrolled_data = ClassSerializer(enrolled_classes, many=True).data
+
+    all_classes = Class.objects.all()
+    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes])
+    others_data = ClassSerializer(other_classes, many=True).data
+
+    return Response({
+        "enrolled": enrolled_data,
+        "others": others_data
+    })
+
+    
 
 '''
 @api_view(['POST'])

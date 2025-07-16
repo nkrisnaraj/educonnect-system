@@ -110,6 +110,83 @@ const mockChats = {
     },
   ],
 }
+// Fetch students on mount and get last message for each
+useEffect(() => {
+  const fetchStudents = async () => {
+    const token = sessionStorage.getItem("accessToken");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/instructor/chat/instructor/students/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setStudents(data.students);
+      // For each student, fetch their last message
+      const lastMsgObj = {};
+      await Promise.all(
+        data.students.map(async (student) => {
+          try {
+            const resMsg = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${student.id}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const messages = await resMsg.json();
+            if (messages && messages.length > 0) {
+              lastMsgObj[student.id] = messages[messages.length - 1];
+            }
+          } catch (err) {
+            // ignore error for individual student
+          }
+        })
+      );
+      setLastMessages(lastMsgObj);
+    } catch (err) {
+      console.error("Error fetching students", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchStudents();
+}, []);
+
+// Fetch messages when a student is selected
+useEffect(() => {
+  if (!selectedStudent) return;
+  const fetchMessages = async () => {
+    const token = sessionStorage.getItem("accessToken");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setChatMessages(data);
+    } catch (err) {
+      console.error("Error fetching chat messages", err);
+    }
+  };
+  fetchMessages();
+}, [selectedStudent]);
+
+const handleSendMessage = async () => {
+  if (!newMessage.trim() || !selectedStudent) return;
+  const token = sessionStorage.getItem("accessToken");
+  try {
+    const res = await fetch(
+      `http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/send/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: newMessage }),
+      }
+    );
+    const data = await res.json();
+    setChatMessages((prev) => [...prev, data]);
+    setNewMessage("");
+  } catch (err) {
+    console.error("Error sending message", err);
+  }
+};
 
 export default function Chatbot() {
   const [isMinimized, setIsMinimized] = useState(true)
