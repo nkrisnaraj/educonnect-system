@@ -5,12 +5,21 @@ import Cookies from "js-cookie";
 import axios from "axios";
 
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
   const [user, setUser] = useState(null);
+<<<<<<< HEAD
   const [richUser,setRichUser]=useState(null);
+=======
+  const [richUser,setRichuser]=useState(null);
+>>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken,setRefreshToken] = useState(null)
   const [loading, setLoading] = useState(true);
@@ -56,7 +65,11 @@ export const AuthProvider = ({ children }) => {
   
    
     sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
+<<<<<<< HEAD
     setRichUser(enrichedUser);
+=======
+    setRichuser(enrichedUser);
+>>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
 };
 
   const logout = () => {
@@ -92,6 +105,7 @@ export const AuthProvider = ({ children }) => {
       console.log(err);
     }
   }
+<<<<<<< HEAD
   // useEffect(() => {
   //   const userJson = sessionStorage.getItem("user");
   //   const richUserJson = sessionStorage.getItem("richUser");
@@ -106,6 +120,22 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, loading}}>
+=======
+  useEffect(() => {
+    const userJson = sessionStorage.getItem("user");
+    const richUserJson = sessionStorage.getItem("richUser");
+    const token = sessionStorage.getItem("accessToken");
+    const refresh = sessionStorage.getItem("refreshToken");
+
+    if (userJson) setUser(JSON.parse(userJson));
+    if (richUserJson) setRichuser(JSON.parse(richUserJson));   // <- add this!
+    if (token) setAccessToken(token);
+    if (refresh) setRefreshToken(refresh);
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, }}>
+>>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
       {children}
     </AuthContext.Provider>
   );

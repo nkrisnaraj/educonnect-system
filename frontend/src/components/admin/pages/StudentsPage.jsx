@@ -27,7 +27,7 @@ const studentsData = [
     enrollmentDate: "2023-09-15",
     status: "active",
     grade: "A",
-    course: "Computer Science",
+    course: "SIVATH 2026 June ",
     avatar: "JS",
     gpa: 3.8,
     credits: 45,
@@ -43,7 +43,7 @@ const studentsData = [
     enrollmentDate: "2023-08-20",
     status: "active",
     grade: "A+",
-    course: "Mathematics",
+    course: "SIVATH 2026 June ",
     avatar: "SJ",
     gpa: 3.9,
     credits: 48,
@@ -59,29 +59,29 @@ const studentsData = [
     enrollmentDate: "2023-09-01",
     status: "active",
     grade: "B+",
-    course: "Physics",
+    course: "SIVATH 2026 June ",
     avatar: "MD",
     gpa: 3.6,
     credits: 42,
     fees: "$12,500",
     feeStatus: "pending",
   },
-  {
-    id: 4,
-    name: "Emily Brown",
-    email: "emily.brown@email.com",
-    phone: "+1 (555) 456-7890",
-    address: "321 Elm St, Houston, TX",
-    enrollmentDate: "2023-07-10",
-    status: "inactive",
-    grade: "B",
-    course: "Chemistry",
-    avatar: "EB",
-    gpa: 3.4,
-    credits: 38,
-    fees: "$10,800",
-    feeStatus: "overdue",
-  },
+  // {
+  //   id: 4,
+  //   name: "Emily Brown",
+  //   email: "emily.brown@email.com",
+  //   phone: "+1 (555) 456-7890",
+  //   address: "321 Elm St, Houston, TX",
+  //   enrollmentDate: "2023-07-10",
+  //   status: "inactive",
+  //   grade: "B",
+  //   course: "SIVATH 2026 June ",
+  //   avatar: "EB",
+  //   gpa: 3.4,
+  //   credits: 38,
+  //   fees: "$10,800",
+  //   feeStatus: "overdue",
+  // },
   {
     id: 5,
     name: "David Wilson",
@@ -91,7 +91,7 @@ const studentsData = [
     enrollmentDate: "2023-09-05",
     status: "active",
     grade: "A-",
-    course: "Biology",
+    course: "SIVATH 2025 Unit-4,5",
     avatar: "DW",
     gpa: 3.7,
     credits: 44,
@@ -107,7 +107,7 @@ const studentsData = [
     enrollmentDate: "2023-08-15",
     status: "active",
     grade: "A",
-    course: "English Literature",
+    course: "SIVATH 2025 Unit-4,5",
     avatar: "LA",
     gpa: 3.8,
     credits: 46,
@@ -163,7 +163,7 @@ export default function StudentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Students Management</h1>
-          <p className="text-gray-600">Manage student profiles, enrollment, and academic records</p>
+          <p className="text-gray-600">Manage student profiles, enrollment, and class records</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -211,7 +211,7 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm">
+        {/* <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-purple-50 rounded-lg">
               <Award className="h-6 w-6 text-purple-600" />
@@ -221,7 +221,8 @@ export default function StudentsPage() {
               <p className="text-2xl font-bold text-gray-900">3.7</p>
             </div>
           </div>
-        </div>
+        </div> */}
+
       </div>
 
       {/* Search and Filters */}
@@ -266,8 +267,8 @@ export default function StudentsPage() {
               <tr>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Student</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Contact</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Course</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Academic</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-600">Class</th>
+                {/* <th className="text-left py-3 px-4 font-medium text-gray-600">Academic</th> */}
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Fees</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
@@ -302,10 +303,10 @@ export default function StudentsPage() {
                   <td className="py-4 px-4">
                     <div>
                       <p className="font-medium text-gray-900">{student.course}</p>
-                      <p className="text-sm text-gray-500">Grade: {student.grade}</p>
+                      {/* <p className="text-sm text-gray-500">Grade: {student.grade}</p> */}
                     </div>
                   </td>
-                  <td className="py-4 px-4">
+                  {/* <td className="py-4 px-4">
                     <div className="space-y-1">
                       <p className="text-sm text-gray-600">
                         GPA: <span className="font-medium">{student.gpa}</span>
@@ -314,20 +315,18 @@ export default function StudentsPage() {
                         Credits: <span className="font-medium">{student.credits}</span>
                       </p>
                     </div>
-                  </td>
+                  </td> */}
                   <td className="py-4 px-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
-                      {student.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{student.fees}</p>
-                      <span
+                     <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${getFeeStatusColor(student.feeStatus)}`}
                       >
                         {student.feeStatus}
                       </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div>
+                      <p className="font-medium text-gray-900">{student.fees}</p>
+                     
                     </div>
                   </td>
                   <td className="py-4 px-4">
