@@ -7,17 +7,12 @@ from .models import ZoomWebinar
 from .zoom_api import ZoomAPIClient
 import traceback
 from .services import ZoomWebinarService
-<<<<<<< HEAD
 from students.models import ChatRoom
 from students.serializers import ChatRoomSerializer
 from students.serializers import MessageSerializer
 from students.models import User,Message
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
-=======
-from rest_framework.decorators import api_view
-
->>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
 
 # Create your views here.
 class CreateZoomWebinarView(APIView):
@@ -97,71 +92,6 @@ class WebinarListAPIView(APIView):
         serializer = ZoomWebinarSerilizer(webinars, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-<<<<<<< HEAD
-
-# ADMIN CHAT ENDPOINTS (using students app models)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def admin_list_students_with_chats(request):
-    """
-    List all students who have chat rooms with instructor.
-    """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
-    chat_rooms = ChatRoom.objects.filter(name='instructor')
-    student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
-    students = User.objects.filter(id__in=student_ids)
-    data = [
-        {
-            'id': s.id,
-            'username': s.username,
-            'first_name': s.first_name,
-            'last_name': s.last_name,
-            'email': s.email,
-        } for s in students
-    ]
-    return Response({'students': data})
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def admin_get_chat_with_student(request, student_id):
-    """
-    Get chat messages between instructor and a specific student.
-    """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
-    try:
-        student = User.objects.get(id=student_id, role='student')
-    except User.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=404)
-    chat_room = ChatRoom.objects.filter(created_by=student, name='instructor').first()
-    if not chat_room:
-        return Response({'messages': []})
-    messages = Message.objects.filter(chat_room=chat_room).order_by('created_at')
-    serializer = MessageSerializer(messages, many=True)
-    return Response(serializer.data)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def admin_send_message_to_student(request, student_id):
-    """
-    Instructor sends a message to a specific student.
-    """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
-    try:
-        student = User.objects.get(id=student_id, role='student')
-    except User.DoesNotExist:
-        return Response({'error': 'Student not found'}, status=404)
-    message_text = request.data.get('message')
-    if not message_text:
-        return Response({'error': 'Message text is required'}, status=400)
-    chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
-    message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
-    serializer = MessageSerializer(message)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
-=======
 # get zoom accounts
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -305,4 +235,65 @@ class ClassListView(APIView):
         classes = Class.objects.all().order_by('-start_date')
         serializer = serializers.ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
->>>>>>> 2dc3fdd6c0ad5724c0d25ad4ff0219f83d16d713
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_list_students_with_chats(request):
+    """
+    List all students who have chat rooms with instructor.
+    """
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    chat_rooms = ChatRoom.objects.filter(name='instructor')
+    student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
+    students = User.objects.filter(id__in=student_ids)
+    data = [
+        {
+            'id': s.id,
+            'username': s.username,
+            'first_name': s.first_name,
+            'last_name': s.last_name,
+            'email': s.email,
+        } for s in students
+    ]
+    return Response({'students': data})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_get_chat_with_student(request, student_id):
+    """
+    Get chat messages between admin and a specific student.
+    """
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    try:
+        student = User.objects.get(id=student_id, role='student')
+    except User.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=404)
+    chat_room = ChatRoom.objects.filter(created_by=student, name='instructor').first()
+    if not chat_room:
+        return Response({'messages': []})
+    messages = Message.objects.filter(chat_room=chat_room).order_by('created_at')
+    serializer = MessageSerializer(messages, many=True)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_send_message_to_student(request, student_id):
+    """
+    admin sends a message to a specific student.
+    """
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    try:
+        student = User.objects.get(id=student_id, role='student')
+    except User.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=404)
+    message_text = request.data.get('message')
+    if not message_text:
+        return Response({'error': 'Message text is required'}, status=400)
+    chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
+    message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
+    serializer = MessageSerializer(message)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
