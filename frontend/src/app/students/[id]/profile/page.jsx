@@ -140,9 +140,9 @@ export default function EditProfilePage() {
     setSelectedImage(null);
   };
 
-  if (loading) {
-    return <div className="text-center py-10">Loading profile...</div>;
-  }
+  // if (loading) {
+  //   return <div className="text-center py-10">Loading profile...</div>;
+  // }
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4">

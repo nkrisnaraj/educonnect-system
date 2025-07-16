@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import CreateZoomWebinarView, ListZoomWebinarsView, SyncZoomWebinarsView, WebinarListAPIView
-from .views import admin_get_chat_with_student, admin_list_students_with_chats,admin_send_message_to_student
+from .views import CreateZoomWebinarView, ListZoomWebinarsView, SyncZoomWebinarsView, WebinarListAPIView, ZoomAccountsListView
+from .views import CreateClassWithWebinarView, ClassListView
+from .views import admin_list_students_with_chats, admin_get_chat_with_student, admin_send_message_to_student
 
 urlpatterns = [
     path('create-webinar/', CreateZoomWebinarView.as_view(), name='create_zoom_webinar'),

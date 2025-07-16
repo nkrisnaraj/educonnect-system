@@ -470,7 +470,7 @@ from instructor.models import Class
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_classess(request):
-    student = request.user.studentprofile
+    student = request.user.student_profile
     enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related('classid')
     enrolled_classes = [e.classid for e in enrolled_enrollments]
 

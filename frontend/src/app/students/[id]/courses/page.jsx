@@ -25,15 +25,16 @@ export default function Courses() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const [user, setUser] = useState(null);
+  //const [user, setUser] = useState(null);
   const [file, setFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [totalAmount, setTotalAmount] = useState(0);
-  const [accessToken, setAccessToken] = useState(null);
+  //const [accessToken, setAccessToken] = useState(null);
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
   const { id } = useParams();
   const router = useRouter();
+  const {user,accessToken,refreshToken,refreshAccessToken} = useAuth()
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -71,21 +72,21 @@ export default function Courses() {
     }
   };
 
-  const refreshAccessToken = async () => {
-    try {
-      const refreshToken = sessionStorage.getItem("refreshToken");
-      const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
-        refresh: refreshToken,
-      });
-      const newAccessToken = response.data.access;
-      sessionStorage.setItem("accessToken", newAccessToken);
-      return newAccessToken;
-    } catch {
-      sessionStorage.clear();
-      alert("Session expired. Please log in again.");
-      return null;
-    }
-  };
+  // const refreshAccessToken = async () => {
+  //   try {
+  //     const refreshToken = sessionStorage.getItem("refreshToken");
+  //     const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
+  //       refresh: refreshToken,
+  //     });
+  //     const newAccessToken = response.data.access;
+  //     sessionStorage.setItem("accessToken", newAccessToken);
+  //     return newAccessToken;
+  //   } catch {
+  //     sessionStorage.clear();
+  //     alert("Session expired. Please log in again.");
+  //     return null;
+  //   }
+  // };
 
   const getValidToken = async () => {
     let token = accessToken;
@@ -105,26 +106,32 @@ export default function Courses() {
   };
 
 
-  const fetchAllClasses = async () => {
-    try {
-      const token = await getValidToken();
-      if (!token) return;     
-      const response = await axios.get("http://127.0.0.1:8000/students/classes/", {
-        headers: {      
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log("Fetched Courses:", response.data);
-      setClasses(response.data.others);
-      setEnrolledClasses(response.data.enrolled)
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-      alert("Failed to fetch courses. Please try again later.");
-    }
+  
+    useEffect(() => {
+      const fetchAllClasses = async () => {
+        try {
+          if (!accessToken || !refreshToken) {
+            console.log("Tokens not ready yet");
+            return;
+          }
+          const token = accessToken;
+          const response = await axios.get("http://127.0.0.1:8000/students/classes/", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          console.log("Fetched Courses:", response.data);
+          setClasses(response.data.others);
+          setEnrolledClasses(response.data.enrolled);
+        } catch (error) {
+          console.error("Error fetching courses:", error);
+          alert("Failed to fetch courses. Please try again later.");
+        }
+      };
 
-    useEffect(()=> {
       fetchAllClasses();
-    },[])
+    }, [accessToken]);
+
 
   const handlePaidClass = (course) => {
     setSelectedCourse(course);
@@ -477,4 +484,4 @@ function Modal({ title, children, onClose }) {
     </div>
   );
 }
-}
+
