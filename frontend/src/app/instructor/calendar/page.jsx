@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, CalendarIcon, Clock, Users, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarIcon, Clock, Users, } from "lucide-react"
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(null)
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState("month") // month, week, day
 
   const events = [

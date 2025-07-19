@@ -5,11 +5,8 @@ import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import {
   User,
-  Lock,
   Camera,
   Save,
-  Eye,
-  EyeOff,
   Upload,
   X,
   Edit,

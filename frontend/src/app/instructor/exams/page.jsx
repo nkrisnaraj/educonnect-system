@@ -1,18 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, GraduationCap, Calendar, Users, Clock, Eye, Edit, X, Upload, Trash2, ImageIcon } from "lucide-react"
+import { GraduationCap, Calendar, Users, Clock, Eye, Edit, } from "lucide-react"
 
 export default function ExamsPage() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTab, setSelectedTab] = useState("upcoming")
-  const [questions, setQuestions] = useState([])
-  const [currentQuestion, setCurrentQuestion] = useState({
-    questionText: "",
-    questionImage: null,
-    answers: ["", "", "", "", ""],
-    correctAnswer: 0,
-  })
 
   const exams = [
     {

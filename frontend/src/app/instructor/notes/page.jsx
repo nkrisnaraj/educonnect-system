@@ -1,31 +1,34 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import {
   Plus,
   FileText,
-  Upload,
   X,
   Search,
   Filter,
-} from "lucide-react"
+  Trash2,
+  Pencil,
+} from "lucide-react";
 
 export default function NotesPage() {
-  const {accessToken, refreshAccessToken, logout } = useAuth();
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const { accessToken, refreshAccessToken, logout } = useAuth();
+
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [notes, setNotes] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("")
-  const [uploadedFiles, setUploadedFiles] = useState([])
+  const [searchQuery, setSearchQuery] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [noteBeingEdited, setNoteBeingEdited] = useState(null); // <-- for edit mode
 
   const fetchNotes = async (token = accessToken) => {
     try {
       const params = {};
       if (searchQuery) params.search = searchQuery;
-      if (selectedClass !== "all") params.batch = selectedClass;
+      if (selectedClass !== "all") params.related_class = selectedClass;
 
       const res = await axios.get("http://127.0.0.1:8000/instructor/notes/", {
         headers: { Authorization: `Bearer ${token}` },
@@ -34,14 +37,9 @@ export default function NotesPage() {
       setNotes(res.data);
     } catch (err) {
       if (err.response?.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) fetchNotes(newToken);
-          else logout();
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          logout();
-        }
+        const newToken = await refreshAccessToken();
+        if (newToken) fetchNotes(newToken);
+        else logout();
       } else {
         console.error(err);
         alert("Failed to load notes.");
@@ -57,14 +55,9 @@ export default function NotesPage() {
       setClasses([{ id: "all", topic: "All Classes" }, ...res.data]);
     } catch (err) {
       if (err.response?.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) fetchClasses(newToken);
-          else logout();
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          logout();
-        }
+        const newToken = await refreshAccessToken();
+        if (newToken) fetchClasses(newToken);
+        else logout();
       } else {
         console.error(err);
         alert("Failed to load classes.");
@@ -86,8 +79,7 @@ export default function NotesPage() {
         alert(`File ${file.name} is too large. Maximum size is 10MB.`);
         return;
       }
-      setUploadedFiles((prev) => [
-        ...prev,
+      setUploadedFiles([
         {
           id: Date.now() + Math.random(),
           file,
@@ -103,40 +95,69 @@ export default function NotesPage() {
     setUploadedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
 
-  const handleSubmitNote = async (e, newToken = null) => {
-    e.preventDefault();
-    if (uploadedFiles.length === 0) return alert("No files selected!");
+  const openUploadModal = (note = null) => {
+    setNoteBeingEdited(note);
+    setUploadedFiles([]);
+    setIsUploadModalOpen(true);
+  };
 
-    const tokenToUse = newToken || accessToken;
+  const handleSubmitNote = async (e) => {
+    e.preventDefault();
     const formData = new FormData();
-    const file = uploadedFiles[0].file;
+    const tokenToUse = accessToken;
+    const file = uploadedFiles[0]?.file;
 
     formData.append("title", e.target.title.value);
     formData.append("description", e.target.description.value);
     formData.append("batch", e.target.batch.value);
     formData.append("related_class", e.target.related_class.value);
-    formData.append("file", file);
+    if (file) formData.append("file", file);
 
     try {
-      await axios.post("http://127.0.0.1:8000/instructor/notes/", formData, {
-        headers: {
-          Authorization: `Bearer ${tokenToUse}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      alert("Note uploaded successfully!");
+      if (noteBeingEdited) {
+        const res = await axios.put(
+          `http://127.0.0.1:8000/instructor/notes/${noteBeingEdited.id}/`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${tokenToUse}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        alert("Note updated successfully!");
+      } else {
+        await axios.post("http://127.0.0.1:8000/instructor/notes/", formData, {
+          headers: {
+            Authorization: `Bearer ${tokenToUse}`,
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        alert("Note uploaded successfully!");
+      }
+
       setIsUploadModalOpen(false);
       setUploadedFiles([]);
+      setNoteBeingEdited(null);
       fetchNotes();
     } catch (err) {
-      if (err.response?.status === 401) {
-        const refreshedToken = await refreshAccessToken();
-        if (refreshedToken) return handleSubmitNote(e, refreshedToken);
-        logout();
-      } else {
-        console.error(err);
-        alert("Failed to upload note.");
-      }
+      console.error(err);
+      alert("Failed to submit note.");
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
+
+    try {
+      await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      fetchNotes();
+      alert("Note deleted.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete note.");
     }
   };
 
@@ -158,22 +179,12 @@ export default function NotesPage() {
     }
   };
 
-  const filteredNotes = notes.filter((note) => {
-    const batchMatch = selectedClass === "all" || note.batch === selectedClass;
-    const searchMatch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.description.toLowerCase().includes(searchQuery.toLowerCase())
-    return batchMatch && searchMatch
-  })
-
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Study Notes</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">A/L Study Notes</h1>
         <button
-          onClick={() => setIsUploadModalOpen(true)}
+          onClick={() => openUploadModal(null)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-lg rounded-xl hover:bg-accent"
         >
           <Plus className="h-4 w-4" />
@@ -181,8 +192,8 @@ export default function NotesPage() {
         </button>
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+      {/* Filters */}
+      <div className="bg-white/60 border border-purple-200 rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-gray-400" />
@@ -191,7 +202,7 @@ export default function NotesPage() {
               placeholder="Search notes, descriptions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="px-3 py-2 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 text-lg border border-gray-300 rounded-xl"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -199,7 +210,7 @@ export default function NotesPage() {
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="px-3 py-2 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-2 text-lg border border-gray-300 rounded-xl"
             >
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
@@ -211,89 +222,103 @@ export default function NotesPage() {
         </div>
       </div>
 
-      {/* Notes Grid */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-        <div className="p-6 border-b border-purple-200">
-          <h3 className="text-xl font-semibold">A/L Study Materials Library</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredNotes.map((note) => (
-              <div
-                key={note.id}
-                className="bg-white/50 border border-primary rounded-xl p-4 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{getFileIcon(note.file_url.split('.').pop())}</span>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 text-xl">{note.title}</h4>
-                      <p className="text-lg text-gray-500">{note.class_name}</p>
+      {/* Notes */}
+      {notes.length > 0 ? (
+        <div className="bg-white/60 border border-purple-200 rounded-xl">
+          <div className="p-6 border-b border-purple-200">
+            <h3 className="text-xl font-semibold">A/L Study Materials Library</h3>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
+              {notes.map((note) => (
+                <div
+                  key={note.id}
+                  className="bg-white/50 border border-primary rounded-xl p-4 hover:shadow-lg"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">
+                        {getFileIcon(note.file_url?.split('.').pop())}
+                      </span>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-xl">{note.title}</h4>
+                        <p className="text-lg text-gray-500">{note.class_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openUploadModal(note)}>
+                        <Pencil className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+                      </button>
+                      <button onClick={() => handleDeleteNote(note.id)}>
+                        <Trash2 className="w-5 h-5 text-red-600 hover:text-red-800" />
+                      </button>
                     </div>
                   </div>
+
+                  <p className="text-lg text-gray-600 mb-3">{note.description}</p>
+
+                  <div className="flex justify-between text-lg text-gray-500">
+                    <span>{note.upload_date}</span>
+                    <a
+                      href={note.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Download
+                    </a>
+                  </div>
                 </div>
-
-                <p className="text-lg text-gray-600 mb-3 line-clamp-2">{note.description}</p>
-
-                <div className="flex items-center justify-between text-lg text-gray-500">
-                  <span>{note.upload_date}</span>
-                  <a
-                href={note.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
-              >
-                Download
-              </a>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {notes.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No notes found</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
-              <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
-              >
-                Upload Your First Note
-              </button>
+              ))}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No notes found</h3>
+          <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+          <button
+            onClick={() => openUploadModal()}
+            className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
+          >
+            Upload Your First Note
+          </button>
+        </div>
+      )}
 
-      {/* Upload Notes Modal */}
+      {/* Upload/Edit Modal */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Upload Study Notes</h2>
-              <button onClick={() => setIsUploadModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
+              <h2 className="text-xl font-semibold">
+                {noteBeingEdited ? "Edit Note" : "Upload Study Notes"}
+              </h2>
+              <button onClick={() => setIsUploadModalOpen(false)}>
+                <X className="h-6 w-6 text-gray-400 hover:text-gray-600" />
               </button>
             </div>
             <form onSubmit={handleSubmitNote} className="space-y-4">
               <input
                 name="title"
-                type="text"
-                placeholder="Title"
+                defaultValue={noteBeingEdited?.title || ""}
                 required
-                className="w-full px-3 py-2 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Title"
+                className="w-full px-3 py-2 border rounded-xl"
               />
               <textarea
                 name="description"
+                defaultValue={noteBeingEdited?.description || ""}
                 placeholder="Description"
                 rows={3}
-                className="w-full px-3 py-2 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border rounded-xl"
               />
               <select
                 name="batch"
+                defaultValue={noteBeingEdited?.batch || ""}
                 required
-                className="w-full px-3 py-2 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border rounded-xl"
               >
                 <option value="">Select Batch</option>
                 <option value="2025 A/L">2025 A/L</option>
@@ -301,8 +326,9 @@ export default function NotesPage() {
               </select>
               <select
                 name="related_class"
+                defaultValue={noteBeingEdited?.related_class || ""}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border rounded-xl"
               >
                 <option value="">Select Class</option>
                 {classes
@@ -313,17 +339,19 @@ export default function NotesPage() {
                     </option>
                   ))}
               </select>
-
               <div>
-                <label className="text-gray-600 mb-4 block font-medium">Upload File</label>
-                <input type="file" onChange={handleFileUpload} accept="*"/>
+                <label className="block mb-2 text-gray-700 font-medium">Upload File</label>
+                <input type="file" onChange={handleFileUpload} />
               </div>
-
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50"
+                  onClick={() => {
+                    setIsUploadModalOpen(false);
+                    setNoteBeingEdited(null);
+                    setUploadedFiles([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-xl"
                 >
                   Cancel
                 </button>
@@ -331,25 +359,10 @@ export default function NotesPage() {
                   type="submit"
                   className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
                 >
-                  Upload
+                  {noteBeingEdited ? "Update Note" : "Upload Note"}
                 </button>
               </div>
             </form>
-
-            {/* Selected Files */}
-            {uploadedFiles.length > 0 && (
-              <div className="mt-4">
-                <p className="font-medium mb-2">Selected Files:</p>
-                {uploadedFiles.map((file) => (
-                  <div key={file.id} className="flex justify-between items-center">
-                    <span>{file.name}</span>
-                    <button onClick={() => removeUploadedFile(file.id)}>
-                      <X className="h-4 w-4 text-red-500" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}

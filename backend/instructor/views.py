@@ -6,9 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from accounts.models import User
-from .models import InstructorProfile, StudyNote
+from .models import InstructorProfile, StudyNote, Class
 from students.models import StudentProfile
-from .serializers import InstructorProfileSerializer, StudyNoteSerializer, ZoomWebinarSerializer
+from .serializers import InstructorProfileSerializer, StudyNoteSerializer, ZoomWebinarSerializer, ClassSerializer
 from accounts.serializers import UserSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from edu_admin.models import ZoomWebinar
@@ -69,14 +69,16 @@ def instructor_profile(request):
 def study_notes(request):
     if request.method == 'GET':
         search_query = request.query_params.get('search', '')
-        batch = request.query_params.get('batch', '')
+        related_class = request.query_params.get('related_class')
 
         notes = StudyNote.objects.select_related('related_class').filter(
             Q(title__icontains=search_query) |
             Q(description__icontains=search_query) |
             Q(related_class__topic__icontains=search_query),
-            Q(batch__icontains=batch) if batch else Q()
         ).order_by('-upload_date')
+
+        if related_class and related_class.lower() != 'all':
+            notes = notes.filter(related_class__id=related_class)
 
         serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
         return Response(serializer.data)
@@ -124,3 +126,11 @@ def webinar_classes(request):
     webinars = ZoomWebinar.objects.all().order_by('topic')
     serializer = ZoomWebinarSerializer(webinars, many=True)
     return Response(serializer.data)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def instructor_classes(request):
+    classes = Class.objects.filter(instructor=request.user)
+    serializer = ClassSerializer(classes, many=True)
+    return Response({"classes": serializer.data})

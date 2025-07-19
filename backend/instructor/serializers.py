@@ -59,6 +59,7 @@ class StudyNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudyNote
         fields = ['id', 'title', 'description', 'batch', 'upload_date', 'file_url', 'class_name', 'related_class', 'file']
+        read_only_fields = ['upload_date']
         extra_kwargs = {
             'file': {'write_only': True},
             'related_class': {'write_only': True},
@@ -66,6 +67,11 @@ class StudyNoteSerializer(serializers.ModelSerializer):
 
     def get_file_url(self, obj):
         request = self.context.get('request')
-        if obj.file:
+        if obj.file and hasattr(obj.file, 'url'):
             return request.build_absolute_uri(obj.file.url)
         return None
+    
+class ClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Class
+        fields = ['id', 'classid', 'title', 'description', 'fee']
