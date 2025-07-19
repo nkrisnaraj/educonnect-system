@@ -180,7 +180,8 @@ class PaymentInfoView(APIView):
         for payment in payments:
             # Try to get Enrollment related to this payment
             enrollment = Enrollment.objects.filter(payid=payment).first()
-            coursename = enrollment.courseid.title if enrollment else None
+            classname = enrollment.classid.title if enrollment else None
+            print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
 
             invoice_no = None
             record_no = None
@@ -206,7 +207,7 @@ class PaymentInfoView(APIView):
                     "amount": float(payment.amount),
                     "status": payment.status,
                     "method": payment.method,
-                    "course": coursename,
+                    "class": classname,
                     "Invoice_No" : invoice_no,
                     "Record_No" : record_no
             })
@@ -268,27 +269,12 @@ def initiate_payment(request):
     order_id = data.get('order_id')
     amount = data.get('amount')
     currency = data.get('currency')
-    course_ids = data.get('course_ids')
-    course_summary = data.get('items', '')
+    class_ids = data.get('class_ids')
+    class_summary = data.get('items', '')
 
-    if not all([order_id, amount, currency, course_ids]):
+    if not all([order_id, amount, currency, class_ids]):
         return Response({'error': 'Missing data'}, status=400)
-
-    # Create Payment record
-    payment = Payment.objects.create(
-        stuid=user,
-        method='online',
-        amount=amount,
-        status='pending', #change to verified
-    )
-
-    OnlinePayment.objects.create(
-        payid=payment,
-        invoice_no=payment.payid,
-        course_ids=course_ids,
-        course_summary=course_summary,
-    )
-
+    
     merchant_id = settings.PAYHERE_MERCHANT_ID
     merchant_secret = settings.PAYHERE_MERCHANT_SECRET
      
@@ -298,6 +284,34 @@ def initiate_payment(request):
     if not merchant_secret:
         return Response({"error": "Merchant secret not configured"}, status=500)
 
+    # student_profile = user.student_profile
+
+    try:
+        payment = Payment.objects.create(
+            stuid=user,
+            method='online',
+            amount=amount,
+            status='pending',
+        )
+        OnlinePayment.objects.create(
+            payid=payment,
+            invoice_no=payment.payid,
+            class_ids=class_ids,
+            class_summary=class_summary,
+        )
+
+        for cid in class_ids:
+            cls = Class.objects.get(id=cid)
+            Enrollment.objects.create(
+                payid=payment,
+                stuid=user.student_profile,
+                classid=cls,
+            )
+    except Exception as e:
+        print("Error saving payment:", e)
+        return Response({"error": "Failed to create payment records"}, status=500)
+
+    
 
     # Correct hash generation
     hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
@@ -348,7 +362,7 @@ def payment_notify(request):
             student_profile = StudentProfile.objects.get(user=payment.stuid)
 
             # Enroll student to all classes in the payment's course_ids
-            for class_id in online.course_ids:
+            for class_id in online.class_ids:
                 Enrollment.objects.create(
                     stuid=student_profile,
                     classid_id=class_id,

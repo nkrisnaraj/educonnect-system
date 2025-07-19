@@ -17,7 +17,7 @@ export default function StudentPage() {
   const [adminMessages, setAdminMessages] = useState([]);
 
   const [inputMessage, setInputMessage] = useState('');
-  const bottomRef = useRef(null);
+  // const bottomRef = useRef(null);
 
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
 
@@ -40,9 +40,9 @@ export default function StudentPage() {
   //     return null; // or a loading spinner
   //   }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // useEffect(() => {
+  //   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
 
   console.log(accessToken);
@@ -278,7 +278,7 @@ console.log("messages:", messages);
               <p>{msg.text}</p>
               <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
             </div>
-            <div ref={bottomRef} />
+            
           </div>
         ))}
       </div>

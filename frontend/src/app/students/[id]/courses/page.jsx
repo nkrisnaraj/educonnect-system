@@ -6,24 +6,24 @@ import { useParams, useSearchParams } from "next/navigation";
 import PayButton from "@/components/paybutton";
 import { useAuth } from "@/context/AuthContext";
 
-export default function Courses() {
-  const enrolledCourses = [
-    { id: 1, title: "2026 June 1", description: "2026 A/L Batch 1", amount: 1000 },
-    { id: 2, title: "2026 June 2", description: "2026 A/L Batch 2", amount: 3000 }
-  ];
+export default function Classes() {
+  // const enrolledClasses = [
+  //   { id: 1, title: "2026 June 1", description: "2026 A/L Batch 1", amount: 1000 },
+  //   { id: 2, title: "2026 June 2", description: "2026 A/L Batch 2", amount: 3000 }
+  // ];
 
-  const allCourses = [
-    { id: 3, title: "2025 MCQ June", description: "Day Batch", amount: 1000 },
-    { id: 4, title: "2025 Part 2", description: "Mon-fri 10.30 to 12.00", amount: 4000 },
-    { id: 5, title: "2027 June", description: "2027 A/L Batch 1", amount: 2000 }
-  ];
+  // const allClasses = [
+  //   { id: 3, title: "2025 MCQ June", description: "Day Batch", amount: 1000 },
+  //   { id: 4, title: "2025 Part 2", description: "Mon-fri 10.30 to 12.00", amount: 4000 },
+  //   { id: 5, title: "2027 June", description: "2027 A/L Batch 1", amount: 2000 }
+  // ];
 
-  const [selectedCourse, setSelectedCourse] = useState([]);
-  const [selectedCourseDetails, setSelectedCourseDetails] = useState([]);
+  const [selectedClass, setSelectedClass] = useState([]);
+  const [selectedClassDetails, setSelectedClassDetails] = useState([]);
   const [showPaidClassModal, setShowPaidClassModal] = useState(false);
   const [showUnPaidClassModal, setShowUnPaidClassModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [selectedCourses, setSelectedCourses] = useState([]);
+  const [selectedClasses, setSelectedClasses] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   //const [user, setUser] = useState(null);
   const [file, setFile] = useState(null);
@@ -97,11 +97,11 @@ export default function Courses() {
     return token;
   };
 
-  const toggleCourseSelection = (courseId) => {
-    setSelectedCourses((prev) =>
-      prev.includes(courseId)
-        ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId]
+  const toggleClassSelection = (classId) => {
+    setSelectedClasses((prev) =>
+      prev.includes(classId)
+        ? prev.filter((id) => id !== classId)
+        : [...prev, classId]
     );
   };
 
@@ -120,12 +120,12 @@ export default function Courses() {
               Authorization: `Bearer ${token}`,
             },
           });
-          console.log("Fetched Courses:", response.data);
+          console.log("Fetched Classes:", response.data);
           setClasses(response.data.others);
           setEnrolledClasses(response.data.enrolled);
         } catch (error) {
-          console.error("Error fetching courses:", error);
-          alert("Failed to fetch courses. Please try again later.");
+          console.error("Error fetching classes:", error);
+          alert("Failed to fetch classes. Please try again later.");
         }
       };
 
@@ -133,8 +133,8 @@ export default function Courses() {
     }, [accessToken]);
 
 
-  const handlePaidClass = (course) => {
-    setSelectedCourse(course);
+  const handlePaidClass = (Class) => {
+    setSelectedClass(Class);
     setShowPaidClassModal(true);
   };
 
@@ -143,7 +143,7 @@ export default function Courses() {
     setShowPaidClassModal(false);
     setShowUnPaidClassModal(false);
     setShowPayModal(false);
-    setSelectedCourse(null);
+    setSelectedClass(null);
     setSelectedPayment(null);
     setFile(null);
   };
@@ -157,16 +157,16 @@ export default function Courses() {
     setIsProcessing(true);
     try {
       const token = await getValidToken();
-      const selectedCourseDetails = allCourses.filter((course) =>
-        selectedCourses.includes(course.id)
+      const selectedClassDetails = allClasses.filter((Class) =>
+        selectedClasses.includes(Class.id)
       );
-      const totalAmount = selectedCourseDetails.reduce(
-        (sum, course) => sum + course.amount,
+      const totalAmount = selectedClassDetails.reduce(
+        (sum, Class) => sum + Class.amount,
         0
       );
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("course_ids", JSON.stringify(selectedCourses)); // Send array of course IDs
+      formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of course IDs
       formData.append("amount", totalAmount);
 
       const response = await axios.post(
@@ -192,18 +192,18 @@ export default function Courses() {
 
   
   const handlePayment = async () => {
-    if (!selectedCourse || !user) {
+    if (!selectedClass || !user) {
       alert("Missing data");
     }
     else {
-      console.log("Selected Course:", selectedCourse);
+      console.log("Selected Class:", selectedClass);
     }
     const paymentDetails = {
       order_id: `order_${Date.now()}`,
       amount: totalAmount.toFixed(2),
       currency: 'LKR',
-      items: selectedCourseDetails.map(c => c.title).join(", "),
-      course_ids: selectedCourseDetails.map(c => c.id),  
+      items: selectedClassDetails.map(c => c.title).join(", "),
+      class_ids: selectedClassDetails.map(c => c.id),  
       first_name: user?.first_name,
       last_name: user?.last_name,
       email: user?.email,
@@ -212,6 +212,8 @@ export default function Courses() {
       city: 'Colombo',
       country: 'Sri Lanka',
     };
+
+    console.log("Payment Details:", paymentDetails);
 
     try {
       // Request hash from Django backend
@@ -229,6 +231,12 @@ export default function Courses() {
 
         body: JSON.stringify(paymentDetails),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Server error response:", text);
+        alert("Server error: " + text);
+        return;
+    }
       console.log("paymentdetails: ", paymentDetails)
       const { merchant_id, hash } = await res.json();
       console.log("merchantid: ", merchant_id)
@@ -276,26 +284,26 @@ export default function Courses() {
 
   const proceedpay = (e) => {
     e.preventDefault();
-    if (selectedCourses.length === 0) {
-      alert("Please select at least one course to pay.");
+    if (selectedClasses.length === 0) {
+      alert("Please select at least one class to pay.");
       return;
     }
 
     //Calculate selected course details
-    const selectedCourseDetails = allCourses.filter((course) =>
-      selectedCourses.includes(course.id)
+    const selectedClassDetails = classes.filter((clz) =>
+      selectedClasses.includes(clz.id)
     );
 
     //Calculate total amount
-    const total = selectedCourseDetails.reduce(
-      (sum, course) => sum + course.amount,
+    const total = selectedClassDetails.reduce(
+      (sum, clz) => sum + parseFloat(clz.fee),
       0
     );
 
     // Save both to state
-    setSelectedCourseDetails(selectedCourseDetails); 
-    console.log("Selected Course Details:", selectedCourseDetails);
-    setSelectedCourse(selectedCourseDetails);  
+    setSelectedClassDetails(selectedClassDetails); 
+    console.log("Selected Class Details:", selectedClassDetails);
+    setSelectedClass(selectedClassDetails);  
     setTotalAmount(total);                     // Save total amount to state
     setShowPayModal(true);
 
@@ -333,8 +341,8 @@ export default function Courses() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (selectedCourses.length === 0) {
-                alert("Please select at least one course to pay.");
+              if (selectedClasses.length === 0) {
+                alert("Please select at least one class to pay.");
                 return;
               }
               setShowPayModal(true);
@@ -351,15 +359,15 @@ export default function Courses() {
                   <div>
                     <h3 className="font-semibold">{clz.title}</h3>
                     <p className="text-sm text-gray-600">{clz.description}</p>
-                    <p className="text-primary font-bold">LKR {clz.amount}</p>
+                    <p className="text-primary font-bold">LKR {clz.fee}</p>
                   </div>
 
                   {/* Right: Checkbox */}
                   <input
                     type="checkbox"
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                    checked={selectedCourses.includes(clz.id)}
-                    onChange={() => toggleCourseSelection(clz.id)}
+                    checked={selectedClasses.includes(clz.id)}
+                    onChange={() => toggleClassSelection(clz.id)}
                   />
                 </li>
               ))}
@@ -377,7 +385,7 @@ export default function Courses() {
 
         {/* Paid Modal */}
         {showPaidClassModal && (
-          <Modal title={selectedCourse?.title} onClose={closeAllModals}>
+          <Modal title={selectedClass?.title} onClose={closeAllModals}>
             <p className="text-center">Zoom ID: 1234567890<br />Mr. Sivathiran<br />Mon–Sat</p>
             <div className="text-center mt-4">
               <button className="bg-primary text-white px-4 py-2 rounded">Notes</button>
@@ -392,11 +400,11 @@ export default function Courses() {
 
             {/*  List Selected Courses */}
             <div className="mb-4">
-              <h3 className="font-semibold mb-2">Selected Courses:</h3>
+              <h3 className="font-semibold mb-2">Selected Classes:</h3>
               <ul className="list-disc list-inside text-gray-700">
-                {selectedCourse.map((course) => (
-                  <li key={course.id}>
-                    {course.title} - LKR {course.amount}
+                {selectedClass.map((Class) => (
+                  <li key={Class.id}>
+                    {Class.title} - LKR {Class.fee}
                   </li>
                 ))}
               </ul>

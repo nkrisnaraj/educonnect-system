@@ -22,13 +22,12 @@ console.log(accessToken);
  
   const fetchPayments = async()=>{
     try {
-       const response = await axios.get("http://127.0.0.1:8000/students/payment-info/",{
+      const response = await axios.get("http://127.0.0.1:8000/students/payment-info/",{
         headers : {
           Authorization: `Bearer ${accessToken}`
         }
        });
-       
-       if(response.status === 200){
+      if(response.status === 200){
         console.log(response.data);
         setPayments(response.data.payments);
       }
@@ -113,7 +112,7 @@ console.log(accessToken);
                     Rs.{p.amount}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-700">
-                    {p.coursename}
+                    {p.class}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-700">
                     {p.method}
