@@ -6,10 +6,10 @@ import { BookOpen, Users, Clock } from "lucide-react";
 
 export default function ClassesPage() {
   const {user, accessToken, refreshAccessToken, logout } = useAuth();
-  const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchCourses = async (token) => {
+  const fetchClasses = async (token) => {
     try {
       const res = await fetch("http://127.0.0.1:8000/instructor/instructor/classes/", {
         headers: {
@@ -21,13 +21,13 @@ export default function ClassesPage() {
 
       const data = await res.json();
       if (data?.classes) {
-        setCourses(data.classes);
+        setClasses(data.classes);
       }
     } catch (err) {
       if (err.message === "Unauthorized") {
         try {
           const newToken = await refreshAccessToken();
-          if (newToken) fetchCourses(newToken);
+          if (newToken) fetchClasses(newToken);
           else logout();
         } catch {
           logout();
@@ -39,14 +39,14 @@ export default function ClassesPage() {
   };
 
   useEffect(() => {
-    if (user && accessToken) fetchCourses(accessToken);
+    if (user && accessToken) fetchClasses(accessToken);
   }, [user]);
 
-  const filteredCourses = courses.filter((c) =>
+  const filteredClasses = classes.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // const courses = [
+  // const classes = [
   //   {
   //     id: 1,
   //     name: "Chemistry - 2025 A/L",
@@ -65,16 +65,16 @@ export default function ClassesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My A/L Courses</h1>
+          <h1 className="text-2xl font-bold text-gray-900">My A/L Classes</h1>
         </div>
       </div>
 
-      {/* Courses List */}
+      {/* Classes List */}
       <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold">A/L Course Management</h3>
+              <h3 className="text-lg font-semibold">A/L Class Management</h3>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -88,26 +88,26 @@ export default function ClassesPage() {
           </div>
         </div>
         <div className="p-6">
-          {/* Course Cards */}
+          {/* Class Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredCourses.map((course) => (
+            {filteredClasses.map((classes) => (
               <div
-                key={course.id}
+                key={classes.id}
                 className="bg-white/50 border border-primary rounded-lg p-6 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h4 className="text-lg font-semibold text-gray-900">
-                        {course.title}
+                        {classes.title}
                       </h4>
                     </div>
                     <p className="text-lg text-gray-600 mb-2">
-                      {course.description}
+                      {classes.description}
                     </p>
 
                     <div className="grid grid-cols-2 text-lg text-gray-700 gap-2 mb-2">
-                      <p><strong>Fee:</strong> Rs. {course.fee}</p>
+                      <p><strong>Fee:</strong> Rs. {classes.fee}</p>
                     </div>
                   </div>
                 </div>
@@ -119,7 +119,7 @@ export default function ClassesPage() {
                       <span className="text-sm text-gray-600">Students</span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      {course.students}
+                      {class.students}
                     </p>
                   </div>
                   <div className="text-center">
@@ -128,7 +128,7 @@ export default function ClassesPage() {
                       <span className="text-sm text-gray-600">Lessons</span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      {course.lessons}
+                      {class.lessons}
                     </p>
                   </div>
                   <div className="text-center">
@@ -137,20 +137,20 @@ export default function ClassesPage() {
                       <span className="text-sm text-gray-600">Progress</span>
                     </div>
                     <p className="text-lg font-bold text-gray-900">
-                      {course.progress}%
+                      {class.progress}%
                     </p>
                   </div>
                 </div> */}
 
                 {/* <div className="mb-4">
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Course Progress</span>
-                    <span>{course.progress}%</span>
+                    <span>Class Progress</span>
+                    <span>{class.progress}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full"
-                      style={{ width: `${course.progress}%` }}
+                      style={{ width: `${class.progress}%` }}
                     ></div>
                   </div>
                 </div> */}

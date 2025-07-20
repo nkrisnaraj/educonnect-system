@@ -15,16 +15,101 @@ import axios from "axios";
 
 export default function InstructorDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [classes, setClasses] = useState([]);
+  const [webinars, setWebinars] = useState([]);
+  const [todayTomorrowWebinars, setTodayTomorrowWebinars] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [instructorName, setInstructorName] = useState("");
   const { accessToken, user, refreshAccessToken, logout } = useAuth();
   const router = useRouter();
 
-  const courses = [
-    { id: 1, name: "2025 A/L Chemistry", students: 45, color: "bg-blue-500" },
-    { id: 2, name: "2026 A/L Chemistry", students: 38, color: "bg-green-500" },
-    { id: 3, name: "2027 A/L Chemistry", students: 52, color: "bg-purple-500" },
-  ];
+  const fetchClasses = async (token) => {
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:8000/instructor/instructor/classes/",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (res.status === 401) throw new Error("Unauthorized");
+
+      const data = await res.json();
+      if (data?.classes) {
+        setClasses(data.classes);
+      }
+    } catch (err) {
+      if (err.message === "Unauthorized") {
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) fetchClasses(newToken);
+          else logout();
+        } catch {
+          logout();
+        }
+      } else {
+        console.error("Fetch error:", err);
+      }
+    }
+  };
+
+  const fetchWebinars = async (token) => {
+    try {
+      const res = await axios.get(
+        "http://127.0.0.1:8000/edu_admin/webinars-list/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const data = res.data;
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const tomorrowStr = new Date(Date.now() + 86400000)
+        .toISOString()
+        .split("T")[0];
+
+      const filteredOccurrences = [];
+
+      data.forEach((webinar) => {
+        (webinar.occurrences || []).forEach((occ) => {
+          if (!occ.start_time) return;
+
+          const occDateStr = new Date(occ.start_time)
+            .toISOString()
+            .split("T")[0];
+
+          if (occDateStr === todayStr || occDateStr === tomorrowStr) {
+            const occDateTime = new Date(occ.start_time);
+
+            filteredOccurrences.push({
+              key: `webinar-${webinar.id}-${occ.occurrence_id || occDateStr}-${occ.start_time}`,
+              webinarId: webinar.id,
+              topic: webinar.topic || "Untitled",
+              date: occDateTime.toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }),
+              time: occDateTime.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              day: occDateStr === todayStr ? "Today" : "Tomorrow",
+              duration: occ.duration || "N/A",
+            });
+          }
+        });
+      });
+
+      setTodayTomorrowWebinars(filteredOccurrences);
+    } catch (error) {
+      console.error("Failed to fetch webinars:", error);
+    }
+  };
 
   const recentSchedules = [
     { id: 1, class: "2025 A/L Chemistry", time: "8:00 AM", date: "Today" },
@@ -86,6 +171,8 @@ export default function InstructorDashboard() {
     }
     if (accessToken) {
       fetchInstructorName(accessToken);
+      fetchClasses(accessToken);
+      fetchWebinars(accessToken);
     }
   }, [accessToken]);
 
@@ -162,65 +249,83 @@ export default function InstructorDashboard() {
           </div>
         </div>
 
-        {/* First Row: Courses, Notes to Upload, Calendar */}
+        {/* First Row: Classes, Notes to Upload, Calendar */}
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
-          {/* Courses */}
+          {/* Classes */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-purple-600" />
-                My Courses
+                Classes
               </h3>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {courses.map((course) => (
+              <div className="h-64 overflow-y-auto space-y-4">
+                {classes.map((cls) => (
                   <div
-                    key={course.id}
-                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
+                    key={cls.id}
+                    className="p-4 bg-white/50 rounded-xl shadow-md"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-3 h-3 rounded-full ${course.color}`}
-                      ></div>
-                      <span className="font-medium text-lg">{course.name}</span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-xl text-gray-800">
+                        {cls.title}
+                      </span>
+                      <p className="text-gray-600 mt-1">{cls.description}</p>
                     </div>
-                    <span className="text-lg text-gray-500">
-                      {course.students} students
-                    </span>
                   </div>
                 ))}
               </div>
+
+              {/* <div className="space-y-4">
+                {classes.map((classes) => (
+                  <div
+                    key={classes.id}
+                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-lg">{classes.title}</span>
+                    </div>
+                    <span className="text-lg text-gray-500">
+                      {classes.students} students
+                    </span>
+                    <div>{classes.description}</div>
+                    </div>
+                ))}
+              </div> */}
             </div>
           </div>
         </div>
 
-        {/* Second Row: Recent Schedules, Chat Box */}
+        {/* Second Row: Recent Webinars, Chat Box */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Recent Schedules */}
+          {/* Recent Webinars for Today & Tomorrow */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                 <Clock className="h-5 w-5 text-purple-600" />
-                Recent Schedules
+                Recent Webinars (Today & Tomorrow)
               </h3>
             </div>
             <div className="p-6">
-              <div className="space-y-3">
-                {recentSchedules.map((schedule) => (
+              <div className="space-y-3 h-64 overflow-y-auto">
+                {todayTomorrowWebinars.length > 0 ? (
+                  todayTomorrowWebinars.map((webinar) => (
                   <div
-                    key={schedule.id}
+                    key={webinar.key}
                     className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
                   >
                     <div>
-                      <h4 className="font-medium text-lg">{schedule.class}</h4>
+                      <h4 className="font-medium text-lg">{webinar.topic}</h4>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-medium">{schedule.time}</p>
-                      <p className="text-lg text-gray-500">{schedule.date}</p>
+                      <p className="text-lg font-medium">{webinar.time}</p>
+                      <p className="text-lg text-gray-500">{webinar.day}</p>
                     </div>
                   </div>
-                ))}
+                ))
+                ) : (
+                <p className="text-gray-600">No webinars today or tomorrow.</p>
+                )}
               </div>
             </div>
           </div>
