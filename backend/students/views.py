@@ -479,27 +479,113 @@ def send_chat_message(request, recipient_role):
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
+
 from instructor.serializers import ClassSerializer
 from instructor.models import Class
+from datetime import timedelta, date,datetime
+DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+def build_schedule_string(class_obj):
+    """Builds a schedule string like: Mon, Wed, Fri 3:30PM–5:00PM"""
+    schedules = class_obj.schedules.all()
+    if not schedules:
+        return None
+
+    time_slots = {}
+    for sched in schedules:
+        day = sched.day_of_week  # e.g., 'Monday' → 'Mon'
+        short_day = day[:3]
+        start = sched.start_time.strftime('%I:%M %p')  # e.g., 15:30 → 03:30 PM
+        end_dt = (datetime.combine(datetime.today(), sched.start_time) +
+                  timedelta(minutes=sched.duration_minutes))
+        end = end_dt.strftime('%I:%M %p')
+        time_range = f"{start}–{end}"
+        if time_range not in time_slots:
+            time_slots[time_range] = []
+        time_slots[time_range].append((day, short_day))
+        
+
+    # Sort by DAYS_ORDER
+    def day_order(d):
+        full_day = d[0]
+        return DAYS_ORDER.index(day)
+
+    result = []
+    for time_range, days in time_slots.items():
+        days.sort(key=day_order)
+        short_day_str = ", ".join(d[1] for d in days)
+        result.append(f"{short_day_str} - {time_range}")
+
+    return "\n".join(result)
+
+def build_class_data(class_obj):
+    return {
+        "classid": class_obj.classid,
+        "title": class_obj.title,
+        "description": class_obj.description,
+        "fee": float(class_obj.fee),
+        "start_date": class_obj.start_date.isoformat(),
+        "end_date": class_obj.end_date.isoformat() if class_obj.end_date else None,
+        "webinar_id": class_obj.webinar.webinar_id if class_obj.webinar else None,
+        "schedule": build_schedule_string(class_obj)
+    }
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_classess(request):
     student = request.user.student_profile
-    enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related('classid')
+    enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related(
+        'classid', 'classid__webinar').prefetch_related('classid__schedules')
     enrolled_classes = [e.classid for e in enrolled_enrollments]
 
-    enrolled_data = ClassSerializer(enrolled_classes, many=True).data
+    enrolled_data = [build_class_data(c) for c in enrolled_classes]
 
     all_classes = Class.objects.all()
     other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes])
-    others_data = ClassSerializer(other_classes, many=True).data
+    others_data = [build_class_data(c) for c in other_classes]
+    print("Enrolled Classes Data:")
+    print(enrolled_data)
 
     return Response({
         "enrolled": enrolled_data,
         "others": others_data
     })
 
-    
+from instructor.models import Marks
+from collections import defaultdict
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getStudentMarks(request):
+    """
+    API view to get marks for a specific student
+    """
+   
+    student = request.user.student_profile
+    marks_qs = Marks.objects.filter(stuid=student).select_related('examid','examid__classid').order_by('examid__date')
+    result =defaultdict(list)
+
+    for mark in marks_qs:
+        class_name = mark.examid.classid.title
+        exam_month = mark.examid.date.strftime('%Y-%m')
+        result[class_name].append({
+            "month":exam_month,
+            "marks": mark.marks,
+        })
+    response_data = []
+
+    for class_name,data in result.items():
+        response_data.append({
+            "class_name": class_name,
+            "marks": data
+        })
+
+    return Response({
+        "marks": response_data
+    },status=status.HTTP_200_OK)
+       
 
 '''
 @api_view(['POST'])

@@ -105,9 +105,7 @@ export default function Classes() {
     );
   };
 
-
-  
-    useEffect(() => {
+  useEffect(() => {
       const fetchAllClasses = async () => {
         try {
           if (!accessToken || !refreshToken) {
@@ -137,7 +135,6 @@ export default function Classes() {
     setSelectedClass(Class);
     setShowPaidClassModal(true);
   };
-
 
   const closeAllModals = () => {
     setShowPaidClassModal(false);
@@ -291,7 +288,7 @@ export default function Classes() {
 
     //Calculate selected course details
     const selectedClassDetails = classes.filter((clz) =>
-      selectedClasses.includes(clz.id)
+      selectedClasses.includes(clz.classid)
     );
 
     //Calculate total amount
@@ -319,7 +316,7 @@ export default function Classes() {
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {enrolledClasses.map((clz) => (
               <div
-                key={clz.id}
+                key={clz.classid}
                 className="bg-white p-5 rounded-xl shadow border"
               >
                 <h3 className="text-lg font-semibold">{clz.title}</h3>
@@ -351,7 +348,7 @@ export default function Classes() {
             <ul className="space-y-4 max-w-3xl">
               {classes.map((clz) => (
                 <li
-                  key={clz.id}
+                  key={clz.classid}
                   className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-5 rounded-xl shadow border"
                 >
 
@@ -366,8 +363,8 @@ export default function Classes() {
                   <input
                     type="checkbox"
                     className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                    checked={selectedClasses.includes(clz.id)}
-                    onChange={() => toggleClassSelection(clz.id)}
+                    checked={selectedClasses.includes(clz.classid)}
+                    onChange={() => toggleClassSelection(clz.classid)}
                   />
                 </li>
               ))}
@@ -385,8 +382,11 @@ export default function Classes() {
 
         {/* Paid Modal */}
         {showPaidClassModal && (
-          <Modal title={selectedClass?.title} onClose={closeAllModals}>
-            <p className="text-center">Zoom ID: 1234567890<br />Mr. Sivathiran<br />Mon–Sat</p>
+          <Modal title={selectedClass?.title} onClose={closeAllModals} className="space-y-4 gap-4">
+            <p className="text-center text-gray-600">Webinar ID: {selectedClass.webinar_id}<br />Mr. Sivathiran</p>
+            <p className="text-md text-center text-gray-600"style={{ whiteSpace: "pre-line" }}>{selectedClass.schedule}</p>
+            <p className="text-center text-gray-600">{selectedClass.description}</p>
+            <p className="text-center text-gray-600">LKR {selectedClass.fee}</p>
             <div className="text-center mt-4">
               <button className="bg-primary text-white px-4 py-2 rounded">Notes</button>
               <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button>
@@ -403,7 +403,7 @@ export default function Classes() {
               <h3 className="font-semibold mb-2">Selected Classes:</h3>
               <ul className="list-disc list-inside text-gray-700">
                 {selectedClass.map((Class) => (
-                  <li key={Class.id}>
+                  <li key={Class.classid}>
                     {Class.title} - LKR {Class.fee}
                   </li>
                 ))}

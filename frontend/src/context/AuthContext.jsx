@@ -14,6 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [refreshToken,setRefreshToken] = useState(null)
   const [loading, setLoading] = useState(true);
+  const api = axios.create({
+    baseURL:"http://127.0.0.1:8000/",
+  });
   
   
 
@@ -53,15 +56,12 @@ export const AuthProvider = ({ children }) => {
       refreshToken:userData.refresh,
       student_profile: studentProfile
     }
-  
-   
     sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
     setRichUser(enrichedUser);
 };
 
   const logout = () => {
     Cookies.remove("accessToken");
-
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("userRole");
     sessionStorage.removeItem("accessToken");
@@ -86,26 +86,52 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.setItem("accessToken",newAccessToken);
       setAccessToken(newAccessToken);
       return newAccessToken;
-
     }catch(err){
       logout()
       console.log(err);
     }
   }
-  // useEffect(() => {
-  //   const userJson = sessionStorage.getItem("user");
-  //   const richUserJson = sessionStorage.getItem("richUser");
-  //   const token = sessionStorage.getItem("accessToken");
-  //   const refresh = sessionStorage.getItem("refreshToken");
 
-  //   if (userJson) setUser(JSON.parse(userJson));
-  //   if (richUserJson) setRichUser(JSON.parse(richUserJson));   // <- add this!
-  //   if (token) setAccessToken(token);
-  //   if (refresh) setRefreshToken(refresh);
-  // }, []);
+
+  useEffect(() => {
+    // Remove all old interceptors
+    api.interceptors.request.handlers = [];
+    api.interceptors.response.handlers = [];
+
+    if (!accessToken) return;
+
+    api.interceptors.request.use(
+      (config) => {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          const newToken = await refreshAccessToken();
+
+          if (newToken) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
+  }, [accessToken, refreshToken]);
+
 
   return (
-    <AuthContext.Provider value={{ user,richUser, accessToken, refreshToken, login, logout,refreshAccessToken, loading}}>
+    <AuthContext.Provider value={{ user, richUser, accessToken, refreshToken, login, logout, refreshAccessToken, loading, api }}>
       {children}
     </AuthContext.Provider>
   );

@@ -25,6 +25,7 @@ urlpatterns = [
     path('messages/<str:recipient_role>/',views.get_chat_messages, name='get_chat_messages'),
     path('messages/<str:recipient_role>/send/', views.send_chat_message, name='send_chat_message'),
     path('classes/', views.student_classess, name='get_classes'),
+    path('marks/',views.getStudentMarks, name='get_student_marks'),
     
 ]
 
