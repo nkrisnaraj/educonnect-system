@@ -67,8 +67,8 @@ class OnlinePayment(models.Model):
     #status = models.CharField(max_length=10, choices=[('success', 'Success'), ('fail', 'Fail')])
     verified = models.BooleanField(default=False)
     # course_ids = ArrayField(models.IntegerField(), blank=True, default=list)
-    course_ids = models.JSONField(blank=True, null=True)  
-    course_summary = models.TextField(blank=True, null=True)
+    class_ids = models.JSONField(blank=True, null=True)  
+    class_summary = models.TextField(blank=True, null=True)
     initiated_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

@@ -32,32 +32,40 @@ export const AuthProvider = ({ children }) => {
 
 
 // Login saves tokens and user info
-  const login = async(userData) => {
+const login = async (userData) => {
+  sessionStorage.setItem("user", JSON.stringify(userData.user));
+  sessionStorage.setItem("userRole", userData.user.role);
+  sessionStorage.setItem("accessToken", userData.access);
+  sessionStorage.setItem("refreshToken", userData.refresh);
+  setUser(userData.user);
+  setAccessToken(userData.access);
+  setRefreshToken(userData.refresh);
 
-    sessionStorage.setItem("user",JSON.stringify(userData.user));
-    sessionStorage.setItem("userRole", userData.user.role);
-    sessionStorage.setItem("accessToken", userData.access);
-    sessionStorage.setItem("refreshToken", userData.refresh);
-    setUser(userData.user);
-    setAccessToken(userData.access);
-    setRefreshToken(userData.refresh);
+  // Only fetch student profile if role is student
+  if (userData.user.role === "student") {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/students/profile/", {
+        headers: { Authorization: `Bearer ${userData.access}` }
+      });
 
-    const res = await axios.get("http://127.0.0.1:8000/students/profile/", {
-      headers: { Authorization: `Bearer ${userData.access}` }
-    });
+      const studentProfile = res.data.student_profile;
 
-    const studentProfile = res.data.student_profile;
-    const enrichedUser = {
-      ...userData.user,
-      accessToken:userData.access,
-      refreshToken:userData.refresh,
-      student_profile: studentProfile
+      const enrichedUser = {
+        ...userData.user,
+        accessToken: userData.access,
+        refreshToken: userData.refresh,
+        student_profile: studentProfile
+      };
+
+      sessionStorage.setItem("richUser", JSON.stringify(enrichedUser));
+      setRichuser(enrichedUser);
+    } catch (err) {
+      console.error("Error fetching student profile:", err);
+      // Optional: fallback or redirect
     }
-  
-   
-    sessionStorage.setItem("richUser",JSON.stringify(enrichedUser));
-    setRichuser(enrichedUser);
+  }
 };
+
 
   const logout = () => {
     Cookies.remove("accessToken");

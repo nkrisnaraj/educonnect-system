@@ -231,3 +231,21 @@ class ClassListView(APIView):
         classes = Class.objects.all().order_by('-start_date')
         serializer = serializers.ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import get_user_model
+from accounts.serializers import UserSerializer
+
+User = get_user_model()
+
+class StudentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        students = User.objects.filter(role='student').select_related('student_profile')
+        serializer = UserSerializer(students, many=True)
+        return Response(serializer.data)
