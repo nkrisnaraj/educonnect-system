@@ -610,10 +610,47 @@ def enroll_class(request):
             "start_date": enrollClass.classid.start_date.isoformat(),
             "end_date": enrollClass.classid.end_date.isoformat() if enrollClass.classid.end_date else None,
         })
-        print(data)
+        # print(data)
     return Response(data, status=status.HTTP_200_OK)
 
 
+from .serializers import CalendarEventSerializer
+from.models import CalendarEvent
+from edu_admin.models import ZoomWebinar, ZoomOccurrence
+from instructor.models import Exams
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def calendarEvent(request):
+    #fetch webinars
+    webinars = ZoomWebinar.objects.filter()
+    webinar_data = [
+        {
+            "id": webinar.id,
+            "title": webinar.topic,
+            "webinarid":webinar.webinar_id,
+            "type": "webinar",
+            "date": webinar.start_time,
+            "color": "red",
+        }
+        for webinar in webinars
+    ]
+
+    #fetch exams
+    exams = Exams.objects.all()
+    exam_data = [
+        {
+            "id": exam.id,
+            "title": exam.examname,
+            "type": "exam",
+            "date": exam.date.isoformat(),
+            "color": "purple",
+        }
+        for exam in exams
+    ]
+
+    #combine
+    events = webinar_data + exam_data
+    return Response(events, status=status.HTTP_200_OK)
 
 
 '''

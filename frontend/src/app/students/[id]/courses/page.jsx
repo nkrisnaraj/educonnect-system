@@ -34,7 +34,7 @@ export default function Classes() {
   const status = searchParams.get("status");
   const { id } = useParams();
   const router = useRouter();
-  const {user,accessToken,refreshToken,refreshAccessToken} = useAuth()
+  const {user,accessToken,refreshToken,refreshAccessToken,api,loading} = useAuth()
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -113,7 +113,7 @@ export default function Classes() {
             return;
           }
           const token = accessToken;
-          const response = await axios.get("http://127.0.0.1:8000/students/classes/", {
+          const response = await api.get("/students/classes/", {
             headers: {
               Authorization: `Bearer ${token}`,
             },

@@ -27,6 +27,7 @@ urlpatterns = [
     path('classes/', views.student_classess, name='get_classes'),
     path('marks/',views.getStudentMarks, name='get_student_marks'),
     path('enroll-class/',views.enroll_class, name='enroll_class'),
+    path('calendar-events/', views.calendarEvent, name="calendar-events")
     
 ]
 

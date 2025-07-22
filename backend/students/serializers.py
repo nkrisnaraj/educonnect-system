@@ -4,7 +4,8 @@ from django.contrib.auth import get_user_model #Django's built-in auth system.
 from .models import CalendarEvent 
 from .models import ChatRoom, Message
 from accounts.serializers import UserSerializer  
- 
+from .models import CalendarEvent
+
 User = get_user_model()
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -27,18 +28,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         model = Enrollment
         fields = ['enrollid', 'stuid' , 'classid', 'payid','timestamp']
 
-from rest_framework import serializers
-from .models import CalendarEvent
 
-class CalendarEventSerializer(serializers.ModelSerializer):
-    class_title = serializers.CharField(source='classid.title', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-
-    class Meta:
-        model = CalendarEvent
-        fields = [
-            'id','title','description','event_type','date','time','created_by','created_by_username','classid','class_title','created_at','updated_at',
-        ]
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
@@ -55,3 +45,10 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = ['id', 'chat_room', 'sender', 'message', 'created_at', 'read_status']
         read_only_fields = ['created_at', 'read_status']
+
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarEvent
+        fields = ['id','title','type','date','color']
