@@ -249,3 +249,90 @@ class StudentListView(APIView):
         students = User.objects.filter(role='student').select_related('student_profile')
         serializer = UserSerializer(students, many=True)
         return Response(serializer.data)
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser  # or your own permission class
+from students.models import Payment
+from students.serializers import PaymentSerializer
+
+class PaymentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        payments = Payment.objects.select_related('stuid').all().order_by('-date')
+        serializer = PaymentSerializer(payments, many=True)
+        return Response(serializer.data)
+        
+from decimal import Decimal
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from students.models import ReceiptPayment
+from students.serializers import ReceiptPaymentSerializer
+from django.shortcuts import get_object_or_404
+
+class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
+    queryset = ReceiptPayment.objects.select_related("payid", "payid__stuid")
+    serializer_class = ReceiptPaymentSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    lookup_field = "receiptid"
+
+    @action(detail=True, methods=["post"])
+    def verify(self, request, receiptid=None):
+        # 🔄 Force fresh DB fetch (not cached)
+        receipt = get_object_or_404(ReceiptPayment.objects.select_related("payid"), receiptid=receiptid)
+
+        payment = receipt.payid
+        paid_amount_decimal = Decimal(str(receipt.paid_amount or "0"))
+        print(f"🔄 Syncing receipt amount: {paid_amount_decimal} to payment {payment.payid} and {payment.amount}"   )
+        print(f"🔄 Current payment status: {payment}")
+        updated_fields = []
+        if payment.amount != paid_amount_decimal:
+            print(f"🔄 Updating payment amount from {payment.amount} to {paid_amount_decimal}")
+            payment.amount = paid_amount_decimal
+            updated_fields.append("amount")
+            print(f"🔄 Updated payment amount: {payment.amount}")
+
+        if updated_fields:
+            payment.save(update_fields=updated_fields)
+
+        # 🔍 Duplicate check
+        duplicates = ReceiptPayment.objects.filter(
+            verified=True,
+            record_no=receipt.record_no,
+            paid_date_time=receipt.paid_date_time,
+            location=receipt.location
+        ).exclude(pk=receipt.pk)
+
+        if duplicates.exists():
+            return Response(
+                {"detail": "Duplicate receipt found with same record number, date, and location."},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        # ✅ Mark as verified
+        receipt.verified = True
+        receipt.save(update_fields=["verified"])
+
+        # ✅ Sync to payment table
+        # payment = receipt.payid
+        # paid_amount_decimal = Decimal(str(receipt.paid_amount or "0"))
+        # print(f"🔄 Syncing receipt amount: {paid_amount_decimal} to payment {payment.payid}"   )
+        # print(f"🔄 Current payment status: {payment}")
+        # updated_fields = []
+        # if payment.amount != paid_amount_decimal:
+        #     payment.amount = paid_amount_decimal
+        #     updated_fields.append("amount")
+
+        if payment.status != "completed":
+            payment.status = "completed"
+            updated_fields.append("status")
+
+        if updated_fields:
+            payment.save(update_fields=updated_fields)
+
+        return Response({
+            "detail": "Receipt verified, amount synced, and payment marked as completed."
+        })
