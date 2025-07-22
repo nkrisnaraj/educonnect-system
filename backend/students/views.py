@@ -587,6 +587,35 @@ def getStudentMarks(request):
     },status=status.HTTP_200_OK)
        
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def enroll_class(request):
+    """
+    API view to enroll a student in a class
+    """
+    student = request.user.student_profile
+    enrollments = Enrollment.objects.filter(stuid=student).select_related('classid')
+    if not enrollments:
+        return Response({"error": "No class found for enrollment"}, status=status.HTTP_404_NOT_FOUND)
+
+    data = []
+    for enrollClass in enrollments:
+        data.append({
+            "enrollid": enrollClass.enrollid,
+            "classid": enrollClass.classid.classid,
+            "title": enrollClass.classid.title,
+            "description": enrollClass.classid.description,
+            "fee": float(enrollClass.classid.fee),
+            "start_date": enrollClass.classid.start_date.isoformat(),
+            "end_date": enrollClass.classid.end_date.isoformat() if enrollClass.classid.end_date else None,
+        })
+        print(data)
+    return Response(data, status=status.HTTP_200_OK)
+
+
+
+
 '''
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

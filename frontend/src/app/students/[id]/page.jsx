@@ -8,13 +8,14 @@ import axios from "axios";
 import { useRef } from "react";
 
 export default function StudentPage() {
-  const {user, accessToken, refreshToken, refreshAccessToken, logout} = useAuth();
+  const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
   const router = useRouter();
   const {id} = useParams();
 
   const [selectedChat, setSelectedChat] = useState('instructor');
   const [instructorMessages, setInstructorMessages] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
+  const [enrollClasses, setEnrollClasses] = useState([]);
 
   const [inputMessage, setInputMessage] = useState('');
   // const bottomRef = useRef(null);
@@ -46,6 +47,30 @@ export default function StudentPage() {
 
 
   console.log(accessToken);
+
+  const fetchEnrolledClass = async () => {
+    try {
+      const enrollClass = await api.get("/students/enroll-class/" ,{
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      console.log("Enrolled Classes:", enrollClass.data);
+      //const result = enrollClass.data?.enrolled_classes || [];
+      setEnrollClasses(enrollClass.data || []);
+
+    } catch (error) {
+      console.error("Failed to fetch enrolled classes", error);
+      
+    }
+  }
+
+  useEffect(() => {
+  if (!loading && accessToken) {
+    fetchEnrolledClass();
+  }
+}, [loading, accessToken]);
+
   
   const loadMessages = async (token) => {
     const response = await axios.get(
@@ -150,17 +175,17 @@ useEffect(() => {
   })
 
 
-  const courses = [
-    {
-      title: "Object Oriented Programming",
-      icon: "/placeholder.svg",
-    },
-    {
-      title: "Fundamentals of Database Systems",
-      icon: "/placeholder.svg",
-    },
+  // const courses = [
+  //   {
+  //     title: "Object Oriented Programming",
+  //     icon: "/placeholder.svg",
+  //   },
+  //   {
+  //     title: "Fundamentals of Database Systems",
+  //     icon: "/placeholder.svg",
+  //   },
    
-  ];
+  // ];
 
 //const User = sessionStorage.getItem("user");
 //console.log("User:", User);
@@ -217,28 +242,27 @@ console.log("messages:", messages);
               <a href="#" className="text-purple-500 text-sm">See all</a>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {courses.map((course, index) => (
+              {
+                enrollClasses.length === 0 ? ( 
+                  <p>No enrolled classes found.</p>
+                ) : (
+                  enrollClasses.map((cls, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-4 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
+                  className="flex justify-between items-center p-6 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
                 >
                   <div>
-                    <h3 className="text-md font-semibold mb-2">{course.title}</h3>
-                    <button className="bg-blue-500 text-white text-sm px-4 py-1 rounded hover:bg-blue-700 transition">
+                    <h3 className="text-md font-semibold mb-2">{cls.title}</h3>
+                    <button onClick = {()=>{router.push(`/students/${id}/courses`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
                       View
                     </button>
                   </div>
-                  <div>
-                    <Image
-                      src={course.icon}
-                      alt={course.title}
-                      width={60}
-                      height={60}
-                      className="rounded-md"
-                    />
-                  </div>
+                  
                 </div>
-              ))}
+                ))
+                )
+              }
+              
             </div>
           </div>
         </div>
