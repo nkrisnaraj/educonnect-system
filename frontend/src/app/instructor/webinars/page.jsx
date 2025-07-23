@@ -36,7 +36,7 @@ export default function WebinarsPage() {
         return occDate <= now && occDate >= fifteenDaysAgo;
       });
 
-      const [date, time] = webinar.start_time.split("T");
+      const [date, time] = webinar.start_time?.split("T") ?? ["", ""];
       const formattedTime = time ? time.split("+")[0].slice(0, 5) : "";
 
       return {
@@ -75,19 +75,17 @@ export default function WebinarsPage() {
     }
   };
 
-  // Reset expanded on accessToken or tab change
   useEffect(() => {
     if (accessToken) {
       fetchWebinars(accessToken);
-      setExpandedWebinarId(null); // Reset expanded when new data loads
+      setExpandedWebinarId(null);
     }
   }, [accessToken]);
 
   useEffect(() => {
-    setExpandedWebinarId(null); // Close all when switching tabs
+    setExpandedWebinarId(null);
   }, [selectedTab]);
 
-  // Toggle expand so only one can be expanded at a time
   const toggleExpand = (id) => {
     setExpandedWebinarId((prev) => (prev === id ? null : id));
   };
@@ -103,14 +101,9 @@ export default function WebinarsPage() {
     }
   };
 
-  // Filter webinars per tab
   const filteredWebinars = webinars.filter((webinar) => {
-    if (selectedTab === "upcoming") {
-      return webinar.upcomingOccurrences.length > 0;
-    }
-    if (selectedTab === "completed") {
-      return webinar.completedOccurrences.length > 0;
-    }
+    if (selectedTab === "upcoming") return webinar.upcomingOccurrences.length > 0;
+    if (selectedTab === "completed") return webinar.completedOccurrences.length > 0;
     return true;
   });
 
@@ -150,47 +143,39 @@ export default function WebinarsPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredWebinars.map((webinar) => {
-              // Force both ID and expandedWebinarId to string to prevent type mismatch issues
+            {filteredWebinars.map((webinar, index) => {
               const isExpanded = String(expandedWebinarId) === String(webinar.id);
               const status =
                 selectedTab === "all"
                   ? "All"
                   : selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1);
 
+              const uniqueKey = `webinar-${webinar?.id ?? index}-${webinar?.start_time ?? ""}-${webinar?.topic ?? "topic"}`;
+
               return (
                 <div
-                  key={webinar.id}
+                  key={uniqueKey}
                   className="bg-white/50 border border-primary rounded-xl p-6 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer"
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="text-lg font-semibold text-gray-900">
-                          {webinar.topic}
+                          {webinar.topic ?? "Untitled Webinar"}
                         </h4>
-                        <span
-                          className={`px-2 py-1 text-lg rounded-full ${getStatusColor(
-                            selectedTab
-                          )}`}
-                        >
+                        <span className={`px-2 py-1 text-lg rounded-full ${getStatusColor(selectedTab)}`}>
                           {status}
                         </span>
                       </div>
                     </div>
-                    {(webinar.upcomingOccurrences.length > 0 ||
-                      webinar.completedOccurrences.length > 0) && (
+                    {(webinar.upcomingOccurrences.length > 0 || webinar.completedOccurrences.length > 0) && (
                       <button
                         onClick={() => toggleExpand(webinar.id)}
                         className="text-purple-600 hover:text-purple-800"
                         aria-expanded={isExpanded}
                         aria-controls={`webinar-details-${webinar.id}`}
                       >
-                        {isExpanded ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
+                        {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                       </button>
                     )}
                   </div>
@@ -245,25 +230,19 @@ export default function WebinarsPage() {
                               Upcoming Occurrences
                             </h5>
                             <ul className="space-y-2 text-sm">
-                              {webinar.upcomingOccurrences.map((occ) => {
+                              {webinar.upcomingOccurrences.map((occ, idx) => {
                                 const date = new Date(occ.start_time);
-                                const day = date.toLocaleDateString(undefined, {
-                                  weekday: "long",
-                                });
+                                const day = date.toLocaleDateString(undefined, { weekday: "long" });
                                 const dateStr = date.toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
+                                  month: "short", day: "numeric", year: "numeric"
                                 });
                                 const timeStr = date.toLocaleTimeString(undefined, {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
+                                  hour: "2-digit", minute: "2-digit", hour12: true
                                 });
 
                                 return (
                                   <li
-                                    key={occ.occurrence_id}
+                                    key={`webinar-${webinar?.id ?? index}-up-${idx}-${occ.start_time}`}
                                     className="flex items-center gap-2 text-gray-600"
                                   >
                                     <CalendarClock className="h-4 w-4 text-purple-500" />
@@ -282,25 +261,19 @@ export default function WebinarsPage() {
                               Completed Occurrences (Last 15 Days)
                             </h5>
                             <ul className="space-y-2 text-sm">
-                              {webinar.completedOccurrences.map((occ) => {
+                              {webinar.completedOccurrences.map((occ, idx) => {
                                 const date = new Date(occ.start_time);
-                                const day = date.toLocaleDateString(undefined, {
-                                  weekday: "long",
-                                });
+                                const day = date.toLocaleDateString(undefined, { weekday: "long" });
                                 const dateStr = date.toLocaleDateString(undefined, {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
+                                  month: "short", day: "numeric", year: "numeric"
                                 });
                                 const timeStr = date.toLocaleTimeString(undefined, {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
+                                  hour: "2-digit", minute: "2-digit", hour12: true
                                 });
 
                                 return (
                                   <li
-                                    key={occ.occurrence_id}
+                                    key={`webinar-${webinar?.id ?? index}-comp-${idx}-${occ.start_time}`}
                                     className="flex items-center gap-2 text-gray-600"
                                   >
                                     <CalendarClock className="h-4 w-4 text-gray-400" />

@@ -20,11 +20,14 @@ export default function InstructorDashboard() {
   const [todayTomorrowWebinars, setTodayTomorrowWebinars] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [instructorName, setInstructorName] = useState("");
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingWebinars, setLoadingWebinars] = useState(true);
   const { accessToken, user, refreshAccessToken, logout } = useAuth();
   const router = useRouter();
 
   const fetchClasses = async (token) => {
     try {
+      setLoadingClasses(true);
       const res = await fetch(
         "http://127.0.0.1:8000/instructor/instructor/classes/",
         {
@@ -52,41 +55,36 @@ export default function InstructorDashboard() {
       } else {
         console.error("Fetch error:", err);
       }
+    } finally {
+      setLoadingClasses(false);
     }
   };
 
   const fetchWebinars = async (token) => {
     try {
-      const res = await axios.get(
-        "http://127.0.0.1:8000/edu_admin/webinars-list/",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      setLoadingWebinars(true);
+      const res = await axios.get("http://127.0.0.1:8000/edu_admin/webinars-list/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const data = res.data;
-
       const todayStr = new Date().toISOString().split("T")[0];
-      const tomorrowStr = new Date(Date.now() + 86400000)
-        .toISOString()
-        .split("T")[0];
+      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
       const filteredOccurrences = [];
 
       data.forEach((webinar) => {
-        (webinar.occurrences || []).forEach((occ) => {
-          if (!occ.start_time) return;
+        const wId = webinar.id ?? Math.random().toString(36).slice(2, 8);
+        (webinar.occurrences || []).forEach((occ, index) => {
+          if (!occ?.start_time) return;
 
-          const occDateStr = new Date(occ.start_time)
-            .toISOString()
-            .split("T")[0];
-
+          const occDateStr = new Date(occ.start_time).toISOString().split("T")[0];
           if (occDateStr === todayStr || occDateStr === tomorrowStr) {
             const occDateTime = new Date(occ.start_time);
 
             filteredOccurrences.push({
-              key: `webinar-${webinar.id}-${occ.occurrence_id || occDateStr}-${occ.start_time}`,
-              webinarId: webinar.id,
+              key: `webinar-${wId}-${occ.occurrence_id || index}-${occDateTime.getTime()}`,
+              webinarId: wId,
               topic: webinar.topic || "Untitled",
               date: occDateTime.toLocaleDateString(undefined, {
                 weekday: "long",
@@ -108,42 +106,17 @@ export default function InstructorDashboard() {
       setTodayTomorrowWebinars(filteredOccurrences);
     } catch (error) {
       console.error("Failed to fetch webinars:", error);
+    } finally {
+      setLoadingWebinars(false);
     }
   };
-
-  const recentSchedules = [
-    { id: 1, class: "2025 A/L Chemistry", time: "8:00 AM", date: "Today" },
-    { id: 2, class: "2026 A/L Chemistry", time: "10:00 AM", date: "Today" },
-    { id: 3, class: "2027 A/L Chemistry", time: "2:00 PM", date: "Tomorrow" },
-  ];
-
-  const chatMessages = [
-    {
-      id: 1,
-      sender: "Kasun Perera",
-      message: "Sir, when is the next Physics practical?",
-      time: "10:30 AM",
-    },
-    {
-      id: 2,
-      sender: "Nimali Silva",
-      message: "Can you share the Chemistry notes?",
-      time: "11:15 AM",
-    },
-    {
-      id: 3,
-      sender: "Tharindu Fernando",
-      message: "Thank you for the Biology revision session!",
-      time: "2:45 PM",
-    },
-  ];
 
   const fetchInstructorName = async (token) => {
     try {
       const res = await axios.get("http://127.0.0.1:8000/instructor/profile/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setInstructorName(res.data.last_name); // Only first_name is required
+      setInstructorName(res.data.last_name);
     } catch (err) {
       if (err.response?.status === 401) {
         try {
@@ -177,12 +150,32 @@ export default function InstructorDashboard() {
   }, [accessToken]);
 
   if (!user || user.role !== "instructor") {
-    return null; // or a loading spinner
+    return null;
   }
+
+  const chatMessages = [
+    {
+      id: 1,
+      sender: "Kasun Perera",
+      message: "Sir, when is the next Physics practical?",
+      time: "10:30 AM",
+    },
+    {
+      id: 2,
+      sender: "Nimali Silva",
+      message: "Can you share the Chemistry notes?",
+      time: "11:15 AM",
+    },
+    {
+      id: 3,
+      sender: "Tharindu Fernando",
+      message: "Thank you for the Biology revision session!",
+      time: "2:45 PM",
+    },
+  ];
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
-      // Add message logic here
       setNewMessage("");
     }
   };
@@ -213,7 +206,7 @@ export default function InstructorDashboard() {
             </button>
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white text-lg font-medium">SJ</span>
+                <span className="text-white text-lg font-medium">NK</span>
               </div>
               <div className="text-right">
                 <p className="text-lg font-medium">{instructorName}</p>
@@ -249,9 +242,8 @@ export default function InstructorDashboard() {
           </div>
         </div>
 
-        {/* First Row: Classes, Notes to Upload, Calendar */}
+        {/* Classes */}
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
-          {/* Classes */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -260,45 +252,28 @@ export default function InstructorDashboard() {
               </h3>
             </div>
             <div className="p-6">
-              <div className="h-64 overflow-y-auto space-y-4">
-                {classes.map((cls) => (
-                  <div
-                    key={cls.id}
-                    className="p-4 bg-white/50 rounded-xl shadow-md"
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-xl text-gray-800">
-                        {cls.title}
-                      </span>
-                      <p className="text-gray-600 mt-1">{cls.description}</p>
+              {loadingClasses ? (
+                <p className="text-gray-600 text-lg">Loading classes...</p>
+              ) : (
+                <div className="h-64 overflow-y-auto space-y-4">
+                  {classes.map((cls) => (
+                    <div key={cls.id} className="p-4 bg-white/50 rounded-xl shadow-md">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-xl text-gray-800">
+                          {cls.title}
+                        </span>
+                        <p className="text-gray-600 mt-1">{cls.description}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* <div className="space-y-4">
-                {classes.map((classes) => (
-                  <div
-                    key={classes.id}
-                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-lg">{classes.title}</span>
-                    </div>
-                    <span className="text-lg text-gray-500">
-                      {classes.students} students
-                    </span>
-                    <div>{classes.description}</div>
-                    </div>
-                ))}
-              </div> */}
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Second Row: Recent Webinars, Chat Box */}
+        {/* Webinars and Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Recent Webinars for Today & Tomorrow */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
             <div className="p-6 border-b border-purple-200">
               <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -307,26 +282,28 @@ export default function InstructorDashboard() {
               </h3>
             </div>
             <div className="p-6">
-              <div className="space-y-3 h-64 overflow-y-auto">
-                {todayTomorrowWebinars.length > 0 ? (
-                  todayTomorrowWebinars.map((webinar) => (
-                  <div
-                    key={webinar.key}
-                    className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
-                  >
-                    <div>
-                      <h4 className="font-medium text-lg">{webinar.topic}</h4>
+              {loadingWebinars ? (
+                <p className="text-gray-600 text-lg">Loading webinars...</p>
+              ) : todayTomorrowWebinars.length > 0 ? (
+                <div className="space-y-3 h-64 overflow-y-auto">
+                  {todayTomorrowWebinars.map((webinar) => (
+                    <div
+                      key={webinar.key}
+                      className="flex items-center justify-between p-3 bg-white/50 rounded-xl"
+                    >
+                      <div>
+                        <h4 className="font-medium text-lg">{webinar.topic}</h4>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-medium">{webinar.time}</p>
+                        <p className="text-lg text-gray-500">{webinar.day}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-medium">{webinar.time}</p>
-                      <p className="text-lg text-gray-500">{webinar.day}</p>
-                    </div>
-                  </div>
-                ))
-                ) : (
+                  ))}
+                </div>
+              ) : (
                 <p className="text-gray-600">No webinars today or tomorrow.</p>
-                )}
-              </div>
+              )}
             </div>
           </div>
 
@@ -362,7 +339,7 @@ export default function InstructorDashboard() {
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                   />
                   <button
                     onClick={handleSendMessage}
