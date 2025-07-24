@@ -71,8 +71,6 @@ export default function MainNavbar() {
       }
     };
 
-
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isHomePage]);
@@ -102,12 +100,12 @@ useEffect(() => {
 
   return (
     <header
-  className={`fixed top-0 left-0 text-primary right-0 z-50 flex justify-between items-center p-4 shadow-md transition-all duration-300 ${
-    isScrolled
-      ? "bg-white/10 backdrop-blur-md dark:bg-blue-900/70"
-      : "bg-transparent"
-  }`}
->
+      className={`fixed top-0 left-0 text-primary right-0 z-50 flex justify-between items-center p-4 shadow-xl transition-all duration-300 ${
+        isScrolled
+        ? "bg-white/30 backdrop-blur-md dark:bg-blue-900/70"
+        : "bg-transparent"
+      }`}
+    >
 
       <div className="flex items-center space-x-2">
         <Image
@@ -117,7 +115,7 @@ useEffect(() => {
           height={60}
           className="rounded"
         />
-        <Link href="/" className="text-xl font-bold hover:text-blue-200 transition-colors font-lora ">
+        <Link href="/" className="text-xl text-primary font-semibold hover:text-blue-200 transition-colors font-lora ">
           EduConnect
         </Link>
       </div>
@@ -138,7 +136,7 @@ useEffect(() => {
         ))}
         
         <Link href="/login">
-          <button className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100 transition-colors">
+          <button className="bg-white text-primary font-semibold px-4 py-2 rounded hover:bg-blue-100 transition-colors">
             Login
           </button>
         </Link>

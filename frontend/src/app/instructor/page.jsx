@@ -137,7 +137,7 @@ export default function InstructorDashboard() {
   };
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
+    const role = sessionStorage.getItem("userRole");
     if (!role || role !== "instructor") {
       router.replace("/login");
       return;
@@ -306,7 +306,7 @@ export default function InstructorDashboard() {
               )}
             </div>
           </div>
-
+              
           {/* Chat Box */}
           <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
             <div className="p-6 border-b border-purple-200">

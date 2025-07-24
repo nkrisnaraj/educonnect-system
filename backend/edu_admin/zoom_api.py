@@ -2,6 +2,7 @@ import base64
 import requests
 from django.conf import settings
 import json
+from datetime import date, timedelta
 
 class ZoomAPIClient:
     def __init__(self, account_key: str):
@@ -46,12 +47,27 @@ class ZoomAPIClient:
         repeat_type=None,
         repeat_interval=1,
         end_date_time=None,
+        end_times=None,  # <-- Accept end_times for monthly repeat
+        weekly_days=None,  # <-- Accept days of week for weekly repeat
     ):
         token = self.get_access_token()
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
+
+        def calculate_occurrence_count(start_date, end_date, weekly_days):
+            count = 0
+            current = start_date
+            weekday_set = set(weekly_days)
+
+            while current <= end_date:
+                if current.isoweekday() in weekday_set:
+                    count += 1
+                current += timedelta(days=1)
+            
+            return count
+
 
         payload = {
             "topic": topic,
@@ -60,11 +76,10 @@ class ZoomAPIClient:
             "timezone": "Asia/Colombo",
             "agenda": agenda,
             "settings": {
-                "approval_type": 1,  # manual approval
-                "registration_type": 1,  # no registration required
+                "approval_type": 1,
+                "registration_type": 1,
                 "host_video": True,
                 "panelists_video": True,
-
             }
         }
 
@@ -80,8 +95,19 @@ class ZoomAPIClient:
                 "type": repeat_type_map[repeat_type],
                 "repeat_interval": repeat_interval,
             }
+
+            if repeat_type == "weekly" and weekly_days:
+                if isinstance(weekly_days, list):
+                    # Join list of integers as comma-separated string
+                    recurrence["weekly_days"] = ",".join(str(day) for day in weekly_days)
+
             if end_date_time:
                 recurrence["end_date_time"] = end_date_time
+
+            if end_times:
+                # For monthly repeat, use end_times to specify occurrences
+                recurrence["end_times"] = end_times
+
             payload["recurrence"] = recurrence
         else:
             payload["type"] = 5  # One-time webinar

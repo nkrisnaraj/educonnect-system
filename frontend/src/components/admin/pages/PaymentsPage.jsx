@@ -1,90 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
-  Filter,
   Download,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Eye,
   RefreshCw,
 } from "lucide-react"
-
-const paymentsData = [
-  {
-    id: 1,
-    studentName: "John Smith",
-    studentId: "STU001",
-    amount: 1200,
-    type: "Tuition Fee",
-    status: "completed",
-    method: "Card Payment",
-    date: "2024-12-15",
-    dueDate: "2024-12-10",
-    transactionId: "TXN001234567",
-    semester: "Fall 2024",
-    description: "Semester tuition payment",
-  },
-  {
-    id: 2,
-    studentName: "Sarah Johnson",
-    studentId: "STU002",
-    amount: 800,
-    type: "Lab Fee",
-    status: "pending",
-    method: "Receipt Upload",
-    date: "2024-12-14",
-    dueDate: "2024-12-20",
-    transactionId: "TXN001234568",
-    semester: "Fall 2024",
-    description: "Physics laboratory fee",
-  },
-  {
-    id: 3,
-    studentName: "Mike Davis",
-    studentId: "STU003",
-    amount: 1500,
-    type: "Tuition Fee",
-    status: "completed",
-    method: "Card Payment",
-    date: "2024-12-13",
-    dueDate: "2024-12-10",
-    transactionId: "TXN001234569",
-    semester: "Fall 2024",
-    description: "Semester tuition payment",
-  },
-  {
-    id: 4,
-    studentName: "Emily Brown",
-    studentId: "STU004",
-    amount: 600,
-    type: "Library Fee",
-    status: "failed",
-    method: "Card Payment",
-    date: "2024-12-12",
-    dueDate: "2024-12-05",
-    transactionId: "TXN001234570",
-    semester: "Fall 2024",
-    description: "Annual library access fee",
-  },
-  {
-    id: 5,
-    studentName: "David Wilson",
-    studentId: "STU005",
-    amount: 1200,
-    type: "Tuition Fee",
-    status: "pending",
-    method: "Receipt Upload",
-    date: null,
-    dueDate: "2024-11-30",
-    transactionId: null,
-    semester: "Fall 2024",
-    description: "Semester tuition payment",
-  },
-]
+import { useAuth } from "@/context/AuthContext"
+import ReceiptModal from "./ReceiptModal"
 
 function getStatusIcon(status) {
   switch (status) {
@@ -115,13 +42,113 @@ function getStatusColor(status) {
 export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPayment, setSelectedPayment] = useState(null)
-  const [payments, setPayments] = useState(paymentsData)
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const { accessToken } = useAuth()
+
+  // Fetch payments from backend API
+  // useEffect(() => {
+  //   async function fetchPayments() {
+  //     setLoading(true)
+  //     setError(null)
+  //     try {
+  //       const res = await fetch("http://localhost:8000/edu_admin/payments/", {
+  //         headers: {
+  //           Authorization: `Bearer ${accessToken}`,
+  //         },
+  //       })
+  //       if (!res.ok) throw new Error("Failed to fetch payments")
+  //       const data = await res.json()
+  //       console.log(data)
+
+  //       const mappedPayments = data.map((p) => {
+  //         let method = p.method === "online" ? "Card Payment" : "Receipt Upload"
+  //         let status = p.status || "pending"
+  //         const studentName = p.studentName || "Unknown Student"
+  //         const studentId = p.studentId || "N/A"
+  //         const amount = Number(p.amount) || 0
+  //         const description = "Payment"
+  //         const date = p.date || (p.receipt_payment?.uploaded_at || null)
+
+  //         return {
+  //           id: p.payid,
+  //           studentName,
+  //           studentId,
+  //           amount,
+  //           status,
+  //           method,
+  //           date,
+  //           description,
+  //         }
+  //       })
+
+  //       setPayments(mappedPayments)
+  //     } catch (err) {
+  //       setError(err.message)
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
+  //   if (accessToken) fetchPayments()
+  //   else setError("No access token found. Please login.")
+  // }, [])
+
+  useEffect(() => {
+    async function fetchPayments() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch("http://localhost:8000/edu_admin/payments/", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        if (!res.ok) throw new Error("Failed to fetch payments")
+        const data = await res.json()
+        console.log(data)
+
+        const mappedPayments = data.map((p) => {
+          let method = p.method === "online" ? "Card Payment" : "Receipt Upload"
+          let status = p.status || "pending"
+          const studentName = p.studentName || "Unknown Student"
+          const studentId = p.studentId || "N/A"
+          const amount = Number(p.amount) || 0
+          const description = "Payment"
+          const date = p.date || (p.receipt_payment?.uploaded_at || null)
+
+          return {
+            id: p.payid,
+            studentName,
+            studentId,
+            amount,
+            status,
+            method,
+            date,
+            description,
+            receipt_payment: p.receipt_payment || null,
+            online_payment: p.online_payment || null,
+          }
+        })
+
+        setPayments(mappedPayments)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (accessToken) fetchPayments()
+    else setError("No access token found. Please login.")
+  }, [accessToken])
+
 
   const filteredPayments = payments.filter((payment) => {
     return (
       payment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.type.toLowerCase().includes(searchTerm.toLowerCase())
+      payment.method.toLowerCase().includes(searchTerm.toLowerCase())
     )
   })
 
@@ -130,12 +157,16 @@ export default function PaymentsPage() {
   const totalCount = payments.length
 
   const handleMarkAsPaid = (id) => {
+    // TODO: Implement API call to mark payment as completed
     const updated = payments.map((p) =>
       p.id === id ? { ...p, status: "completed", date: new Date().toISOString().slice(0, 10) } : p
     )
     setPayments(updated)
     setSelectedPayment(null)
   }
+
+  if (loading) return <p className="p-6 text-center">Loading payments...</p>
+  if (error) return <p className="p-6 text-center text-red-600">Error: {error}</p>
 
   return (
     <div className="space-y-6">
@@ -145,7 +176,10 @@ export default function PaymentsPage() {
           <p className="text-gray-600">Track and manage student payments</p>
         </div>
         <div className="flex space-x-2">
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
           </button>
@@ -188,7 +222,6 @@ export default function PaymentsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Student</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600">Type</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Method</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Amount</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
@@ -202,9 +235,8 @@ export default function PaymentsPage() {
                     <p className="font-medium text-gray-900">{p.studentName}</p>
                     <p className="text-sm text-gray-500">{p.studentId}</p>
                   </td>
-                  <td className="py-3 px-4">{p.type}</td>
                   <td className="py-3 px-4">{p.method}</td>
-                  <td className="py-3 px-4">${p.amount.toLocaleString()}</td>
+                  <td className="py-3 px-4">Rs {p.amount.toLocaleString()}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(p.status)}
@@ -214,21 +246,23 @@ export default function PaymentsPage() {
                     </div>
                   </td>
                   <td className="py-3 px-4 space-x-2">
-                    <button
+                    {/* <button
                       onClick={() => setSelectedPayment(p)}
                       className="p-1 text-gray-400 hover:text-primary"
                       title="View Details"
                     >
                       <Eye className="h-4 w-4" />
+                    </button> */}
+                    <button
+                      onClick={() => setSelectedPayment(p)}
+                      className={`text-xs px-2 py-1 rounded ${p.status === "pending"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                    >
+                      {p.status === "pending" ? "Accept" : "View"}
                     </button>
-                    {p.status === "pending" && (
-                      <button
-                        onClick={() => handleMarkAsPaid(p.id)}
-                        className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
-                      >
-                        Accept
-                      </button>
-                    )}
+
                   </td>
                 </tr>
               ))}
@@ -238,6 +272,17 @@ export default function PaymentsPage() {
       </div>
 
       {selectedPayment && (
+        <ReceiptModal
+          payment={selectedPayment}
+          onClose={() => setSelectedPayment(null)}
+          onUpdate={(updated) =>
+            setPayments(payments.map((p) => (p.id === updated.id ? updated : p)))
+          }
+          token={accessToken}
+        />
+      )}
+
+      {/* {selectedPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
@@ -249,11 +294,11 @@ export default function PaymentsPage() {
               </div>
               <div className="space-y-4">
                 <p><strong>Student:</strong> {selectedPayment.studentName} ({selectedPayment.studentId})</p>
-                <p><strong>Type:</strong> {selectedPayment.type}</p>
                 <p><strong>Method:</strong> {selectedPayment.method}</p>
                 <p><strong>Status:</strong> {selectedPayment.status}</p>
-                <p><strong>Amount:</strong> ${selectedPayment.amount}</p>
+                <p><strong>Amount:</strong> Rs {selectedPayment.amount.toLocaleString()}</p>
                 <p><strong>Description:</strong> {selectedPayment.description}</p>
+                <p><strong>Date:</strong> {selectedPayment.date ? new Date(selectedPayment.date).toLocaleDateString() : "N/A"}</p>
               </div>
               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
                 <button
@@ -274,7 +319,7 @@ export default function PaymentsPage() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

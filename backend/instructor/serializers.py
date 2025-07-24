@@ -1,11 +1,10 @@
+# serializers.py
 from rest_framework import serializers
 from .models import Class, InstructorProfile, StudyNote
 from django.contrib.auth.models import User
 from edu_admin.models import ZoomWebinar
 
-class CourseSerializer(serializers.ModelSerializer):
-    instructor_name = serializers.CharField(source='instructor.username', read_only=True)
-
+class ClassSerializer(serializers.ModelSerializer):
     class Meta:
         model = Class
         fields = ['classid', 'title', 'description', 'fee', 'instructor_name']

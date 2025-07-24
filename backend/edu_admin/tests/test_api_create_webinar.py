@@ -22,7 +22,7 @@ class ZoomWebinarTestCase(APITestCase):
         payload = {
             "account_key": "zoom1",
             "topic": "Mock Webinar",
-            "start_time": "2025-07-01T15:00:00Z",
+            "start_time": "2025-07-07T15:00:00Z",
             "duration": 60,
             "agenda": "Testing",
             "repeat_type": "daily",
@@ -72,3 +72,32 @@ class ZoomWebinarTestCase(APITestCase):
         print(json.dumps(response.data, indent=2))
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertIn("error", response.data)
+
+@patch("edu_admin.views.ZoomAPIClient.create_webinar")
+def test_create_weekly_webinar_with_days(self, mock_create_webinar):
+    mock_create_webinar.return_value = {
+        "id": 123456,
+        "topic": "Weekly Webinar",
+        "start_time": "2025-07-07T15:00:00Z",
+        "duration": 90
+    }
+
+    payload = {
+        "account_key": "zoom1",
+        "topic": "Weekly Webinar",
+        "start_time": "2025-07-07T15:00:00Z",
+        "duration": 90,
+        "agenda": "Weekly recurring webinar",
+        "repeat_type": "weekly",
+        "repeat_interval": 1,
+        "end_date_time": "2025-09-30T15:00:00Z",
+        "weekly_days": [2, 4, 6]  # Monday, Wednesday, Friday
+    }
+
+    response = self.client.post(self.create_url, data=payload, format="json")
+    print("WEEKLY REPEAT STATUS:", response.status_code)
+    print("RESPONSE:")
+    print(json.dumps(response.data, indent=2))
+
+    self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    self.assertEqual(response.data["data"]["topic"], "Weekly Webinar")

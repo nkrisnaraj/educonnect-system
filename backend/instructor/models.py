@@ -4,20 +4,48 @@ from django.db import models
 from django.contrib.auth.models import User
 from students.models import StudentProfile  
 from edu_admin.models import ZoomWebinar 
+import datetime
+import calendar
+from edu_admin.models import ZoomWebinar
+from students.models import StudentProfile
 
-# Create your models here.
-#class Model
+# Weekdays choices
+DAYS = (
+    ('Monday', 'Monday'),
+    ('Tuesday', 'Tuesday'),
+    ('Wednesday', 'Wednesday'),
+    ('Thursday', 'Thursday'),
+    ('Friday', 'Friday'),
+    ('Saturday', 'Saturday'),
+    ('Sunday', 'Sunday'),
+)
+
+# Utility functions
+def first_day_of_current_month():
+    today = datetime.date.today()
+    return today.replace(day=1)
+
+def last_day_of_current_month():
+    today = datetime.date.today()
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    return today.replace(day=last_day)
+
+# Class Model
 class Class(models.Model):
     classid = models.CharField(max_length=20, unique=True, blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     fee = models.DecimalField(max_digits=10, decimal_places=2)
+    repeat = models.BooleanField(default=True)
+    start_date = models.DateField(default=first_day_of_current_month)
+    end_date = models.DateField(default=last_day_of_current_month)
 
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        limit_choices_to={'role': 'instructor'}  # corrected: use 'role' instead of 'username'
+        limit_choices_to={'role': 'instructor'}
     )
+    webinar = models.ForeignKey(ZoomWebinar, on_delete=models.SET_NULL, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.classid:
@@ -27,18 +55,27 @@ class Class(models.Model):
     def __str__(self):
         return f"{self.title} ({self.classid})"
 
+# Class Schedule Model
+class ClassSchedule(models.Model):
+    class_obj = models.ForeignKey(Class, related_name='schedules', on_delete=models.CASCADE)
+    day_of_week = models.CharField(max_length=9, choices=DAYS)
+    start_time = models.TimeField()
+    duration_minutes = models.PositiveIntegerField(default=90)
 
-#Exams Model
+    def __str__(self):
+        return f"{self.class_obj.classid} - {self.day_of_week} {self.start_time}"
+
+# Exams Model
 class Exams(models.Model):
     examid = models.CharField(max_length=20, unique=True)
     examname = models.CharField(max_length=100)
-    classid = models.ForeignKey(Class,on_delete=models.CASCADE)
+    classid = models.ForeignKey(Class, on_delete=models.CASCADE)
     date = models.DateField()
     
     def __str__(self):
-        return f"{self.name} - {self.Class.name}"
+        return f"{self.examname} - {self.classid.classid}"
 
-#Marks Model
+# Marks Model
 class Marks(models.Model):
     marksid = models.CharField(unique=True, max_length=20)
     stuid = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
