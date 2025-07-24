@@ -110,3 +110,27 @@ def instructor_send_message_to_student(request, student_id):
     message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_messages_read(request, student_id):
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+
+    student = User.objects.filter(id=student_id, role='student').first()
+    if not student:
+        return Response({'error': 'Student not found'}, status=404)
+
+    chat_room = ChatRoom.objects.filter(created_by=student, name='instructor').first()
+    if not chat_room:
+        return Response({'error': 'No chat room'}, status=404)
+
+    # Mark messages from student to instructor as read
+    Message.objects.filter(
+        chat_room=chat_room,
+        sender=student,
+        is_seen=False
+    ).update(is_seen=True)
+
+    return Response({'status': 'ok'})

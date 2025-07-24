@@ -39,12 +39,12 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         fields = ['id', 'sender', 'sender_name', 'receiver', 'receiver_name', 'message', 'timestamp']
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender = UserSerializer(read_only=True)  # Nested sender info
+    sender = UserSerializer(read_only=True)
 
     class Meta:
         model = Message
-        fields = ['id', 'chat_room', 'sender', 'message', 'created_at', 'read_status']
-        read_only_fields = ['created_at', 'read_status']
+        fields = ['id', 'chat_room', 'sender', 'message', 'created_at', 'is_delivered', 'is_seen']
+        read_only_fields = ['created_at']
 
 
 

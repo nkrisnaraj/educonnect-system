@@ -479,6 +479,27 @@ def send_chat_message(request, recipient_role):
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_messages_read_student(request):
+    """
+    Mark all messages from student as read by instructor
+    """
+    if(request.user.role != 'student'):
+         return Response({'error':'Only studentsa allowed'},status=403)
+    chat_room = ChatRoom.objects.filter(created_by=request.user,name='instructor').first()
+    if not chat_room:
+        return Response({'error':"No chat Room"},status=404)
+    instructor = User.objects.filter(role='instructor').first()
+    Message.objects.filter(
+        chat_room=chat_room,
+        sender=instructor,
+        is_seen=False
+    ).update(is_seen=True)
+
+    return Response({'status': 'ok'})
+
+
 
 
 from instructor.serializers import ClassSerializer
@@ -651,6 +672,27 @@ def calendarEvent(request):
     #combine
     events = webinar_data + exam_data
     return Response(events, status=status.HTTP_200_OK)
+
+
+# from .models import Notification
+# def get_notifications(request):
+#     student = request.user.student_profile
+#     notifications = Notification.objects.filter(stuid = student).order_by('-created_at')
+
+#     data = [
+#         {
+#             'id': n.id,
+#             'title': n.title,
+#             'message': n.message,
+#             'type': n.type,
+#             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+#             'read_status': n.read_status,
+#         }
+#         for n in notifications
+#     ]
+
+#     return Response({'notifications':data},status=status.HTTP_200_OK)
+
 
 
 '''

@@ -6,17 +6,17 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRef } from "react";
+import { Check } from "lucide-react";
+
 
 export default function StudentPage() {
   const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
   const router = useRouter();
   const {id} = useParams();
-
   const [selectedChat, setSelectedChat] = useState('instructor');
   const [instructorMessages, setInstructorMessages] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
   const [enrollClasses, setEnrollClasses] = useState([]);
-
   const [inputMessage, setInputMessage] = useState('');
   // const bottomRef = useRef(null);
 
@@ -71,7 +71,18 @@ export default function StudentPage() {
   }
 }, [loading, accessToken]);
 
-  
+  const markMessagesReadStudent = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
+
+  const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
+  };
+
   const loadMessages = async (token) => {
     const response = await axios.get(
       `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
@@ -89,12 +100,16 @@ export default function StudentPage() {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        is_delivered: msg.is_delivered,
+        is_seen: msg.is_seen,
       })
     );
     if (selectedChat === "instructor") {
       setInstructorMessages(transformed);
+      await markMessagesReadStudent(token);
     } else {
       setAdminMessages(transformed);
+      await markMessagesReadStudent(token);
     }
   };
 
@@ -151,6 +166,8 @@ useEffect(() => {
         sender: 'student',
         text: response.data.message,
         time: new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        is_delivered: response.data.is_delivered || false,
+        is_seen: response.data.is_seen || false,
       };
 
       if (selectedChat === 'instructor') {
@@ -174,21 +191,6 @@ useEffect(() => {
     day:"numeric"
   })
 
-
-  // const courses = [
-  //   {
-  //     title: "Object Oriented Programming",
-  //     icon: "/placeholder.svg",
-  //   },
-  //   {
-  //     title: "Fundamentals of Database Systems",
-  //     icon: "/placeholder.svg",
-  //   },
-   
-  // ];
-
-//const User = sessionStorage.getItem("user");
-//console.log("User:", User);
 console.log("messages:", messages);
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto w-full">
@@ -284,16 +286,13 @@ console.log("messages:", messages);
 
       {/* Chat messages */}
       <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
-        {messages?.map((msg, index) => (
+        {Array.isArray(messages) && messages.map((msg, index) => (
           <div
             key={index}
             className={`flex items-start gap-2 ${
               msg.sender === 'student' ? 'flex-row-reverse' : ''
             }`}
           >
-            {/* {msg.sender !== 'student' && (
-              <Image src="/images/icons/profile1.png" alt={msg.sender} width={40} height={40} className="rounded-full mt-1" />
-            )} */}
             <div
               className={`rounded-lg p-2 text-sm max-w-[80%] ${
                 msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
@@ -301,10 +300,16 @@ console.log("messages:", messages);
             >
               <p>{msg.text}</p>
               <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
+
+              {msg.sender === 'student' && (
+               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs text-gray-500">
+                {renderTick(msg)}
+              </div>
+                    )}
             </div>
-            
           </div>
         ))}
+
       </div>
 
       {/* Input Box */}
@@ -339,5 +344,19 @@ console.log("messages:", messages);
     </div>
   </div>
   </div>
+  );
+}
+
+
+function SingleTick() {
+  return <Check className="w-4 h-4 text-gray-400" />;
+}
+
+function DoubleTick({ color }) {
+  return (
+    <div className="flex">
+      <Check className={`w-4 h-4 text-${color}-400`} />
+      <Check className={`w-4 h-4 text-${color}-400 -ml-2`} />
+    </div>
   );
 }

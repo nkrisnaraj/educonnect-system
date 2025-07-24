@@ -1,55 +1,70 @@
-# This consumer handles WebSocket connections for chat rooms.
-# It allows users to connect to a specific chat room, send messages, and receive messages from
-
-
-import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+import json
+from .models import Message
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
 
-        # Join room group
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
-
         await self.accept()
 
-    async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        # Auto-mark messages as delivered when receiver connects
+        receiver = self.scope['user']
+        await self.mark_messages_delivered(receiver)
 
-    # Receive message from WebSocket
+    async def mark_messages_delivered(self, receiver):
+        unread = await database_sync_to_async(
+            lambda: Message.objects.filter(receiver=receiver, is_delivered=False)
+        )()
+        for msg in unread:
+            msg.is_delivered = True
+            msg.save()
+
+        # Optionally broadcast updated status
+        for msg in unread:
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'message_status',
+                    'message_id': msg.id,
+                    'status': 'delivered'
+                }
+            )
+
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data['message']
-        sender = data['sender']
 
-        # Save message to DB (optional: call DB save here or via signal)
+        if data['type'] == 'message':
+            # handle sending message
+            ...
+        elif data['type'] == 'mark_seen':
+            await self.mark_message_seen(data['message_ids'])
 
-        # Broadcast message to room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message,
-                'sender': sender,
-            }
-        )
+    async def mark_message_seen(self, ids):
+        for id in ids:
+            msg = await database_sync_to_async(lambda: Message.objects.get(id=id))()
+            msg.is_seen = True
+            msg.save()
 
-    # Receive message from room group
-    async def chat_message(self, event):
-        message = event['message']
-        sender = event['sender']
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'message_status',
+                    'message_id': msg.id,
+                    'status': 'seen'
+                }
+            )
 
-        # Send message to WebSocket
+    async def message_status(self, event):
         await self.send(text_data=json.dumps({
-            'message': message,
-            'sender': sender,
+            'type': 'status_update',
+            'message_id': event['message_id'],
+            'status': event['status']
         }))
