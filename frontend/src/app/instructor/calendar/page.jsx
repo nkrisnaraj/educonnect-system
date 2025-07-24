@@ -1,153 +1,144 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, CalendarIcon, Clock, Users, X } from "lucide-react"
+import { useState, useEffect } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarIcon,
+  Clock,
+  Users,
+} from "lucide-react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
+
+const generateColorPalette = (n) => {
+  const baseColors = [
+    "bg-blue-500", "bg-rose-500", "bg-indigo-500", "bg-red-500",
+    "bg-yellow-500", "bg-orange-500", "bg-purple-500", "bg-pink-500",
+    "bg-green-500", "bg-teal-500"
+  ];
+  return Array.from({ length: n }, (_, i) => baseColors[i % baseColors.length]);
+};
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState(null)
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false)
-  const [viewMode, setViewMode] = useState("month") // month, week, day
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [viewMode, setViewMode] = useState("month");
+  const [webinarEvents, setWebinarEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const { accessToken, refreshAccessToken, logout } = useAuth();
 
-  const events = [
-    {
-      id: 1,
-      title: "Physics - Quantum Mechanics",
-      date: "2024-06-20",
-      time: "14:00",
-      duration: "90 min",
-      type: "class",
-      batch: "2025 A/L",
-      students: 45,
-      color: "bg-blue-500",
-    },
-    {
-      id: 2,
-      title: "Chemistry Practical",
-      date: "2024-06-20",
-      time: "16:00",
-      duration: "60 min",
-      type: "practical",
-      batch: "2026 A/L",
-      students: 38,
-      color: "bg-green-500",
-    },
-    {
-      id: 3,
-      title: "Biology Final Exam",
-      date: "2024-06-22",
-      time: "10:00",
-      duration: "180 min",
-      type: "exam",
-      batch: "2025 A/L",
-      students: 52,
-      color: "bg-red-500",
-    },
-    {
-      id: 4,
-      title: "Mathematics Revision",
-      date: "2024-06-25",
-      time: "15:00",
-      duration: "120 min",
-      type: "revision",
-      batch: "2025 A/L",
-      students: 41,
-      color: "bg-purple-500",
-    },
-    {
-      id: 5,
-      title: "Parent Meeting",
-      date: "2024-06-23",
-      time: "18:00",
-      duration: "60 min",
-      type: "meeting",
-      batch: "All",
-      students: 0,
-      color: "bg-orange-500",
-    },
-  ]
+  const fetchWebinars = async (token = accessToken) => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/edu_admin/webinars-list/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  const eventTypes = [
-    { id: "class", name: "Class", color: "bg-blue-500" },
-    { id: "practical", name: "Practical", color: "bg-green-500" },
-    { id: "exam", name: "Exam", color: "bg-red-500" },
-    { id: "revision", name: "Revision", color: "bg-purple-500" },
-    { id: "meeting", name: "Meeting", color: "bg-orange-500" },
-  ]
+      const colorMap = {};
+      const colors = generateColorPalette(res.data.length);
+
+      const processedEvents = res.data.flatMap((webinar, idx) => {
+        const color = colors[idx];
+        colorMap[webinar.id] = color;
+
+        return (webinar.occurrences || []).map((occurrence, occIdx) => {
+          const baseDate = new Date(occurrence.start_time);
+
+          const datePart = baseDate.toISOString().split("T")[0];
+          const time = baseDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute: '2-digit', hour12: false });
+
+          return {
+            id: `webinar-${webinar.id}-${occIdx}-${baseDate.getTime()}`,
+            topic: webinar.topic,
+            date: datePart,
+            time,
+            duration: webinar.duration || "90 min",
+            color,
+          };
+        });
+      });
+
+      setWebinarEvents(processedEvents);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) fetchWebinars(newToken);
+        else logout();
+      } else {
+        console.error("Failed to load webinars:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken) {
+      fetchWebinars(accessToken);
+    }
+  }, [accessToken]);
 
   const getDaysInMonth = (date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = firstDay.getDay()
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days = [];
 
-    const days = []
+    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
+    for (let day = 1; day <= lastDay.getDate(); day++) days.push(day);
 
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
-    }
+    return days;
+  };
 
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day)
-    }
-
-    return days
-  }
+  const getDaysInWeek = (date) => {
+    const start = new Date(date);
+    const day = start.getDay();
+    start.setDate(start.getDate() - day);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  };
 
   const getEventsForDate = (date) => {
-    const dateString = date.toISOString().split("T")[0]
-    return events.filter((event) => event.date === dateString)
-  }
+    const dateString = date.toISOString().split("T")[0];
+    return webinarEvents.filter((event) => event.date === dateString);
+  };
 
-  const navigateMonth = (direction) => {
-    const newDate = new Date(currentDate)
-    newDate.setMonth(currentDate.getMonth() + direction)
-    setCurrentDate(newDate)
-  }
+  const navigate = (direction) => {
+    const newDate = new Date(currentDate);
+    if (viewMode === "month") {
+      newDate.setMonth(currentDate.getMonth() + direction);
+    } else {
+      newDate.setDate(currentDate.getDate() + 7 * direction);
+    }
+    setCurrentDate(newDate);
+  };
 
   const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ]
-
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-
-  const days = getDaysInMonth(currentDate)
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const days = viewMode === "month" ? getDaysInMonth(currentDate) : getDaysInWeek(currentDate);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 relative">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Class Calendar</h1>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">A/L Class Calendar</h1>
       </div>
 
-      {/* Calendar Header */}
       <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
         <div className="p-6 border-b border-purple-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <h2 className="text-xl font-semibold">
                 {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
               </h2>
-              <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
@@ -161,17 +152,13 @@ export default function CalendarPage() {
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("month")}
-                  className={`px-3 py-1 rounded text-sm ${
-                    viewMode === "month" ? "bg-white shadow-sm" : "text-gray-600"
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${viewMode === "month" ? "bg-white shadow-sm" : "text-gray-600"}`}
                 >
                   Month
                 </button>
                 <button
                   onClick={() => setViewMode("week")}
-                  className={`px-3 py-1 rounded text-sm ${
-                    viewMode === "week" ? "bg-white shadow-sm" : "text-gray-600"
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${viewMode === "week" ? "bg-white shadow-sm" : "text-gray-600"}`}
                 >
                   Week
                 </button>
@@ -180,29 +167,29 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="p-6">
-          <div className="grid grid-cols-7 gap-1 mb-4">
+          <div className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"} gap-1 mb-4`}>
             {dayNames.map((day) => (
               <div key={day} className="p-3 text-center font-medium text-gray-500 text-sm">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"} gap-1`}>
             {days.map((day, index) => {
-              if (day === null) {
-                return <div key={index} className="h-24 p-1"></div>
-              }
+              const date = viewMode === "month"
+                ? day === null ? null : new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
+                : day;
 
-              const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-              const dayEvents = getEventsForDate(date)
-              const isToday = new Date().toDateString() === date.toDateString()
-              const isSelected = selectedDate && selectedDate.toDateString() === date.toDateString()
+              if (!date) return <div key={`empty-${index}`} className="h-24 p-1"></div>;
+
+              const dayEvents = getEventsForDate(date);
+              const isToday = new Date().toDateString() === date.toDateString();
+              const isSelected = selectedDate && selectedDate.toDateString() === date.toDateString();
 
               return (
                 <div
-                  key={day}
+                  key={`day-${date.toISOString()}`}
                   onClick={() => setSelectedDate(date)}
                   className={`h-24 p-1 border border-gray-200 rounded cursor-pointer hover:bg-purple-50 ${
                     isToday ? "bg-purple-100 border-purple-300" : ""
@@ -210,12 +197,19 @@ export default function CalendarPage() {
                 >
                   <div className="h-full flex flex-col">
                     <span className={`text-sm font-medium ${isToday ? "text-purple-700" : "text-gray-900"}`}>
-                      {day}
+                      {date.getDate()}
                     </span>
                     <div className="flex-1 overflow-hidden">
                       {dayEvents.slice(0, 2).map((event) => (
-                        <div key={event.id} className={`text-xs p-1 mb-1 rounded text-white truncate ${event.color}`}>
-                          {event.time} {event.title}
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                          className={`text-xs p-1 mb-1 rounded text-white truncate cursor-pointer ${event.color}`}
+                        >
+                          {event.time} {event.topic}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
@@ -224,64 +218,49 @@ export default function CalendarPage() {
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       </div>
 
-      {/* Event Legend */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
+      {/* <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Event Types</h3>
         <div className="flex flex-wrap gap-4">
-          {eventTypes.map((type) => (
-            <div key={type.id} className="flex items-center gap-2">
-              <div className={`w-4 h-4 rounded ${type.color}`}></div>
-              <span className="text-sm text-gray-700">{type.name}</span>
+          {Array.from(new Set(webinarEvents.map(e => e.color))).map((color, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-4 h-4 rounded ${color}`}></div>
+              <span className="text-sm text-gray-700">Webinar</span>
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
-      {/* Upcoming Events */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
-        <div className="p-6 border-b border-purple-200">
-          <h3 className="text-lg font-semibold">Upcoming A/L Events</h3>
-          <p className="text-gray-600">Your scheduled classes and activities</p>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {events.slice(0, 5).map((event) => (
-              <div
-                key={event.id}
-                className="flex items-center gap-4 p-4 bg-white/50 rounded-lg border border-purple-100"
-              >
-                <div className={`w-4 h-4 rounded ${event.color}`}></div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{event.title}</h4>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                    <div className="flex items-center gap-1">
-                      <CalendarIcon className="h-4 w-4" />
-                      {new Date(event.date).toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {event.time} ({event.duration})
-                    </div>
-                    {event.students > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {event.students} students
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{event.batch}</span>
-              </div>
-            ))}
+      {selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+            <button
+              onClick={() => setSelectedEvent(null)}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+            <h2 className="text-xl font-semibold mb-2">{selectedEvent.topic}</h2>
+            <p className="text-gray-700">
+              <CalendarIcon className="inline h-4 w-4 mr-1" />
+              Date: {selectedEvent.date}
+            </p>
+            <p className="text-gray-700">
+              <Clock className="inline h-4 w-4 mr-1" />
+              Time: {selectedEvent.time}
+            </p>
+            <p className="text-gray-700">
+              <Users className="inline h-4 w-4 mr-1" />
+              Duration: {selectedEvent.duration} minutes
+            </p>
           </div>
         </div>
-      </div>
+      )}
     </div>
-  )
+  );
 }

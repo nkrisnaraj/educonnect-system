@@ -2,7 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import {Home,BookOpen,Users,GraduationCap,ClipboardList,Upload,BarChart3,Calendar,Bell,Settings,LogOut} from "lucide-react"
+import {Home,BookOpen,Users,GraduationCap,ClipboardList,Calendar,Bell,Settings,LogOut, Video, FileText} from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 
 const menuItems = [
@@ -12,14 +12,23 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "My Courses",
-    url: "/instructor/courses",
+    title: "Classes",
+    url: "/instructor/classes",
     icon: BookOpen,
   },
   {
     title: "Students",
     url: "/instructor/students",
     icon: Users,
+  },
+  {
+    title: "Webinars",
+    url: "/instructor/webinars",
+    icon: Video,
+  },{
+    title: "Notes",
+    url: "/instructor/notes",
+    icon: FileText,
   },
   {
     title: "Exams",
@@ -72,10 +81,10 @@ export function InstructorSidebar() {
             <Link
               key={item.title}
               href={item.url}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
                 pathname === item.url
-                  ? "bg-purple-100 text-purple-700"
-                  : "text-white hover:bg-accent hover:text-white"
+                  ? "bg-purple-100 text-lg text-purple-700"
+                  : "text-white text-lg hover:bg-accent hover:text-white"
               }`}
             >
               <item.icon className="h-4 w-4" />
@@ -88,7 +97,7 @@ export function InstructorSidebar() {
       {/* Footer */}
       <div className="p-4 border-t border-purple-200">
         <div className="space-y-2">
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg"
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-lg text-white hover:bg-accent rounded-lg"
             onClick={()=>
               logout()
             }>
