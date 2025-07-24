@@ -137,7 +137,7 @@ export default function InstructorDashboard() {
   };
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
+    const role = sessionStorage.getItem("userRole");
     if (!role || role !== "instructor") {
       router.replace("/login");
       return;
