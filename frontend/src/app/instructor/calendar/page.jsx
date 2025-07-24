@@ -7,6 +7,7 @@ import {
   CalendarIcon,
   Clock,
   Users,
+  X
 } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -243,7 +244,7 @@ export default function CalendarPage() {
               onClick={() => setSelectedEvent(null)}
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
             >
-              ×
+              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
             </button>
             <h2 className="text-xl font-semibold mb-2">{selectedEvent.topic}</h2>
             <p className="text-gray-700">
