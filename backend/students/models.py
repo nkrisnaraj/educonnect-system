@@ -3,9 +3,7 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 from django.conf import settings
 from django.utils import timezone
-
-# Extend Django's default user model
-
+from django.contrib.postgres.fields import ArrayField
 
 # Student profile model (additional student-only fields)
 class StudentProfile(models.Model):
@@ -13,8 +11,11 @@ class StudentProfile(models.Model):
     mobile = models.CharField(max_length=15)
     nic_no = models.CharField(max_length=15,unique=True)
     address = models.TextField()
+    city = models.CharField(max_length=50, blank=True, null=True)
+    district = models.CharField(max_length=50, blank=True, null=True)
     year_of_al = models.CharField()
     school_name = models.CharField(max_length=100)
+    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     stuid = models.CharField(max_length=20, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -24,7 +25,6 @@ class StudentProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.stuid}"
-
 
 
 #Payment Model
@@ -43,7 +43,21 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.stuid.username} - {self.method} - {self.date}"
+    
+from django.db import models
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
+# class PaymentTest(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     order_id = models.CharField(max_length=100, unique=True)
+#     amount = models.DecimalField(max_digits=10, decimal_places=2)
+#     currency = models.CharField(max_length=10)
+#     status = models.CharField(max_length=20, default='pending')
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def __str__(self):
+#         return f"{self.order_id} - {self.status}"
 
 #Online Payment
 class OnlinePayment(models.Model):
@@ -52,6 +66,10 @@ class OnlinePayment(models.Model):
     invoice_no = models.CharField(max_length=100, unique=True)
     #status = models.CharField(max_length=10, choices=[('success', 'Success'), ('fail', 'Fail')])
     verified = models.BooleanField(default=False)
+    # course_ids = ArrayField(models.IntegerField(), blank=True, default=list)
+    class_ids = models.JSONField(blank=True, null=True)  
+    class_summary = models.TextField(blank=True, null=True)
+    initiated_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.onlinepayid:
@@ -69,7 +87,7 @@ class ReceiptPayment(models.Model):
     image_url = models.ImageField(upload_to='receipts/')
     verified = models.BooleanField(default=False)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    record_no = models.CharField(unique=True,null=True, blank=True,max_length=100)
+    record_no = models.CharField(null=True, blank=True, max_length=100)
     paid_date_time = models.DateTimeField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     paid_amount = models.CharField(max_length=100, null=True, blank=True)
@@ -98,3 +116,24 @@ class Enrollment(models.Model):
         return f"Enrollment {self.enrollid} - Student {self.stuid} in Class {self.classid}"
 
 
+
+class CalendarEvent(models.Model):
+    EVENT_TYPES = [
+        ('webinar', 'Webinar'),
+        ('notes', 'Notes Uploaded'),
+        ('exam', 'Exam Scheduled'),
+    ]
+
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
+    date = models.DateField()
+    time = models.TimeField(blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    classid = models.ForeignKey("instructor.Class", on_delete=models.CASCADE, related_name="calendar_events")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.classid.title} - {self.date}"

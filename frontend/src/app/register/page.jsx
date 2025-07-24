@@ -24,6 +24,8 @@ export default function Register() {
     address: "",
     yearOfAL: "",
     schoolName: "",
+    city:"",
+    district:""
   });
 
   const handleChange = (e) => {
@@ -46,6 +48,8 @@ export default function Register() {
         address: form.address,
         year_of_al: form.yearOfAL,
         school_name: form.schoolName,
+        city: form.city,
+        district: form.district
       }
     };
 
@@ -73,12 +77,10 @@ export default function Register() {
   return (
     <>
     <MainNavbar />
-    <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
-       {/* Nav bar */}
+    <div className="font-sans max-w-4xl mb-12 mx-auto mt-24 min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
        
-      
       {/* Registration Form */}
-      <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
+      <div className="flex items-center justify-center px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         {message && (
           <div
             className={`fixed top-5 right-5 w-[380px] px-6 py-4 rounded-xl shadow-2xl border-l-8 z-50 text-sm font-semibold transition-all duration-500 ease-in-out animate-fadeIn ${
@@ -95,12 +97,13 @@ export default function Register() {
           onSubmit={handleRegister}
           className="bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-lg w-full max-w-5xl transition-colors"
         >
-          <h2 className="text-3xl font-bold text-center text-blue-600 dark:text-blue-400 mb-8">
-            Create an Account
-          </h2>
+          <div className="flex flex-col items-center mb-4">
+            <p className="text-primary dark:text-gray-300 mb-2 text-2xl font-semibold"> Welcome! Let&apos;s get you started</p>
+              <Image src="/logo.png" alt="EduConnect Logo" width={100} height={80} className="mb-1"/>
+          </div>
 
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Username</label>
               <input
@@ -113,7 +116,6 @@ export default function Register() {
                 required
               />
             </div>
-
 
             <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Email</label>
@@ -203,7 +205,7 @@ export default function Register() {
               />
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Address</label>
               <textarea
                 name="address"
@@ -214,8 +216,30 @@ export default function Register() {
                 rows={2}
               />
             </div>
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">City</label>
+              <textarea
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="City"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">district</label>
+              <textarea
+                name="district"
+                value={form.district}
+                onChange={handleChange}
+                className="w-full p-3 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-white transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="District"
+                rows={2}
+              />
+            </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">Password</label>
               <input
                 type="password"
@@ -237,14 +261,18 @@ export default function Register() {
           Register
         </button>
 
-          <p className="text-sm mt-4 text-center text-gray-700 dark:text-gray-300">
+          <p className="text-md mt-4 font-semibold text-center text-gray-700 dark:text-gray-300">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-500 dark:text-blue-400 hover:underline">
+            <Link href="/login" className="text-primary font-semibold dark:text-blue-400 hover:underline">
               Login
             </Link>
           </p>
         </form>
       </div>
+
+      
+    
+      
     </div>
     <Footer />
     

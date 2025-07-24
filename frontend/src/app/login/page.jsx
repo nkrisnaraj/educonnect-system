@@ -18,15 +18,14 @@ export default function Login() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showEmailModel, setShowEmailModel] = useState(false);
+  const [email, setEmail] = useState("");
 
-  
-    const { login } = useAuth();
+  const { login } = useAuth();
 
     const handleLogin = async(e) => {
         e.preventDefault();
         try {
-          // console.log(username);
-          // console.log(password);
           const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
             username,
             password
@@ -44,12 +43,12 @@ export default function Login() {
 
             login(data); // this replace all loalstorage
             
-            //localStorage.setItem("user", JSON.stringify(userObject));
-            //localStorage.setItem("userRole",data.user.role);
-            //localStorage.setItem("accessToken", response.data.access);
-            //localStorage.setItem("refreshToken", response.data.refresh);
+            //sessionStorage.setItem("user", JSON.stringify(userObject));
+            //sessionStorage.setItem("userRole",data.user.role);
+            //sessionStorage.setItem("accessToken", response.data.access);
+            //sessionStorage.setItem("refreshToken", response.data.refresh);
 
-            //const userrole = localStorage.getItem("userRole");
+            //const userrole = sessionStorage.getItem("userRole");
             console.log(data.user.id);
             setTimeout(() => {
               try {
@@ -64,8 +63,6 @@ export default function Login() {
                 console.error("Router push error:", err);
               }
             }, 1000);
-
-              
           }else{
             setMessage("Login Failed")
             setIsSuccess(false);
@@ -79,9 +76,33 @@ export default function Login() {
             else{
               setMessage("An Error Occurred")
             }
-        }
-        
+        } 
     };
+
+    const handleforgotPassword = () => {
+      setShowEmailModel(true);
+    }
+
+    const handleOTP = async () => {
+      setShowEmailModel(false);
+      if (!email) {
+        alert("Please enter your email.");
+        return;
+      }
+      try {
+        const response = await axios.post("http://127.0.0.1:8000/api/accounts/send-otp/",{ email });
+        console.log(email);
+        if (response.status === 200) {
+          alert("Check your email address for the OTP.");
+          sessionStorage.setItem("reset_email", email);
+          router.push("/otp");
+        }
+      } catch (error) {
+        console.error(error);
+        alert(error.response?.data?.error || "Failed to send OTP.");
+      }
+    };
+
 
     
 
@@ -89,11 +110,22 @@ export default function Login() {
     <>
     {/* Nav bar */}
     <MainNavbar />
-    <div className="font-sans min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <div className="font-sans bg-white mx-auto text-gray-900 dark:bg-gray-900 dark:text-white transition-colors duration-300">
       {/* Login Form */}
-      <div className="flex items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
+      <div className="flex mt-12 items-center justify-center min-h-screen px-6 py-6 bg-gray-100 dark:bg-gray-800 transition-colors">
         <div className="bg-white dark:bg-gray-700 shadow-lg rounded-2xl p-8 w-full max-w-md transition-colors">
-          <h1 className="text-3xl font-bold text-center mb-4 text-gray-900 dark:text-white">Login</h1>
+          {/* Logo & Welcome */}
+            <div className="flex flex-col items-center mb-6">
+              <Image
+                src="/logo.png"
+                alt="EduConnect Logo"
+                width={100}
+                height={80}
+                className="mb-2"
+              />
+              
+              <p className="text-primary dark:text-gray-300 text-lg font-semibold">Welcome back to EduConnect !</p>
+            </div>
 
           {message && (
             <div
@@ -131,19 +163,15 @@ export default function Login() {
             </div>
 
             <div className="text-right text-sm">
-              <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline">
-                Forgot Password?
-              </span>
+                <span className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline" onClick={handleforgotPassword}>
+                  Forgot Password?
+                </span>
             </div>
-
-                    <button
-                        type="submit"
-                        className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300"
-                        
-                    >
-                        Login
-                    </button>
-                </form>
+            <button type="submit"
+              className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300">
+              Login
+            </button>
+            </form>
 
           <p className="mt-6 mb-6 text-center text-gray-700 dark:text-gray-300">
             Don't have an account?{" "}
@@ -156,12 +184,33 @@ export default function Login() {
           </p>
         </div>
       </div>
-
-      
-
-
-
     </div>
+    {showEmailModel && (
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+          {/* <h2 className="text-xl font-semibold mb-4">Forgot Password</h2> */}
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Please Enter the Email to send your OTP
+          </p>
+          <input
+            type="email"
+            className="border p-2 w-full mb-4"
+            placeholder="Enter your email"
+            value={email}
+            required
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            // onClick={() => {router.push("/otp")}}
+            type="button"
+            onClick={handleOTP}
+            className="bg-primary text-white px-4 py-2 rounded"
+          >
+            Send 
+          </button>
+        </div>
+      </div>
+    )}
     <Footer />
     </>
   );

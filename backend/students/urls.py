@@ -1,9 +1,10 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import OnlinePaymentView, ReceiptUploadView, PayHereNotifyView
+from .views import OnlinePaymentView, ReceiptUploadView
 from .views import PaymentInfoView,StudentProfileView
-from .views import CreatePayHereCheckoutUrl
+from .views import EditStudentProfileView
+from . import views
 
 
     
@@ -12,11 +13,14 @@ from .views import CreatePayHereCheckoutUrl
 
 urlpatterns = [
     path('payments/online/', OnlinePaymentView.as_view(), name='online-payment'),
-    path('payhere-notify/', PayHereNotifyView.as_view(), name='payhere-notify'),
+    # path('payhere-notify/', PayHereNotifyView.as_view(), name='payhere-notify'),
     path("payments/upload-receipt/",ReceiptUploadView.as_view(),name="upload-receipt"),
     path("payment-info/",PaymentInfoView.as_view(),name="payment-info"),
     path("student-profile/",StudentProfileView.as_view(),name="student-profile"),
-    path("payments/create-payhere-url/", CreatePayHereCheckoutUrl.as_view()),
+    # path("payments/create-payhere-url/", CreatePayHereCheckoutUrl.as_view()),
+    path('api/initiate-payment/', views.initiate_payment),
+    path('api/payment/notify/', views.payment_notify),
+    path('profile/',EditStudentProfileView.as_view(), name='student-edit-profile'),
     
 ]
 

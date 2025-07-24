@@ -7,12 +7,18 @@ from datetime import datetime
 
 User = get_user_model()
 
+from students.serializers import EnrollmentSerializer
+
 class StudentProfileSerializer(serializers.ModelSerializer):
-    
+    enrollments = EnrollmentSerializer(many=True, source='enrollment_set', read_only=True)
+
     class Meta:
         model = StudentProfile
-        fields = ['mobile', 'nic_no', 'address', 'year_of_al', 'school_name']
-
+        fields = [
+            'mobile', 'nic_no', 'address', 'city','district',
+            'year_of_al', 'school_name','profile_image',
+            'stuid', 'enrollments'
+        ]
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -58,8 +64,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         profile.mobile = student_profile_data.get('mobile')
         profile.nic_no = student_profile_data.get('nic_no')
         profile.address = student_profile_data.get('address')
+        profile.city = student_profile_data.get('city')
+        profile.district = student_profile_data.get('district')
         profile.year_of_al = student_profile_data.get('year_of_al')
         profile.school_name = student_profile_data.get('school_name')
+        profile.profile_image = student_profile_data.get('profile_image')
+        
         profile.save()
 
         return user
