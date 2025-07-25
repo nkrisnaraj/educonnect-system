@@ -4,39 +4,171 @@ import { Bell, CreditCard } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import axios from "axios";
+import { useRef } from "react";
+import { Check } from "lucide-react";
+
 
 export default function StudentPage() {
-  const {user } = useAuth();
+  const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
   const router = useRouter();
   const {id} = useParams();
-
   const [selectedChat, setSelectedChat] = useState('instructor');
-  const [instructorMessages, setInstructorMessages] = useState([
-  { sender: 'instructor', text: 'Hello! How can I help you with your coursework today?', time: '10:30 AM' },
-  { sender: 'student', text: 'I have a question about the upcoming assignment deadline.', time: '10:32 AM' },
-  { sender: 'instructor', text: 'Sure, the deadline has been extended to next Friday.', time: '10:35 AM' },
-]);
+  const [instructorMessages, setInstructorMessages] = useState([]);
+  const [adminMessages, setAdminMessages] = useState([]);
+  const [enrollClasses, setEnrollClasses] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  // const bottomRef = useRef(null);
+
+  const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
 
 
-  const [adminMessages, setAdminMessages] = useState([
-  { sender: 'admin', text: 'Hello! How can I assist you with your account?', time: '09:00 AM' },
-  { sender: 'student', text: 'I want to change my registered email address.', time: '09:05 AM' },
-  { sender: 'admin', text: 'Sure, please provide the new email address.', time: '09:10 AM' },
-]);
+  // useEffect(() => {
+  //   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
+
+  console.log(accessToken);
+
+  const fetchEnrolledClass = async () => {
+    try {
+      const enrollClass = await api.get("/students/enroll-class/" ,{
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      console.log("Enrolled Classes:", enrollClass.data);
+      //const result = enrollClass.data?.enrolled_classes || [];
+      setEnrollClasses(enrollClass.data || []);
+
+    } catch (error) {
+      console.error("Failed to fetch enrolled classes", error);
+      
+    }
+  }
+
+  useEffect(() => {
+  if (!loading && accessToken) {
+    fetchEnrolledClass();
+  }
+}, [loading, accessToken]);
+
+  const markMessagesReadStudent = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
+
+  const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
+  };
+
+  const loadMessages = async (token) => {
+    const response = await axios.get(
+      `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const transformed = (Array.isArray(response.data) ? response.data : []).map(
+      (msg) => ({
+        sender: msg.sender.role,
+        text: msg.message,
+        time: new Date(msg.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        is_delivered: msg.is_delivered,
+        is_seen: msg.is_seen,
+      })
+    );
+    if (selectedChat === "instructor") {
+      setInstructorMessages(transformed);
+      await markMessagesReadStudent(token);
+    } else {
+      setAdminMessages(transformed);
+      await markMessagesReadStudent(token);
+    }
+  };
 
   
-  const [inputMessage, setInputMessage] = useState('');
-
-  useEffect(()=>{
-    const role = sessionStorage.getItem("userRole");
-    const token = sessionStorage.getItem("accessToken");
-    if(!token || !user || role !== "student"){
-      router.push("/login");
+useEffect(() => {
+  const fetchChat = async () => {
+    if (!accessToken || !refreshToken) {
+      console.log("Tokens not ready yet");
+      return;
     }
-  }, []);
+    try {
+      await loadMessages(accessToken);
+    } catch (error) {
+      console.error("Failed to fetch messages", error);
 
-  if (!user) return null; // or a loading spinner
+      if (error.response?.status === 401) {
+        // token expired, try refreshing
+        try {
+          const newAccess = await refreshAccessToken();
+          await loadMessages(newAccess);
+        } catch (refreshErr) {
+          console.error("Failed to refresh token", refreshErr);
+          logout();
+        }
+      } else {
+        console.error("Other error:", error);
+      }
+    }
+  };
+  fetchChat();
+}, [selectedChat, accessToken, refreshAccessToken, logout]);
+
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const messagePayload = {
+      message: inputMessage,
+    };
+    console.log("messagePayload", messagePayload);
+    const token = sessionStorage.getItem("accessToken");
+
+    try {
+      const response = await axios.post(`http://127.0.0.1:8000/students/messages/${selectedChat}/send/`,
+        messagePayload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+      const savedMessage = {
+        sender: 'student',
+        text: response.data.message,
+        time: new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        is_delivered: response.data.is_delivered || false,
+        is_seen: response.data.is_seen || false,
+      };
+
+      if (selectedChat === 'instructor') {
+        setInstructorMessages((prev) => [...prev, savedMessage]);
+      } else {
+        setAdminMessages((prev) => [...prev, savedMessage]);
+      }
+
+      setInputMessage('');
+    } catch (error) {
+      console.error("Failed to send message", error);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage()
+    }
+  }
 
   const today = new Date();
   const formatdate = today.toLocaleDateString("en-GB",{
@@ -46,45 +178,14 @@ export default function StudentPage() {
     day:"numeric"
   })
 
-const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
-  const courses = [
-    {
-      title: "Object Oriented Programming",
-      icon: "/placeholder.svg",
-    },
-    {
-      title: "Fundamentals of Database Systems",
-      icon: "/placeholder.svg",
-    },
-   
-  ];
-
-
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
-
-    const newMessage = {
-        sender: 'student',
-        text: inputMessage,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      if (selectedChat === 'instructor') {
-        setInstructorMessages((prev) => [...prev, newMessage]);
-      } else {
-        setAdminMessages((prev) => [...prev, newMessage]);
-      }
-
-      setInputMessage('');
-  };
-
+console.log("messages:", messages);
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto w-full">
       {/* Welcome Banner */}
       <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
         <div className="relative z-10 p-4">
           <p className="text-sm mb-6">{formatdate}</p>
-          <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back, {user?.first_name}!</h1>
+          <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back {user?.first_name || 'Student'}!</h1>
           <p className="text-sm opacity-90">Always stay updated in your student portal</p>
         </div>
         <div className="absolute right-4 bottom-0 hidden sm:block">
@@ -130,28 +231,27 @@ const messages = selectedChat === 'instructor' ? instructorMessages : adminMessa
               <a href="#" className="text-purple-500 text-sm">See all</a>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {courses.map((course, index) => (
+              {
+                enrollClasses.length === 0 ? ( 
+                  <p>No enrolled classes found.</p>
+                ) : (
+                  enrollClasses.map((cls, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-4 bg-white border rounded-lg shadow hover:bg-blue-600 hover:text-white transition"
+                  className="flex justify-between items-center p-6 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
                 >
                   <div>
-                    <h3 className="text-md font-semibold mb-2">{course.title}</h3>
-                    <button className="bg-blue-500 text-white text-sm px-4 py-1 rounded hover:bg-blue-700 transition">
+                    <h3 className="text-md font-semibold mb-2">{cls.title}</h3>
+                    <button onClick = {()=>{router.push(`/students/${id}/courses`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
                       View
                     </button>
                   </div>
-                  <div>
-                    <Image
-                      src={course.icon}
-                      alt={course.title}
-                      width={60}
-                      height={60}
-                      className="rounded-md"
-                    />
-                  </div>
+                  
                 </div>
-              ))}
+                ))
+                )
+              }
+              
             </div>
           </div>
         </div>
@@ -173,56 +273,77 @@ const messages = selectedChat === 'instructor' ? instructorMessages : adminMessa
 
       {/* Chat messages */}
       <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
-        {messages.map((msg, index) => (
+        {Array.isArray(messages) && messages.map((msg, index) => (
           <div
             key={index}
             className={`flex items-start gap-2 ${
               msg.sender === 'student' ? 'flex-row-reverse' : ''
             }`}
           >
-            {msg.sender !== 'student' && (
-              <Image src="/placeholder.svg" alt={msg.sender} width={32} height={32} className="rounded-full mt-1" />
-            )}
             <div
-              className={`rounded-lg p-2 text-sm max-w-[80%] ${
+              className={`relative rounded-lg p-2 text-sm max-w-[80%] ${
                 msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
               }`}
             >
               <p>{msg.text}</p>
               <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
+
+              {msg.sender === 'student' && (
+               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs">
+                {renderTick(msg)}
+              </div>
+                    )}
             </div>
           </div>
         ))}
+
       </div>
 
       {/* Input Box */}
       <div className="border-t border-gray-200 p-3 bg-white">
         <div className="flex gap-2">
-          <input
+         <input
             type="text"
             placeholder="Type your message..."
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
             className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
-          <button className="bg-blue-500 text-white rounded-full p-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m22 2-7 20-4-9-9-4Z" />
-              <path d="M22 2 11 13" />
-            </svg>
+          <button
+            onClick={handleSendMessage}
+            className="bg-primary text-white rounded-full p-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
           </button>
         </div>
       </div>
     </div>
-  
-      </div>
+  </div>
+  </div>
+  );
+}
+
+
+function SingleTick() {
+  return <Check className="w-4 h-4 text-gray-400" />;
+}
+
+function DoubleTick({ color }) {
+  return (
+    <div className="flex">
+      <Check className={`w-4 h-4 text-${color}-400`} />
+      <Check className={`w-4 h-4 text-${color}-400 -ml-2`} />
     </div>
   );
 }

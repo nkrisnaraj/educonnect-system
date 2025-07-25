@@ -6,12 +6,16 @@ import Head from 'next/head';
 export const metadata = {
   title: "EduConnect",
   description: "EduConnect System",
+  icons:{
+    icon:'/logo.png',
+  }
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/logo.png" />
         <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet" />
         <script
           src="https://www.payhere.lk/lib/payhere.js"

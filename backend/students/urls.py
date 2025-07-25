@@ -5,6 +5,7 @@ from .views import OnlinePaymentView, ReceiptUploadView
 from .views import PaymentInfoView,StudentProfileView
 from .views import EditStudentProfileView
 from . import views
+from .views import get_chat_messages, send_chat_message
 
 
     
@@ -21,6 +22,14 @@ urlpatterns = [
     path('api/initiate-payment/', views.initiate_payment),
     path('api/payment/notify/', views.payment_notify),
     path('profile/',EditStudentProfileView.as_view(), name='student-edit-profile'),
+    path('messages/<str:recipient_role>/',views.get_chat_messages, name='get_chat_messages'),
+    path('messages/<str:recipient_role>/send/', views.send_chat_message, name='send_chat_message'),
+    path('mark_messages_read_student/',views.mark_messages_read_student, name="mark_message_read_student"),
+    path('classes/', views.student_classess, name='get_classes'),
+    path('marks/',views.getStudentMarks, name='get_student_marks'),
+    path('enroll-class/',views.enroll_class, name='enroll_class'),
+    path('calendar-events/', views.calendarEvent, name="calendar-events"),
+    
     
 ]
 

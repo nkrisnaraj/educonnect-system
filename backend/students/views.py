@@ -163,8 +163,6 @@ class ReceiptUploadView(APIView):
 
 
 
-
-
 #Payment Info
 class PaymentInfoView(APIView):
     """
@@ -182,7 +180,8 @@ class PaymentInfoView(APIView):
         for payment in payments:
             # Try to get Enrollment related to this payment
             enrollment = Enrollment.objects.filter(payid=payment).first()
-            coursename = enrollment.courseid.title if enrollment else None
+            classname = enrollment.classid.title if enrollment else None
+            print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
 
             invoice_no = None
             record_no = None
@@ -208,7 +207,7 @@ class PaymentInfoView(APIView):
                     "amount": float(payment.amount),
                     "status": payment.status,
                     "method": payment.method,
-                    "course": coursename,
+                    "class": classname,
                     "Invoice_No" : invoice_no,
                     "Record_No" : record_no
             })
@@ -270,27 +269,12 @@ def initiate_payment(request):
     order_id = data.get('order_id')
     amount = data.get('amount')
     currency = data.get('currency')
-    course_ids = data.get('course_ids')
-    course_summary = data.get('items', '')
+    class_ids = data.get('class_ids')
+    class_summary = data.get('items', '')
 
-    if not all([order_id, amount, currency, course_ids]):
+    if not all([order_id, amount, currency, class_ids]):
         return Response({'error': 'Missing data'}, status=400)
-
-    # Create Payment record
-    payment = Payment.objects.create(
-        stuid=user,
-        method='online',
-        amount=amount,
-        status='pending',
-    )
-
-    OnlinePayment.objects.create(
-        payid=payment,
-        invoice_no=payment.payid,
-        course_ids=course_ids,
-        course_summary=course_summary,
-    )
-
+    
     merchant_id = settings.PAYHERE_MERCHANT_ID
     merchant_secret = settings.PAYHERE_MERCHANT_SECRET
      
@@ -300,6 +284,34 @@ def initiate_payment(request):
     if not merchant_secret:
         return Response({"error": "Merchant secret not configured"}, status=500)
 
+    # student_profile = user.student_profile
+
+    try:
+        payment = Payment.objects.create(
+            stuid=user,
+            method='online',
+            amount=amount,
+            status='pending',
+        )
+        OnlinePayment.objects.create(
+            payid=payment,
+            invoice_no=payment.payid,
+            class_ids=class_ids,
+            class_summary=class_summary,
+        )
+
+        for cid in class_ids:
+            cls = Class.objects.get(id=cid)
+            Enrollment.objects.create(
+                payid=payment,
+                stuid=user.student_profile,
+                classid=cls,
+            )
+    except Exception as e:
+        print("Error saving payment:", e)
+        return Response({"error": "Failed to create payment records"}, status=500)
+
+    
 
     # Correct hash generation
     hash_secret = hashlib.md5(merchant_secret.encode("utf-8")).hexdigest().upper()
@@ -350,7 +362,7 @@ def payment_notify(request):
             student_profile = StudentProfile.objects.get(user=payment.stuid)
 
             # Enroll student to all classes in the payment's course_ids
-            for class_id in online.course_ids:
+            for class_id in online.class_ids:
                 Enrollment.objects.create(
                     stuid=student_profile,
                     classid_id=class_id,
@@ -415,6 +427,272 @@ class EditStudentProfileView(APIView):
         # Return updated data
         serializer = UserSerializer(user)
         return Response(serializer.data, status=200)
+
+
+from .models import ChatRoom, Message
+from .serializers import MessageSerializer
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_chat_messages(request, recipient_role):
+    student = request.user
+
+    if recipient_role not in ['instructor', 'admin']:
+        return Response({"error": "Invalid chat target"}, status=400)
+
+    # Get or create chat room for this student + recipient
+    chat_room, created = ChatRoom.objects.get_or_create(
+        created_by=student,
+        name=recipient_role
+    )
+
+    messages = Message.objects.filter(
+        chat_room=chat_room
+    ).order_by('created_at')
+
+    serializer = MessageSerializer(messages, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_chat_message(request, recipient_role):
+    student = request.user
+
+    if recipient_role not in ['instructor', 'admin']:
+        return Response({"error": "Invalid chat target"}, status=400)
+
+    message_text = request.data.get('message')
+    if not message_text:
+        return Response({"error": "Message text is required"}, status=400)
+
+    chat_room, created = ChatRoom.objects.get_or_create(
+        created_by=student,
+        name=recipient_role
+    )
+
+    message = Message.objects.create(
+        chat_room=chat_room,
+        sender=student,
+        message=message_text
+    )
+
+    serializer = MessageSerializer(message)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_messages_read_student(request):
+    """
+    Mark all messages from student as read by instructor
+    """
+    if(request.user.role != 'student'):
+         return Response({'error':'Only studentsa allowed'},status=403)
+    chat_room = ChatRoom.objects.filter(created_by=request.user,name='instructor').first()
+    if not chat_room:
+        return Response({'error':"No chat Room"},status=404)
+    instructor = User.objects.filter(role='instructor').first()
+    Message.objects.filter(
+        chat_room=chat_room,
+        sender=instructor,
+        is_seen=False
+    ).update(is_seen=True)
+
+    return Response({'status': 'ok'})
+
+
+
+
+from instructor.serializers import ClassSerializer
+from instructor.models import Class
+from datetime import timedelta, date,datetime
+DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+def build_schedule_string(class_obj):
+    """Builds a schedule string like: Mon, Wed, Fri 3:30PM–5:00PM"""
+    schedules = class_obj.schedules.all()
+    if not schedules:
+        return None
+
+    time_slots = {}
+    for sched in schedules:
+        day = sched.day_of_week  # e.g., 'Monday' → 'Mon'
+        short_day = day[:3]
+        start = sched.start_time.strftime('%I:%M %p')  # e.g., 15:30 → 03:30 PM
+        end_dt = (datetime.combine(datetime.today(), sched.start_time) +
+                  timedelta(minutes=sched.duration_minutes))
+        end = end_dt.strftime('%I:%M %p')
+        time_range = f"{start}–{end}"
+        if time_range not in time_slots:
+            time_slots[time_range] = []
+        time_slots[time_range].append((day, short_day))
+        
+
+    # Sort by DAYS_ORDER
+    def day_order(d):
+        full_day = d[0]
+        return DAYS_ORDER.index(day)
+
+    result = []
+    for time_range, days in time_slots.items():
+        days.sort(key=day_order)
+        short_day_str = ", ".join(d[1] for d in days)
+        result.append(f"{short_day_str} - {time_range}")
+
+    return "\n".join(result)
+
+def build_class_data(class_obj):
+    return {
+        "classid": class_obj.classid,
+        "title": class_obj.title,
+        "description": class_obj.description,
+        "fee": float(class_obj.fee),
+        "start_date": class_obj.start_date.isoformat(),
+        "end_date": class_obj.end_date.isoformat() if class_obj.end_date else None,
+        "webinar_id": class_obj.webinar.webinar_id if class_obj.webinar else None,
+        "schedule": build_schedule_string(class_obj)
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_classess(request):
+    student = request.user.student_profile
+    enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related(
+        'classid', 'classid__webinar').prefetch_related('classid__schedules')
+    enrolled_classes = [e.classid for e in enrolled_enrollments]
+
+    enrolled_data = [build_class_data(c) for c in enrolled_classes]
+
+    all_classes = Class.objects.all()
+    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes])
+    others_data = [build_class_data(c) for c in other_classes]
+    print("Enrolled Classes Data:")
+    print(enrolled_data)
+
+    return Response({
+        "enrolled": enrolled_data,
+        "others": others_data
+    })
+
+from instructor.models import Marks
+from collections import defaultdict
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getStudentMarks(request):
+    """
+    API view to get marks for a specific student
+    """
+   
+    student = request.user.student_profile
+    marks_qs = Marks.objects.filter(stuid=student).select_related('examid','examid__classid').order_by('examid__date')
+    result =defaultdict(list)
+
+    for mark in marks_qs:
+        class_name = mark.examid.classid.title
+        exam_month = mark.examid.date.strftime('%Y-%m')
+        result[class_name].append({
+            "month":exam_month,
+            "marks": mark.marks,
+        })
+    response_data = []
+
+    for class_name,data in result.items():
+        response_data.append({
+            "class_name": class_name,
+            "marks": data
+        })
+
+    return Response({
+        "marks": response_data
+    },status=status.HTTP_200_OK)
+       
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def enroll_class(request):
+    """
+    API view to enroll a student in a class
+    """
+    student = request.user.student_profile
+    enrollments = Enrollment.objects.filter(stuid=student).select_related('classid')
+    if not enrollments:
+        return Response({"error": "No class found for enrollment"}, status=status.HTTP_404_NOT_FOUND)
+
+    data = []
+    for enrollClass in enrollments:
+        data.append({
+            "enrollid": enrollClass.enrollid,
+            "classid": enrollClass.classid.classid,
+            "title": enrollClass.classid.title,
+            "description": enrollClass.classid.description,
+            "fee": float(enrollClass.classid.fee),
+            "start_date": enrollClass.classid.start_date.isoformat(),
+            "end_date": enrollClass.classid.end_date.isoformat() if enrollClass.classid.end_date else None,
+        })
+        # print(data)
+    return Response(data, status=status.HTTP_200_OK)
+
+
+from .serializers import CalendarEventSerializer
+from.models import CalendarEvent
+from edu_admin.models import ZoomWebinar, ZoomOccurrence
+from instructor.models import Exams
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def calendarEvent(request):
+    #fetch webinars
+    webinars = ZoomWebinar.objects.filter()
+    webinar_data = [
+        {
+            "id": webinar.id,
+            "title": webinar.topic,
+            "webinarid":webinar.webinar_id,
+            "type": "webinar",
+            "date": webinar.start_time,
+            "color": "red",
+        }
+        for webinar in webinars
+    ]
+
+    #fetch exams
+    exams = Exams.objects.all()
+    exam_data = [
+        {
+            "id": exam.id,
+            "title": exam.examname,
+            "type": "exam",
+            "date": exam.date.isoformat(),
+            "color": "purple",
+        }
+        for exam in exams
+    ]
+
+    #combine
+    events = webinar_data + exam_data
+    return Response(events, status=status.HTTP_200_OK)
+
+
+# from .models import Notification
+# def get_notifications(request):
+#     student = request.user.student_profile
+#     notifications = Notification.objects.filter(stuid = student).order_by('-created_at')
+
+#     data = [
+#         {
+#             'id': n.id,
+#             'title': n.title,
+#             'message': n.message,
+#             'type': n.type,
+#             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+#             'read_status': n.read_status,
+#         }
+#         for n in notifications
+#     ]
+
+#     return Response({'notifications':data},status=status.HTTP_200_OK)
+
 
 
 '''
