@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Download, ClipboardList, TrendingUp, Users, Award, Eye, Edit, CheckCircle } from "lucide-react"
+import { Download, Award, Eye, Edit, } from "lucide-react"
 
 export default function ResultsPage() {
   const [selectedCourse, setSelectedCourse] = useState("all")

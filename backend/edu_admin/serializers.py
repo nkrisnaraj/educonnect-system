@@ -57,3 +57,4 @@ class ZoomWebinarSerilizer(serializers.ModelSerializer):
     #     if not value:
     #         raise serializers.ValidationError("Account key is required")
     #     return value
+    # serializers.py

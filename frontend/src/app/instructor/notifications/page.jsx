@@ -11,7 +11,7 @@ export default function NotificationsPage() {
     {
       id: 1,
       title: "New Student Enrollment",
-      message: "Kasun Perera has enrolled in Physics 2025 A/L batch",
+      message: "Kasun Perera has enrolled in Chemistry 2025 A/L batch",
       type: "info",
       time: "2 hours ago",
       read: false,
@@ -31,7 +31,7 @@ export default function NotificationsPage() {
     {
       id: 3,
       title: "Exam Schedule Reminder",
-      message: "Physics final exam is scheduled for tomorrow at 2:00 PM",
+      message: "Chemistry final exam is scheduled for tomorrow at 2:00 PM",
       type: "warning",
       time: "6 hours ago",
       read: true,
@@ -41,7 +41,7 @@ export default function NotificationsPage() {
     {
       id: 4,
       title: "Low Attendance Alert",
-      message: "Nimali Silva has missed 3 consecutive Biology classes",
+      message: "Nimali Silva has missed 3 consecutive Chemistry classes",
       type: "alert",
       time: "1 day ago",
       read: false,
@@ -51,7 +51,7 @@ export default function NotificationsPage() {
     {
       id: 5,
       title: "Grade Update Required",
-      message: "Please update marks for Mathematics Unit Test 2",
+      message: "Please update marks for Chemistry Unit Test 2",
       type: "warning",
       time: "1 day ago",
       read: true,

@@ -272,7 +272,7 @@ export default function ClassesPage() {
         </div>
 
         {/* Classes Grid */}
-        <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 ">
           {filtered.map((c) => (
             <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
               <div className="p-6 space-y-4">

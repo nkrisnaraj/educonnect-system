@@ -8,9 +8,10 @@ import { useState } from "react";
 export default function Topbar({ toggleSidebar }) {
   
   const {user,richUser} = useAuth();
-
-  const profileSrc = richUser?.student_profile?.profile_image
-  ? `http://127.0.0.1:8000${user.student_profile.profile_image}`
+  //  if (!richUser) return null;
+  
+const profileSrc = richUser?.student_profile?.profile_image
+  ? `http://127.0.0.1:8000${richUser.student_profile.profile_image}`
   : "/student.png";
 
   console.log("Profile image URL:", profileSrc);
