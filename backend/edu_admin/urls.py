@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CreateZoomWebinarView, ListZoomWebinarsView, SyncZoomWebinarsView, WebinarListAPIView, ZoomAccountsListView,
     CreateClassWithWebinarView, ClassListView, StudentListView, PaymentListView,
-    ReceiptPaymentAdminViewSet,admin_get_chat_with_student,admin_list_students_with_chats,admin_send_message_to_student
+    ReceiptPaymentAdminViewSet,admin_get_chat_with_student,admin_list_students_with_chats,admin_send_message_to_student,mark_messages_read
 )
 
 
@@ -23,6 +23,7 @@ urlpatterns = [
     path('chat/admin/students/', admin_list_students_with_chats, name='admin-list-students-with-chats'),
     path('chat/admin/<int:student_id>/', admin_get_chat_with_student, name='admin-get-chat-with-student'),
     path('chat/admin/<int:student_id>/send/', admin_send_message_to_student, name='admin-send-message-to-student'),
+    path('chat/admin/<int:student_id>/mark_messages_read/', mark_messages_read, name="mark_messages_read"),
 
     path("", include(router.urls)),  # <-- include router URLs here
 ]

@@ -345,10 +345,10 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def admin_list_students_with_chats(request):
     """
-    List all students who have chat rooms with instructor.
+    List all students who have chat rooms with admin.
     """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
     chat_rooms = ChatRoom.objects.filter(name='instructor')
     student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
     students = User.objects.filter(id__in=student_ids)
@@ -369,13 +369,13 @@ def admin_get_chat_with_student(request, student_id):
     """
     Get chat messages between admin and a specific student.
     """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
     try:
         student = User.objects.get(id=student_id, role='student')
     except User.DoesNotExist:
         return Response({'error': 'Student not found'}, status=404)
-    chat_room = ChatRoom.objects.filter(created_by=student, name='instructor').first()
+    chat_room = ChatRoom.objects.filter(created_by=student, name='admin').first()
     if not chat_room:
         return Response({'messages': []})
     messages = Message.objects.filter(chat_room=chat_room).order_by('created_at')
@@ -388,8 +388,8 @@ def admin_send_message_to_student(request, student_id):
     """
     admin sends a message to a specific student.
     """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
     try:
         student = User.objects.get(id=student_id, role='student')
     except User.DoesNotExist:
@@ -397,7 +397,31 @@ def admin_send_message_to_student(request, student_id):
     message_text = request.data.get('message')
     if not message_text:
         return Response({'error': 'Message text is required'}, status=400)
-    chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
+    chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='admin')
     message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_messages_read(request, student_id):
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
+
+    student = User.objects.filter(id=student_id, role='student').first()
+    if not student:
+        return Response({'error': 'Student not found'}, status=404)
+
+    chat_room = ChatRoom.objects.filter(created_by=student, name='admin').first()
+    if not chat_room:
+        return Response({'error': 'No chat room'}, status=404)
+
+    # Mark messages from student to instructor as read
+    Message.objects.filter(
+        chat_room=chat_room,
+        sender=student,
+        is_seen=False
+    ).update(is_seen=True)
+
+    return Response({'status': 'ok'})

@@ -22,24 +22,6 @@ export default function StudentPage() {
 
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
 
-  // useEffect(()=>{
-  //   const role = sessionStorage.getItem("userRole");
-  //   const token = sessionStorage.getItem("accessToken");
-  //   if(!token || !user || role !== "student"){
-  //     router.push("/login");
-  //   }
-  // }, [user]);
-
-  // useEffect(() => {
-  //     const role = sessionStorage.getItem("userRole");
-  //     if (!role || role !== 'students') {
-  //       router.replace("/login");
-  //     }
-  //   }, []);
-  
-  //   if (!user || user.role !== 'students') {
-  //     return null; // or a loading spinner
-  //   }
 
   // useEffect(() => {
   //   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -182,6 +164,11 @@ useEffect(() => {
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage()
+    }
+  }
 
   const today = new Date();
   const formatdate = today.toLocaleDateString("en-GB",{
@@ -294,7 +281,7 @@ console.log("messages:", messages);
             }`}
           >
             <div
-              className={`rounded-lg p-2 text-sm max-w-[80%] ${
+              className={`relative rounded-lg p-2 text-sm max-w-[80%] ${
                 msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
               }`}
             >
@@ -302,7 +289,7 @@ console.log("messages:", messages);
               <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
 
               {msg.sender === 'student' && (
-               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs text-gray-500">
+               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs">
                 {renderTick(msg)}
               </div>
                     )}

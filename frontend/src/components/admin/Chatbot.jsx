@@ -123,18 +123,13 @@ export default function Chatbot() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
-  // Check if device is mobile
-//   useEffect(() => {
-//   const isMobile = window.innerWidth < 768
-//   setIsMobile(isMobile)
-//   setIsMinimized(isMobile)
-// }, [])
+ 
 
 //   useEffect(() => {
 //   const fetchStudents = async () => {
 //     const token = sessionStorage.getItem("accessToken");
 //     try {
-//       const res = await fetch("http://127.0.0.1:8000/instructor/chat/instructor/students/", {
+//       const res = await fetch("http://127.0.0.1:8000/admin/chat/admin/students/", {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
 //       const data = await res.json();
@@ -144,7 +139,7 @@ export default function Chatbot() {
 //       await Promise.all(
 //         data.students.map(async (student) => {
 //           try {
-//             const resMsg = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${student.id}/`, {
+//             const resMsg = await fetch(`http://127.0.0.1:8000/admin/chat/admin/${student.id}/`, {
 //               headers: { Authorization: `Bearer ${token}` },
 //             });
 //             const messages = await resMsg.json();
@@ -172,7 +167,7 @@ export default function Chatbot() {
 //   const fetchMessages = async () => {
 //     const token = sessionStorage.getItem("accessToken");
 //     try {
-//       const res = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/`, {
+//       const res = await fetch(`http://127.0.0.1:8000/admin/chat/admin/${selectedStudent}/`, {
 //         headers: { Authorization: `Bearer ${token}` },
 //       });
 //       const data = await res.json();
@@ -189,7 +184,7 @@ export default function Chatbot() {
 //   const token = sessionStorage.getItem("accessToken");
 //   try {
 //     const res = await fetch(
-//       `http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/send/`,
+//       `http://127.0.0.1:8000/admin/chat/admin/${selectedStudent}/send/`,
 //       {
 //         method: "POST",
 //         headers: {
