@@ -643,12 +643,27 @@ from instructor.models import Exams
 @permission_classes([IsAuthenticated])
 def calendarEvent(request):
     #fetch webinars
-    webinars = ZoomWebinar.objects.filter()
+    user = request.user
+    try:
+        student = StudentProfile.objects.get(user=user)
+    except:
+        return Response({"error": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Step 1: Get all enrolled classes for this student
+    enrolled_classes = Enrollment.objects.filter(stuid=student).select_related("classid")
+    class_ids = enrolled_classes.values_list("classid__id",flat=True)
+    
+
+   # 3. Get related webinars from those classes
+    webinar_ids = Class.objects.filter(id__in=class_ids).values_list("webinar_id", flat=True)
+
+    # 4. Now get all occurrences linked to those webinars
+    webinars = ZoomOccurrence.objects.filter(webinar_id__in=webinar_ids).select_related("webinar")
     webinar_data = [
         {
             "id": webinar.id,
-            "title": webinar.topic,
-            "webinarid":webinar.webinar_id,
+            "title": webinar.webinar.topic,
+            "webinarid":webinar.webinar.webinar_id,
             "type": "webinar",
             "date": webinar.start_time,
             "color": "red",
@@ -657,7 +672,7 @@ def calendarEvent(request):
     ]
 
     #fetch exams
-    exams = Exams.objects.all()
+    exams = Exams.objects.filter(classid__in=class_ids)
     exam_data = [
         {
             "id": exam.id,

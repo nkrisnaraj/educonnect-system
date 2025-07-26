@@ -17,6 +17,7 @@ const profileSrc = richUser?.student_profile?.profile_image
   console.log("Profile image URL:", profileSrc);
   
   console.log("user:",user);
+  console.log("batch:" ,user.student_profile.year_of_al);
 
   return (
     <div className="flex justify-between items-center mb-2  mt-2 gap-6 px-6 pt-6">
@@ -42,7 +43,7 @@ const profileSrc = richUser?.student_profile?.profile_image
           />
           <div>
             <p className="text-sm font-medium">{user?.username || "Loading..."}</p>
-            <p className="text-xs text-gray-500">3rd year</p>
+            <p className="text-xs text-gray-500">{(user?.student_profile?.year_of_al || 2025)+" Batch"}</p>
           </div>
         </div>
         <div className="relative">
