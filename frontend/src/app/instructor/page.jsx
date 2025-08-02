@@ -5,6 +5,8 @@ import {Search,Bell,BookOpen,Clock,MessageCircle,Send,} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation"
+import { Check } from "lucide-react";
+
 
 
 export default function InstructorDashboard() {
@@ -162,7 +164,11 @@ useEffect(() => {
     }
 }, [user, router]);
 
-
+const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
+  };
 // Fetch students on mount and get last message for each
 useEffect(() => {
   const fetchStudents = async () => {
@@ -203,6 +209,11 @@ useEffect(() => {
 // Fetch messages when a student is selected
 useEffect(() => {
   if (!selectedStudent) return;
+  const markMessagesReadStudent = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/mark_messages_read/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
   const fetchMessages = async () => {
     const token = sessionStorage.getItem("accessToken");
     try {
@@ -210,12 +221,20 @@ useEffect(() => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      console.log(res);
       setChatMessages(data);
     } catch (err) {
       console.error("Error fetching chat messages", err);
     }
   };
-  fetchMessages();
+  const token = accessToken;
+
+  const run = async () => {
+      await markMessagesReadStudent(token);
+      await fetchMessages();
+    };
+
+    run();
 }, [selectedStudent]);
 
 
@@ -419,11 +438,12 @@ const handleSendMessage = async () => {
                           {msg.sender.username}
                         </div>
                         <div className="text-base text-gray-900">{msg.message}</div>
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
                           {new Date(msg.created_at).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
+                          {msg.sender.id === user.id && renderTick(msg)}
                         </div>
                       </div>
                     ))
@@ -467,5 +487,24 @@ const handleSendMessage = async () => {
         </div>
       </div>
     
+  );
+}
+
+
+function SingleTick() {
+  return <Check className="w-4 h-4 text-gray-400" />;
+}
+
+function DoubleTick({ color }) {
+  const colorClass = {
+    blue: "text-blue-400",
+    gray: "text-gray-400",
+  }[color] || "text-gray-400";
+
+  return (
+    <div className="flex">
+      <Check className={`w-4 h-4 ${colorClass}`} />
+      <Check className={`w-4 h-4 ${colorClass} -ml-2`} />
+    </div>
   );
 }

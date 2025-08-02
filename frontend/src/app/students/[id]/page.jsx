@@ -53,11 +53,7 @@ export default function StudentPage() {
   }
 }, [loading, accessToken]);
 
-  const markMessagesReadStudent = async (token) => {
-    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  };
+  
 
   const renderTick = (msg) => {
     if (msg.is_seen) return <DoubleTick color="blue" />;
@@ -66,6 +62,11 @@ export default function StudentPage() {
   };
 
   const loadMessages = async (token) => {
+    
+    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  
     const response = await axios.get(
       `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
       {
@@ -88,10 +89,8 @@ export default function StudentPage() {
     );
     if (selectedChat === "instructor") {
       setInstructorMessages(transformed);
-      await markMessagesReadStudent(token);
     } else {
       setAdminMessages(transformed);
-      await markMessagesReadStudent(token);
     }
   };
 
@@ -340,10 +339,15 @@ function SingleTick() {
 }
 
 function DoubleTick({ color }) {
+  const colorClass = {
+    blue: "text-blue-400",
+    gray: "text-gray-400",
+  }[color] || "text-gray-400";
+
   return (
     <div className="flex">
-      <Check className={`w-4 h-4 text-${color}-400`} />
-      <Check className={`w-4 h-4 text-${color}-400 -ml-2`} />
+      <Check className={`w-4 h-4 ${colorClass}`} />
+      <Check className={`w-4 h-4 ${colorClass} -ml-2`} />
     </div>
   );
 }

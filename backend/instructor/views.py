@@ -15,6 +15,7 @@ from edu_admin.models import ZoomWebinar
 from django.db.models import Q
 from students.models import ChatRoom,Message
 from students.serializers import MessageSerializer
+from students.models import StudentProfile
 
 # Create your views here.
 @api_view(['GET'])
@@ -64,6 +65,7 @@ def instructor_profile(request):
 
 
 # List and Upload Notes
+from students.models import Notification,Enrollment
 @api_view(['GET', 'POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -88,8 +90,21 @@ def study_notes(request):
     elif request.method == 'POST':
         serializer = StudyNoteSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(uploaded_by=request.user)
+            note = serializer.save(uploaded_by=request.user)
+            # Notification logic starts here
+            related_class = note.related_class
+            enrollments = Enrollment.objects.filter(classid = related_class).select_related('stuid')
+            for enrollment in enrollments:
+                student_profile = enrollment.stuid
+                Notification.objects.create(
+                    student_id=student_profile,
+                    title=note.title,
+                    message=f"A new note '{note.title}' was uploaded for {related_class.topic}.",
+                    type="notes"
+                )
+
             return Response({"message": "Note uploaded successfully.", "data": serializer.data}, status=status.HTTP_201_CREATED)
+               
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -186,19 +201,45 @@ def instructor_send_message_to_student(request, student_id):
     """
     Instructor sends a message to a specific student.
     """
+    # 1. Check if the user is an instructor
     if request.user.role != 'instructor':
         return Response({'error': 'Only instructors allowed'}, status=403)
+
+    # 2. Validate the student user
     try:
         student = User.objects.get(id=student_id, role='student')
     except User.DoesNotExist:
         return Response({'error': 'Student not found'}, status=404)
+    print(f"Checking StudentProfile for user: {student.username} (ID: {student.id})")
+    # 3. Safely access the student profile
+    try:
+        student_profile = StudentProfile.objects.get(user=student)
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'Student profile not found'}, status=404)
+
+    # 4. Get message text
     message_text = request.data.get('message')
     if not message_text:
         return Response({'error': 'Message text is required'}, status=400)
+
+    # 5. Create or get chat room (optional: filter more uniquely if needed)
     chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
+
+    # 6. Create the message
     message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
+
+    # 7. Create the notification for the specific student
+    Notification.objects.create(
+        student_id=student_profile,
+        title="New message from instructor",
+        message=message_text,
+        type='message'
+    )
+
+    # 8. Return the message
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 @api_view(['POST'])

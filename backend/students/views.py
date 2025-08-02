@@ -689,24 +689,46 @@ def calendarEvent(request):
     return Response(events, status=status.HTTP_200_OK)
 
 
-# from .models import Notification
-# def get_notifications(request):
-#     student = request.user.student_profile
-#     notifications = Notification.objects.filter(stuid = student).order_by('-created_at')
+from .models import Notification
+from students.models import StudentProfile
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    try:
+        student = StudentProfile.objects.get(user=request.user)
+        notifications = Notification.objects.filter(student_id=student).order_by('-created_at')
 
-#     data = [
-#         {
-#             'id': n.id,
-#             'title': n.title,
-#             'message': n.message,
-#             'type': n.type,
-#             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
-#             'read_status': n.read_status,
-#         }
-#         for n in notifications
-#     ]
+        data = [
+            {
+                'note_id': n.note_id,
+                'title': n.title,
+                'message': n.message,
+                'type': n.type,
+                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+                'read_status': n.read_status,
+            }
+            for n in notifications
+        ]
+        unread_count = notifications.filter(read_status=False).count()
 
-#     return Response({'notifications':data},status=status.HTTP_200_OK)
+        return Response({'notifications': data, 'unread_count': unread_count}, status=status.HTTP_200_OK)
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_notification_read(request, pk):
+    try:
+        student_profile = request.user.student_profile  # get related StudentProfile
+        notif = Notification.objects.get(pk=pk, student_id=student_profile)
+        notif.read_status = True
+        notif.save()
+        return Response({'status': 'marked as read'})
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=404)
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=404)
 
 
 
