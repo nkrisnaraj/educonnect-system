@@ -45,7 +45,7 @@ export default function StudentNavbar({ isOpen, onClose }) {
           <CreditCard className="w-5 h-5" />
           <span>Payment Info</span>
         </Link>
-        <Link href={`/students/${id}/courses`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/classes`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <BookOpen className="w-5 h-5" />
           <span>Classes</span>
         </Link>

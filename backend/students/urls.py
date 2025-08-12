@@ -31,7 +31,7 @@ urlpatterns = [
     path('calendar-events/', views.calendarEvent, name="calendar-events"),
     path('notifications/',views.get_notifications,name='notifications'),
     path('notifications/<int:pk>/read/',views.mark_notification_read, name='mark-notification-read'),
-
+    path('class/<int:pk>/notes/',views.get_notes,name='get_notes')
     
     
 ]

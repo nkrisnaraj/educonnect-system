@@ -7,7 +7,7 @@ from edu_admin.models import ZoomWebinar
 class ClassSerializer(serializers.ModelSerializer):
     class Meta:
         model = Class
-        fields = ['classid', 'title', 'description', 'fee', 'instructor_name']
+        fields = ['id','classid', 'title', 'description', 'fee', 'instructor_name']
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name')

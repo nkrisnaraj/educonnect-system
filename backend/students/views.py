@@ -301,7 +301,7 @@ def initiate_payment(request):
         )
 
         for cid in class_ids:
-            cls = Class.objects.get(id=cid)
+            cls = Class.objects.get(classid=cid)
             Enrollment.objects.create(
                 payid=payment,
                 stuid=user.student_profile,
@@ -576,7 +576,6 @@ def student_classess(request):
 
 from instructor.models import Marks
 from collections import defaultdict
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getStudentMarks(request):
@@ -731,6 +730,24 @@ def mark_notification_read(request, pk):
         return Response({'error': 'Notification not found'}, status=404)
 
 
+from instructor.models import StudyNote
+from instructor.serializers import StudyNoteSerializer
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notes(request,pk):
+    try:
+        class_obj = Class.objects.get(id=pk)
+        webinar = class_obj.webinar
+
+        if not webinar:
+            return Response({'error': 'This class has no associated webinar'}, status=status.HTTP_404_NOT_FOUND)
+        notes = StudyNote.objects.filter(related_class=webinar)
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    except Class.DoesNotExist:
+        return Response({'error':"Class Not Found"},status=status.HTTP_404_NOT_FOUND)
 
 '''
 @api_view(['POST'])

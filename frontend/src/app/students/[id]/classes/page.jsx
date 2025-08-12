@@ -7,16 +7,6 @@ import PayButton from "@/components/paybutton";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Classes() {
-  // const enrolledClasses = [
-  //   { id: 1, title: "2026 June 1", description: "2026 A/L Batch 1", amount: 1000 },
-  //   { id: 2, title: "2026 June 2", description: "2026 A/L Batch 2", amount: 3000 }
-  // ];
-
-  // const allClasses = [
-  //   { id: 3, title: "2025 MCQ June", description: "Day Batch", amount: 1000 },
-  //   { id: 4, title: "2025 Part 2", description: "Mon-fri 10.30 to 12.00", amount: 4000 },
-  //   { id: 5, title: "2027 June", description: "2027 A/L Batch 1", amount: 2000 }
-  // ];
 
   const [selectedClass, setSelectedClass] = useState([]);
   const [selectedClassDetails, setSelectedClassDetails] = useState([]);
@@ -187,7 +177,8 @@ export default function Classes() {
     }
   };
 
-  
+  console.log("Sending class IDs:", selectedClassDetails.map(c => c.classid));
+
   const handlePayment = async () => {
     if (!selectedClass || !user) {
       alert("Missing data");
@@ -200,7 +191,7 @@ export default function Classes() {
       amount: totalAmount.toFixed(2),
       currency: 'LKR',
       items: selectedClassDetails.map(c => c.title).join(", "),
-      class_ids: selectedClassDetails.map(c => c.id),  
+      class_ids: selectedClassDetails.map(c => c.classid),  
       first_name: user?.first_name,
       last_name: user?.last_name,
       email: user?.email,
@@ -388,7 +379,7 @@ export default function Classes() {
             <p className="text-center text-gray-600">{selectedClass.description}</p>
             <p className="text-center text-gray-600">LKR {selectedClass.fee}</p>
             <div className="text-center mt-4">
-              <button className="bg-primary text-white px-4 py-2 rounded">Notes</button>
+              <button onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} className="bg-primary text-white px-4 py-2 rounded">Notes</button>
               <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button>
             </div>
           </Modal>

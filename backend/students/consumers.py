@@ -6,14 +6,70 @@ User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'chat_{self.room_name}'
+        self.sender_id = self.scope['url_route']['kwargs']['sender_id']
+        self.receiver_id = self.scope['url_route']['kwargs']['receiver_id']
+
+        # Create a consistent group name for both users
+        self.room_name = f"chat_{min(self.sender_id, self.receiver_id)}_{max(self.sender_id, self.receiver_id)}"
+        self.room_group_name = f"chat_{self.room_name}"
 
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
         await self.accept()
+
+        async def disconnect(self, close_code):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+
+        async def receive(self, text_data):
+            data = json.loads(text_data)
+            message = data['message']
+
+            sender_id = int(self.sender_id)
+            receiver_id = int(self.receiver_id)
+
+            sender = await database_sync_to_async(User.objects.get)(id=sender_id)
+            receiver = await database_sync_to_async(User.objects.get)(id=receiver_id)
+
+            # Save message in DB
+            msg = await self.save_message(sender, receiver, message)
+
+            # Send message to WebSocket group
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': message,
+                    'sender_id': sender_id,
+                    'receiver_id': receiver_id,
+                    'timestamp': str(msg.created_at),
+                }
+            )
+
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'chat',
+            'message': event['message'],
+            'sender_id': event['sender_id'],
+            'receiver_id': event['receiver_id'],
+            'timestamp': event['timestamp'],
+        }))
+
+    @database_sync_to_async
+    def save_message(self, sender, receiver, message):
+        # Create/get room
+        room_name = f"chat_{min(sender.id, receiver.id)}_{max(sender.id, receiver.id)}"
+        chat_room, created = ChatRoom.objects.get_or_create(name=room_name, defaults={'created_by': sender})
+
+        # Save message
+        return Message.objects.create(chat_room=chat_room, sender=sender, message=message)
+
+
+
 
         # Auto-mark messages as delivered when receiver connects
         receiver = self.scope['user']
