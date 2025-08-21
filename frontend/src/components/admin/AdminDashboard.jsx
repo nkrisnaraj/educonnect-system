@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Users, BookOpen, GraduationCap } from "lucide-react"
+import { useAdminData } from "@/context/AdminDataContext"
 import Sidebar from "./Sidebar"
 import StatsCard from "./StatsCard"
 import { ChartCard, PerformanceChart } from "./ChartCard"
@@ -24,6 +25,30 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [chatbotOpen, setChatbotOpen] = useState(false)
   const [activeSection, setActiveSection] = useState("dashboard")
+  
+  // Use AdminDataContext for centralized data management
+  const { 
+    users, 
+    classes, 
+    webinars, 
+    dashboardStats, 
+    loading, 
+    error,
+    fetchUsers,
+    fetchClasses,
+    fetchWebinars,
+    fetchDashboardStats
+  } = useAdminData()
+
+  // Fetch all data on component mount only once
+  useEffect(() => {
+    if (activeSection === "dashboard") {
+      fetchUsers();
+      fetchClasses();
+      fetchWebinars();
+      fetchDashboardStats();
+    }
+  }, [activeSection]); // Only depend on activeSection
 
   const renderContent = () => {
     switch (activeSection) {
@@ -70,8 +95,20 @@ export default function AdminDashboard() {
               <div className="xl:col-span-2 space-y-4 lg:space-y-6">
                 {/* Stats Cards Row - Responsive Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
-                  <StatsCard title="Total Students" value="8,998" change="+5.2%" changeType="positive" icon={Users} />
-                  <StatsCard title="Active Classes" value="520" change="+8.3%" changeType="positive" icon={BookOpen} />
+                  <StatsCard 
+                    title="Total Students" 
+                    value={users.filter(u => u.role === 'student' || u.student_profile).length.toString()} 
+                    change="+5.2%" 
+                    changeType="positive" 
+                    icon={Users} 
+                  />
+                  <StatsCard 
+                    title="Active Classes" 
+                    value={classes.filter(c => c.status === 'active').length.toString()} 
+                    change="+8.3%" 
+                    changeType="positive" 
+                    icon={BookOpen} 
+                  />
                 </div>
 
                 {/* Payments Table */}

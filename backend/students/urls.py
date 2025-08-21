@@ -5,7 +5,7 @@ from .views import OnlinePaymentView, ReceiptUploadView
 from .views import PaymentInfoView,StudentProfileView
 from .views import EditStudentProfileView
 from . import views
-
+from .chat_views import RoomMessagesView
 
     
 
@@ -21,6 +21,8 @@ urlpatterns = [
     path('api/initiate-payment/', views.initiate_payment),
     path('api/payment/notify/', views.payment_notify),
     path('profile/',EditStudentProfileView.as_view(), name='student-edit-profile'),
+    # Chat messages endpoint
+    path('chat/rooms/<int:room_id>/messages/', RoomMessagesView.as_view(), name='room-messages'),
     
 ]
 

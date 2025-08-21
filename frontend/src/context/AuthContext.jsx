@@ -68,6 +68,7 @@ const login = async (userData) => {
 
 
   const logout = () => {
+    console.log('🚪 Logout called from:', new Error().stack);
     Cookies.remove("accessToken");
 
     sessionStorage.removeItem("user");

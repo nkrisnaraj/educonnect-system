@@ -1,13 +1,10 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Class, InstructorProfile, StudyNote
+from .models import Class, ClassSchedule, InstructorProfile, StudyNote
 from django.contrib.auth.models import User
 from edu_admin.models import ZoomWebinar
 
-class ClassSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Class
-        fields = ['classid', 'title', 'description', 'fee', 'instructor_name']
+
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name')
@@ -70,7 +67,51 @@ class StudyNoteSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.file.url)
         return None
     
+class ClassScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassSchedule
+        fields = ['day_of_week', 'start_time', 'duration_minutes']
+
 class ClassSerializer(serializers.ModelSerializer):
+    instructor_name = serializers.SerializerMethodField()
+    schedules = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
     class Meta:
         model = Class
-        fields = ['id', 'classid', 'title', 'description', 'fee']
+        fields = [
+            'id', 'classid', 'title', 'description', 'fee', 
+            'start_date', 'end_date', 'instructor_name', 
+            'schedules', 'status'
+        ]
+
+    def get_instructor_name(self, obj):
+        if obj.instructor:
+            return f"{obj.instructor.first_name} {obj.instructor.last_name}".strip()
+        return "Auto Assigned"
+
+    def get_status(self, obj):
+        # You can add logic here to determine status based on dates, etc.
+        from datetime import date
+        today = date.today()
+        if obj.end_date < today:
+            return "completed"
+        elif obj.start_date > today:
+            return "pending"
+        else:
+            return "active"
+
+    def get_schedules(self, obj):
+        # Group schedules by start_time and duration_minutes
+        schedules_dict = {}
+        for schedule in obj.schedules.all():
+            key = f"{schedule.start_time}_{schedule.duration_minutes}"
+            if key not in schedules_dict:
+                schedules_dict[key] = {
+                    'start_time': schedule.start_time.strftime('%H:%M'),
+                    'duration_minutes': schedule.duration_minutes,
+                    'days_of_week': []
+                }
+            schedules_dict[key]['days_of_week'].append(schedule.day_of_week)
+        
+        return list(schedules_dict.values())

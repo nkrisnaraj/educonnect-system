@@ -1,11 +1,22 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Calendar, Clock, Users, DollarSign, Search, Filter } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useAdminData } from "@/context/AdminDataContext";
+import { adminApi } from "@/services/adminApi";
 
 const defaultInstructorId = 1;
 const defaultWebinarId = 1;
+
+function formatTime(timeString) {
+  if (!timeString) return "Time not set";
+  // If timeString is already in HH:MM format, return as is
+  if (typeof timeString === 'string' && timeString.includes(':')) {
+    return timeString;
+  }
+  // Handle other time formats if needed
+  return timeString;
+}
 
 function getStatusColor(status) {
   switch (status) {
@@ -15,18 +26,28 @@ function getStatusColor(status) {
       return "text-red-600 bg-red-50";
     case "pending":
       return "text-yellow-600 bg-yellow-50";
+    case "completed":
+      return "text-blue-600 bg-blue-50";
     default:
       return "text-gray-600 bg-gray-50";
   }
 }
 
 export default function ClassesPage() {
-  const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [zoomAccounts, setZoomAccounts] = useState([]);
-  const { accessToken } = useAuth();
+  
+  // Use AdminDataContext instead of individual state
+  const { 
+    classes, 
+    loading, 
+    error, 
+    fetchClasses,
+    clearError 
+  } = useAdminData();
+  
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -45,33 +66,14 @@ export default function ClassesPage() {
   });
 
   useEffect(() => {
-    async function fetchClasses() {
-      try {
-        const res = await fetch("http://localhost:8000/edu_admin/classes/", { 
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        });
-        if (!res.ok) throw new Error("Failed to fetch classes");
-        const data = await res.json();  
-        setClasses(data.map(c => ({
-          ...c,
-          status: c.status || "active", // Default to active if no status
-          instructor_name: c.instructor_name || "Auto Assigned", // Default instructor name
-        })));
-      } catch (err) {
-        console.error("Error fetching classes:", err);
-        alert("Failed to load classes.");
-      }
-    }
+    // Use centralized data fetching
     fetchClasses();
-  }, []);
-  console.log("Classes fetched:", classes);
+  }, []); // Empty dependency array to run only once
 
   const filtered = classes.filter((c) => {
     const matchSearch =
-      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.instructor_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.instructor_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = selectedStatus === "all" || c.status === selectedStatus;
     return matchSearch && matchStatus;
   });
@@ -114,14 +116,8 @@ export default function ClassesPage() {
   useEffect(() => {
     async function fetchZoomAccounts() {
       try {
-        const res = await fetch("http://localhost:8000/edu_admin/zoom-accounts/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch Zoom accounts");
-        const data = await res.json();
+        const response = await adminApi.getZoomAccounts();
+        const data = response.data;
         setZoomAccounts(data);
 
         if (data.length > 0) {
@@ -132,7 +128,7 @@ export default function ClassesPage() {
         }
       } catch (err) {
         console.error("Error fetching Zoom accounts:", err);
-        alert("Failed to load Zoom accounts.");
+        // Don't show alert for non-critical errors
       }
     }
 
@@ -177,26 +173,13 @@ export default function ClassesPage() {
     };
 
     try {
-      const res = await fetch("http://localhost:8000/edu_admin/create_with_webinar/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`, // If using JWT
-        },
-        body: JSON.stringify(payload),
-      });
+      // Use adminApi service instead of direct fetch
+      const response = await adminApi.createClass(payload);
+      console.log("New class created:", response.data);
 
-      if (!res.ok) throw new Error("Failed to save class");
-      const data = await res.json();
-
-      setClasses((prev) => [
-        ...prev,
-        {
-          ...data,
-          status: "active",
-          instructor_name: "K.Sivaththiran BSc.(Hons)",
-        },
-      ]);
+      // Refresh classes data through context
+      await fetchClasses();
+      
       setShowModal(false);
       setForm({
         title: "",
@@ -266,84 +249,161 @@ export default function ClassesPage() {
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center">
+              <div className="text-red-600 text-sm font-medium">
+                Error: {error}
+              </div>
+              <button
+                onClick={clearError}
+                className="ml-auto text-red-600 hover:text-red-800 text-sm underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-slate-600">Loading classes...</span>
+            </div>
+          </div>
+        )}
+
         {/* Classes Grid */}
         <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 ">
-          {filtered.map((c) => (
-            <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
-              <div className="p-6 space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors duration-200">
-                      {c.title}
-                    </h3>
-                    <p className="text-slate-600 font-medium">Mr K.Sivaththiran BSc.(Hons)</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor("active")}`}>
-                    Active
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
-                  {c.description}
-                </p>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-slate-600">
-                      <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                      <span className="text-sm font-medium">Duration</span>
+          {filtered.length > 0 ? (
+            filtered.map((c) => (
+              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
+                <div className="p-6 space-y-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors duration-200">
+                        {c.title}
+                      </h3>
+                      <p className="text-slate-600 font-medium">{c.instructor_name || "Auto Assigned"}</p>
                     </div>
-                    <div className="text-sm text-slate-800">
-                      <div>{new Date(c.start_date).toLocaleDateString()}</div>
-                      <div className="text-slate-500">to {new Date(c.end_date).toLocaleDateString()}</div>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(c.status)}`}>
+                      {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : "Active"}
+                    </span>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center text-slate-600">
-                      <DollarSign className="h-4 w-4 mr-2 text-green-500" />
-                      <span className="text-sm font-medium">Fee</span>
-                    </div>
-                    <div className="text-lg font-bold text-slate-900">
-                      LKR {parseInt(c.fee).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
+                  {/* Description */}
+                  <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
+                    {c.description}
+                  </p>
 
-                {/* Schedule */}
-                <div className="pt-4 border-t border-slate-100">
-                  <div className="flex items-center text-slate-600 mb-3">
-                    <Clock className="h-4 w-4 mr-2 text-indigo-500" />
-                    <span className="text-sm font-medium">Schedule</span>
-                  </div>
-                  <div className="space-y-2">
-                    {c.schedules?.map((s, i) => (
-                      <div key={i} className="bg-slate-50 rounded-lg p-3">
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {s.days_of_week?.map((day, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
-                              {day.slice(0, 3)}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="text-sm text-slate-700 font-medium">
-                          {s.start_time} • {s.duration_minutes} minutes
-                        </div>
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                    <div className="space-y-2">
+                      <div className="flex items-center text-slate-600">
+                        <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                        <span className="text-sm font-medium">Duration</span>
                       </div>
-                    ))}
+                      <div className="text-sm text-slate-800">
+                        <div>{c.start_date ? new Date(c.start_date).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        }) : "Not set"}</div>
+                        <div className="text-slate-500">to {c.end_date ? new Date(c.end_date).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        }) : "Not set"}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center text-slate-600">
+                        <DollarSign className="h-4 w-4 mr-2 text-green-500" />
+                        <span className="text-sm font-medium">Fee</span>
+                      </div>
+                      <div className="text-lg font-bold text-slate-900">
+                        LKR {c.fee ? parseInt(c.fee).toLocaleString() : "0"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="flex items-center text-slate-600 mb-3">
+                      <Clock className="h-4 w-4 mr-2 text-indigo-500" />
+                      <span className="text-sm font-medium">Schedule</span>
+                    </div>
+                    <div className="space-y-2">
+                      {c.schedules && c.schedules.length > 0 ? (
+                        c.schedules.map((s, i) => (
+                          <div key={i} className="bg-slate-50 rounded-lg p-3">
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {s.days_of_week && s.days_of_week.length > 0 ? (
+                                s.days_of_week.map((day, index) => (
+                                  <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
+                                    {day.slice(0, 3)}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
+                                  Daily
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-slate-700 font-medium">
+                              {formatTime(s.start_time)} • {s.duration_minutes || 90} minutes
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="bg-slate-50 rounded-lg p-3">
+                          <div className="text-sm text-slate-500 text-center">
+                            No schedule information available
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-full">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
+                <div className="text-slate-400 mb-4">
+                  <Calendar className="h-16 w-16 mx-auto" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No Classes Found</h3>
+                <p className="text-slate-600 mb-6">
+                  {searchTerm || selectedStatus !== "all" 
+                    ? "No classes match your current filters. Try adjusting your search or filter criteria."
+                    : "You haven't created any classes yet. Click the 'Add New Class' button to get started."
+                  }
+                </p>
+                {(!searchTerm && selectedStatus === "all") && (
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Add Your First Class
+                  </button>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Modal */}

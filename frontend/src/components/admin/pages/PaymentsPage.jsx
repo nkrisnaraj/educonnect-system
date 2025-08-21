@@ -10,7 +10,8 @@ import {
   Eye,
   RefreshCw,
 } from "lucide-react"
-import { useAuth } from "@/context/AuthContext"
+import { useAdminData } from "@/context/AdminDataContext"
+import { adminApi } from "@/services/adminApi"
 import ReceiptModal from "./ReceiptModal"
 
 function getStatusIcon(status) {
@@ -43,9 +44,9 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPayment, setSelectedPayment] = useState(null)
   const [payments, setPayments] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const { accessToken } = useAuth()
+  
+  // Use AdminDataContext for loading and error states
+  const { loading, error, clearError } = useAdminData()
 
   // Fetch payments from backend API
   // useEffect(() => {
@@ -96,17 +97,10 @@ export default function PaymentsPage() {
 
   useEffect(() => {
     async function fetchPayments() {
-      setLoading(true)
-      setError(null)
       try {
-        const res = await fetch("http://localhost:8000/edu_admin/payments/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        })
-        if (!res.ok) throw new Error("Failed to fetch payments")
-        const data = await res.json()
-        console.log(data)
+        const response = await adminApi.getPayments()
+        const data = response.data
+        console.log("Payments data:", data)
 
         const mappedPayments = data.map((p) => {
           let method = p.method === "online" ? "Card Payment" : "Receipt Upload"
@@ -133,15 +127,13 @@ export default function PaymentsPage() {
 
         setPayments(mappedPayments)
       } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
+        console.error("Error fetching payments:", err)
+        // Error is handled by AdminDataContext
       }
     }
 
-    if (accessToken) fetchPayments()
-    else setError("No access token found. Please login.")
-  }, [accessToken])
+    fetchPayments()
+  }, [])
 
 
   const filteredPayments = payments.filter((payment) => {
