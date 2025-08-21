@@ -314,15 +314,15 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
         #     payment.amount = paid_amount_decimal
         #     updated_fields.append("amount")
 
-        if payment.status != "completed":
-            payment.status = "completed"
+        if payment.status not in ["success", "completed"]:
+            payment.status = "success"
             updated_fields.append("status")
 
         if updated_fields:
             payment.save(update_fields=updated_fields)
 
         return Response({
-            "detail": "Receipt verified, amount synced, and payment marked as completed."
+            "detail": "Receipt verified, amount synced, and payment marked as successful."
         })
 
 class ComprehensiveWebinarSyncView(APIView):
@@ -462,11 +462,30 @@ class UpdateClassView(APIView):
             class_obj = Class.objects.get(id=class_id)
         except Class.DoesNotExist:
             return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ClassSerializer(class_obj, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if this is an update-only operation (no webinar changes)
+        update_only = request.data.get('update_only', False)
+        
+        if update_only:
+            # Only update basic class information and schedules, not webinar-related fields
+            allowed_fields = ['title', 'description', 'fee', 'start_date', 'end_date', 'status', 'schedules']
+            update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
+            
+            serializer = ClassSerializer(class_obj, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "message": "Class details and schedules updated successfully (webinar settings unchanged)",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Full update including potential webinar changes
+            serializer = ClassSerializer(class_obj, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DashboardStatsView(APIView):
@@ -475,6 +494,12 @@ class DashboardStatsView(APIView):
     def get(self, request):
         try:
             from django.utils import timezone
+            from django.db.models import Sum, Count, Q
+            from datetime import datetime, timedelta
+            
+            now = timezone.now()
+            current_month = now.replace(day=1)
+            last_month = (current_month - timedelta(days=1)).replace(day=1)
             
             # Get basic stats
             total_users = User.objects.count()
@@ -483,27 +508,81 @@ class DashboardStatsView(APIView):
             total_classes = Class.objects.count()
             
             # Calculate active classes (those whose end_date is in the future)
-            now = timezone.now().date()
-            active_classes = Class.objects.filter(end_date__gte=now).count()
+            active_classes = Class.objects.filter(end_date__gte=now.date()).count()
             
             total_webinars = ZoomWebinar.objects.count()
+            
+            # Payment stats - count both 'success' and 'completed' as verified
             total_payments = Payment.objects.count()
+            verified_payments = Payment.objects.filter(status__in=['success', 'completed']).count()
+            pending_payments = Payment.objects.filter(status='pending').count()
+            
+            # Revenue calculations - include both success and completed payments
+            total_revenue = Payment.objects.filter(status__in=['success', 'completed']).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            
+            current_month_revenue = Payment.objects.filter(
+                status__in=['success', 'completed'],
+                date__gte=current_month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            last_month_revenue = Payment.objects.filter(
+                status__in=['success', 'completed'],
+                date__gte=last_month,
+                date__lt=current_month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            # Calculate growth
+            revenue_growth = 0
+            if last_month_revenue > 0:
+                revenue_growth = ((current_month_revenue - last_month_revenue) / last_month_revenue) * 100
+            
+            # Student enrollment this month vs last month
+            students_this_month = User.objects.filter(
+                role='student',
+                date_joined__gte=current_month
+            ).count()
+            
+            students_last_month = User.objects.filter(
+                role='student',
+                date_joined__gte=last_month,
+                date_joined__lt=current_month
+            ).count()
+            
+            student_growth = 0
+            if students_last_month > 0:
+                student_growth = ((students_this_month - students_last_month) / students_last_month) * 100
             
             stats = {
                 'users': {
                     'total': total_users,
                     'students': total_students,
                     'instructors': total_instructors,
+                    'students_this_month': students_this_month,
+                    'students_last_month': students_last_month,
+                    'student_growth': round(student_growth, 1)
                 },
                 'classes': {
                     'total': total_classes,
                     'active': active_classes,
+                    'completed': total_classes - active_classes,
+                    'utilization': round((active_classes / total_classes * 100), 1) if total_classes > 0 else 0
                 },
                 'webinars': {
                     'total': total_webinars,
                 },
                 'payments': {
                     'total': total_payments,
+                    'verified': verified_payments,
+                    'pending': pending_payments,
+                    'success_rate': round((verified_payments / total_payments * 100), 1) if total_payments > 0 else 0
+                },
+                'revenue': {
+                    'total': float(total_revenue),
+                    'current_month': float(current_month_revenue),
+                    'last_month': float(last_month_revenue),
+                    'growth': round(revenue_growth, 1)
                 }
             }
             
@@ -511,5 +590,115 @@ class DashboardStatsView(APIView):
         except Exception as e:
             return Response(
                 {"error": f"Failed to fetch dashboard stats: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ComprehensiveReportsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            from django.utils import timezone
+            from django.db.models import Sum, Count, Q, Avg
+            from datetime import datetime, timedelta
+            from students.models import Enrollment
+            
+            now = timezone.now()
+            current_month = now.replace(day=1)
+            
+            # Subject/Class statistics (based on class titles)
+            class_subjects = Class.objects.annotate(
+                enrollment_count=Count('enrollment', distinct=True),
+                revenue_generated=Sum('enrollment__payid__amount', filter=Q(enrollment__payid__status='success'))
+            ).order_by('-enrollment_count')[:10]
+            
+            # Monthly enrollment and revenue trends (last 6 months)
+            monthly_stats = []
+            for i in range(6):
+                month_start = (current_month - timedelta(days=30*i)).replace(day=1)
+                next_month = (month_start + timedelta(days=32)).replace(day=1)
+                
+                enrollments = User.objects.filter(
+                    role='student',
+                    date_joined__gte=month_start,
+                    date_joined__lt=next_month
+                ).count()
+                
+                revenue = Payment.objects.filter(
+                    status='success',
+                    date__gte=month_start.date(),
+                    date__lt=next_month.date()
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                
+                monthly_stats.append({
+                    'month': month_start.strftime('%Y-%m'),
+                    'month_name': month_start.strftime('%B %Y'),
+                    'enrollments': enrollments,
+                    'revenue': float(revenue)
+                })
+            
+            # Payment method breakdown
+            payment_methods = Payment.objects.values('method').annotate(
+                count=Count('id'),
+                total_amount=Sum('amount', filter=Q(status__in=['success', 'completed']))
+            )
+            
+            # Class performance metrics
+            class_performance = Class.objects.annotate(
+                enrollment_count=Count('enrollment'),
+                revenue_generated=Sum('enrollment__payid__amount', filter=Q(enrollment__payid__status__in=['success', 'completed']))
+            ).order_by('-enrollment_count')[:10]
+            
+            # Instructor statistics
+            instructor_stats = User.objects.filter(role='instructor').annotate(
+                class_count=Count('class'),
+                total_students=Count('class__enrollment', distinct=True)
+            ).order_by('-class_count')[:10]
+            
+            report_data = {
+                'subjects': [
+                    {
+                        'name': cls.title,
+                        'students': cls.enrollment_count or 0,
+                        'classes': 1,  # Each class entry represents one class
+                        'revenue': float(cls.revenue_generated or 0),
+                        'avg_per_student': float(cls.revenue_generated or 0) / max(cls.enrollment_count or 1, 1)
+                    } for cls in class_subjects if cls.title
+                ],
+                'monthly_trends': list(reversed(monthly_stats)),
+                'payment_methods': [
+                    {
+                        'method': item['method'],
+                        'count': item['count'],
+                        'total_amount': float(item['total_amount'] or 0)
+                    } for item in payment_methods
+                ],
+                'top_classes': [
+                    {
+                        'name': cls.title,
+                        'instructor': cls.instructor.get_full_name() or cls.instructor.username,
+                        'enrollments': cls.enrollment_count or 0,
+                        'revenue': float(cls.revenue_generated or 0),
+                        'fee': float(cls.fee)
+                    } for cls in class_performance if cls.title
+                ],
+                'instructors': [
+                    {
+                        'name': instructor.get_full_name() or instructor.username,
+                        'email': instructor.email,
+                        'classes': instructor.class_count,
+                        'students': instructor.total_students or 0
+                    } for instructor in instructor_stats
+                ]
+            }
+            
+            return Response(report_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            print(f"Reports API Error: {str(e)}")
+            print(traceback.format_exc())
+            return Response(
+                {"error": f"Failed to fetch reports: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

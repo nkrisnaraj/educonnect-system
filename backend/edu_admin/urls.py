@@ -4,7 +4,7 @@ from .views import (
     CreateZoomWebinarView, ListZoomWebinarsView, SyncZoomWebinarsView, WebinarListAPIView, ZoomAccountsListView,
     CreateClassWithWebinarView, ClassListView, StudentListView, PaymentListView,
     ReceiptPaymentAdminViewSet, ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
-    UpdateClassView, DashboardStatsView, admin_test
+    UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test
 )
 
 
@@ -26,6 +26,7 @@ urlpatterns = [
     path('students/', StudentListView.as_view(), name='student-list'),
     path("payments/", PaymentListView.as_view(), name="payment-list"),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('reports/', ComprehensiveReportsView.as_view(), name='comprehensive-reports'),
     path('admin-test/', admin_test, name='admin-test'),
 
     path("", include(router.urls)),  # <-- include router URLs here

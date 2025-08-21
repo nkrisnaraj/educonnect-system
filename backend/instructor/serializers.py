@@ -74,7 +74,7 @@ class ClassScheduleSerializer(serializers.ModelSerializer):
 
 class ClassSerializer(serializers.ModelSerializer):
     instructor_name = serializers.SerializerMethodField()
-    schedules = serializers.SerializerMethodField()
+    schedules = serializers.JSONField(required=False)
     status = serializers.SerializerMethodField()
 
     class Meta:
@@ -101,10 +101,12 @@ class ClassSerializer(serializers.ModelSerializer):
         else:
             return "active"
 
-    def get_schedules(self, obj):
-        # Group schedules by start_time and duration_minutes
+    def to_representation(self, instance):
+        """Override to provide proper schedules representation for reading"""
+        data = super().to_representation(instance)
+        # Group schedules by start_time and duration_minutes for reading
         schedules_dict = {}
-        for schedule in obj.schedules.all():
+        for schedule in instance.schedules.all():
             key = f"{schedule.start_time}_{schedule.duration_minutes}"
             if key not in schedules_dict:
                 schedules_dict[key] = {
@@ -114,4 +116,36 @@ class ClassSerializer(serializers.ModelSerializer):
                 }
             schedules_dict[key]['days_of_week'].append(schedule.day_of_week)
         
-        return list(schedules_dict.values())
+        data['schedules'] = list(schedules_dict.values())
+        return data
+
+    def update(self, instance, validated_data):
+        """Handle schedule updates during class update"""
+        schedules_data = validated_data.pop('schedules', None)
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Handle schedule updates if provided
+        if schedules_data is not None:
+            # Clear existing schedules
+            instance.schedules.all().delete()
+            
+            # Create new schedules
+            for schedule_data in schedules_data:
+                start_time = schedule_data.get('start_time')
+                duration_minutes = schedule_data.get('duration_minutes', 90)
+                days_of_week = schedule_data.get('days_of_week', [])
+                
+                # Create schedule entries for each day
+                for day in days_of_week:
+                    ClassSchedule.objects.create(
+                        class_obj=instance,
+                        day_of_week=day,
+                        start_time=start_time,
+                        duration_minutes=duration_minutes
+                    )
+        
+        return instance

@@ -270,7 +270,6 @@ export default function PaymentsPage() {
           onUpdate={(updated) =>
             setPayments(payments.map((p) => (p.id === updated.id ? updated : p)))
           }
-          token={accessToken}
         />
       )}
 

@@ -5,6 +5,7 @@ export const useAdmin = () => {
   const [users, setUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [webinars, setWebinars] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [dashboardStats, setDashboardStats] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -65,6 +66,20 @@ export const useAdmin = () => {
     }
   };
 
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      const response = await adminApi.getPayments();
+      setPayments(response.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch payments');
+      console.error('Error fetching payments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateUser = async (id, data) => {
     try {
       await adminApi.updateUser(id, data);
@@ -93,12 +108,14 @@ export const useAdmin = () => {
     users,
     classes,
     webinars,
+    payments,
     dashboardStats,
     loading,
     error,
     fetchUsers,
     fetchClasses,
     fetchWebinars,
+    fetchPayments,
     fetchDashboardStats,
     updateUser,
     deleteUser,

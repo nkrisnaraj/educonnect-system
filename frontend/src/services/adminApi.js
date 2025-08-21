@@ -31,8 +31,9 @@ export const adminApi = {
   getPayments: () => api.get('/edu_admin/payments/'),
   updatePaymentStatus: (id, status) => api.put(`/edu_admin/payments/${id}/`, { status }),
   
-  // Analytics (placeholder for future implementation)
+  // Analytics
   getDashboardStats: () => api.get('/edu_admin/dashboard/'),
+  getReports: () => api.get('/edu_admin/reports/'),
   getPaymentAnalytics: () => api.get('/edu_admin/payments/analytics/'),
   
   // Reports (placeholder for future implementation)

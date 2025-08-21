@@ -10,6 +10,7 @@ const initialState = {
   users: [],
   classes: [],
   webinars: [],
+  payments: [],
   dashboardStats: {},
   selectedUser: null,
   selectedClass: null,
@@ -29,6 +30,7 @@ const actionTypes = {
   SET_USERS: 'SET_USERS',
   SET_CLASSES: 'SET_CLASSES',
   SET_WEBINARS: 'SET_WEBINARS',
+  SET_PAYMENTS: 'SET_PAYMENTS',
   SET_DASHBOARD_STATS: 'SET_DASHBOARD_STATS',
   SET_SELECTED_USER: 'SET_SELECTED_USER',
   SET_SELECTED_CLASS: 'SET_SELECTED_CLASS',
@@ -49,6 +51,8 @@ const adminDataReducer = (state, action) => {
       return { ...state, classes: action.payload };
     case actionTypes.SET_WEBINARS:
       return { ...state, webinars: action.payload };
+    case actionTypes.SET_PAYMENTS:
+      return { ...state, payments: action.payload };
     case actionTypes.SET_DASHBOARD_STATS:
       return { ...state, dashboardStats: action.payload };
     case actionTypes.SET_SELECTED_USER:
@@ -83,6 +87,10 @@ export const AdminDataProvider = ({ children }) => {
   }, [adminHook.webinars]);
 
   useEffect(() => {
+    dispatch({ type: actionTypes.SET_PAYMENTS, payload: adminHook.payments });
+  }, [adminHook.payments]);
+
+  useEffect(() => {
     dispatch({ type: actionTypes.SET_DASHBOARD_STATS, payload: adminHook.dashboardStats });
   }, [adminHook.dashboardStats]);
 
@@ -106,6 +114,7 @@ export const AdminDataProvider = ({ children }) => {
     fetchUsers: adminHook.fetchUsers,
     fetchClasses: adminHook.fetchClasses,
     fetchWebinars: adminHook.fetchWebinars,
+    fetchPayments: adminHook.fetchPayments,
     fetchDashboardStats: adminHook.fetchDashboardStats,
     updateUser: adminHook.updateUser,
     deleteUser: adminHook.deleteUser,

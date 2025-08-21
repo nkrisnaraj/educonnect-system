@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, BookOpen, GraduationCap } from "lucide-react"
+import { Users, BookOpen, GraduationCap, Clock, Video, DollarSign } from "lucide-react"
 import { useAdminData } from "@/context/AdminDataContext"
 import Sidebar from "./Sidebar"
 import StatsCard from "./StatsCard"
@@ -31,24 +31,43 @@ export default function AdminDashboard() {
     users, 
     classes, 
     webinars, 
+    payments,
     dashboardStats, 
     loading, 
     error,
     fetchUsers,
     fetchClasses,
     fetchWebinars,
+    fetchPayments,
     fetchDashboardStats
   } = useAdminData()
 
-  // Fetch all data on component mount only once
+  // Filter students from users
+  const students = users.filter(user => user.user_type === 'student' || user.role === 'student')
+
+  // Fetch all data on component mount
   useEffect(() => {
     if (activeSection === "dashboard") {
       fetchUsers();
       fetchClasses();
       fetchWebinars();
+      fetchPayments();
       fetchDashboardStats();
     }
-  }, [activeSection]); // Only depend on activeSection
+  }, [activeSection]);
+
+  // Get real-time data for display
+  const totalStudents = dashboardStats?.users?.students || users.filter(u => u.role === 'student' || u.student_profile).length || 0;
+  const totalClasses = dashboardStats?.classes?.total || classes.length || 0;
+  const activeClasses = dashboardStats?.classes?.active || classes.filter(c => c.status === 'active').length || 0;
+  const totalWebinars = dashboardStats?.webinars?.total || webinars.length || 0;
+  const studentGrowth = dashboardStats?.users?.student_growth || 0;
+  
+  // Payment statistics
+  const totalPayments = payments?.length || 0;
+  const completedPayments = payments?.filter(p => p.status === 'completed' || p.status === 'success').length || 0;
+  const totalRevenue = payments?.filter(p => p.status === 'completed' || p.status === 'success')
+    .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) || 0;
 
   const renderContent = () => {
     switch (activeSection) {
@@ -94,20 +113,34 @@ export default function AdminDashboard() {
               {/* Left Column: Stats Cards + Payments */}
               <div className="xl:col-span-2 space-y-4 lg:space-y-6">
                 {/* Stats Cards Row - Responsive Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                   <StatsCard 
                     title="Total Students" 
-                    value={users.filter(u => u.role === 'student' || u.student_profile).length.toString()} 
-                    change="+5.2%" 
-                    changeType="positive" 
+                    value={totalStudents.toString()} 
+                    change={studentGrowth > 0 ? `+${studentGrowth}%` : `${studentGrowth}%`}
+                    changeType={studentGrowth >= 0 ? "positive" : "negative"} 
                     icon={Users} 
                   />
                   <StatsCard 
                     title="Active Classes" 
-                    value={classes.filter(c => c.status === 'active').length.toString()} 
-                    change="+8.3%" 
-                    changeType="positive" 
+                    value={activeClasses.toString()} 
+                    change={`${totalClasses} total`} 
+                    changeType="neutral" 
                     icon={BookOpen} 
+                  />
+                  <StatsCard 
+                    title="Total Webinars" 
+                    value={totalWebinars.toString()} 
+                    change="Online sessions" 
+                    changeType="neutral" 
+                    icon={GraduationCap} 
+                  />
+                  <StatsCard 
+                    title="Total Revenue" 
+                    value={`LKR ${totalRevenue.toLocaleString()}`} 
+                    change={`${completedPayments}/${totalPayments} paid`} 
+                    changeType={completedPayments === totalPayments ? "positive" : "neutral"} 
+                    icon={DollarSign} 
                   />
                 </div>
 
@@ -126,108 +159,53 @@ export default function AdminDashboard() {
 
                 {/* Upcoming Classes - Responsive height */}
                 <div className="rounded-xl bg-white p-4 shadow-sm h-60 lg:h-64">
-                  <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-3">Upcoming Classes</h3>
+                  <h3 className="text-base lg:text-lg font-semibold text-gray-900 mb-3">Recent Classes</h3>
                   <div className="space-y-2 overflow-y-auto h-44 lg:h-48">
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Mathematics 101</p>
-                        <p className="text-xs text-gray-600 truncate">Room A-205</p>
+                    {loading ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-primary">9:00 AM</p>
-                        <p className="text-xs text-gray-500">Today</p>
+                    ) : classes.length > 0 ? (
+                      classes.slice(0, 8).map((classItem, index) => {
+                        const colors = [
+                          'bg-blue-50 text-blue-600',
+                          'bg-green-50 text-green-600', 
+                          'bg-yellow-50 text-yellow-600',
+                          'bg-purple-50 text-purple-600',
+                          'bg-pink-50 text-pink-600',
+                          'bg-indigo-50 text-indigo-600',
+                          'bg-teal-50 text-teal-600',
+                          'bg-orange-50 text-orange-600'
+                        ];
+                        const colorClass = colors[index % colors.length];
+                        
+                        return (
+                          <div key={classItem.id || classItem.class_id || `class-idx-${index}`} className={`flex items-center justify-between p-2 rounded-lg ${colorClass.replace('text-', 'bg-').replace('-600', '-50')}`}>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 text-sm truncate">{classItem.title}</p>
+                              <p className="text-xs text-gray-600 truncate">
+                                {classItem.instructor_name || "Auto Assigned"}
+                              </p>
+                            </div>
+                            <div className="text-right ml-2 flex-shrink-0">
+                              <p className={`text-sm font-medium ${colorClass.split(' ')[1]}`}>
+                                LKR {classItem.fee ? parseInt(classItem.fee).toLocaleString() : '0'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {classItem.status || 'active'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        <div className="text-center">
+                          <BookOpen className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm">No classes available</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Physics Lab</p>
-                        <p className="text-xs text-gray-600 truncate">Lab B-102</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-green-600">11:30 AM</p>
-                        <p className="text-xs text-gray-500">Today</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-yellow-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Chemistry 201</p>
-                        <p className="text-xs text-gray-600 truncate">Room C-301</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-yellow-600">2:00 PM</p>
-                        <p className="text-xs text-gray-500">Today</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">English Literature</p>
-                        <p className="text-xs text-gray-600 truncate">Room D-105</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-purple-600">3:30 PM</p>
-                        <p className="text-xs text-gray-500">Today</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Biology 101</p>
-                        <p className="text-xs text-gray-600 truncate">Room E-201</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-gray-600">10:00 AM</p>
-                        <p className="text-xs text-gray-500">Tomorrow</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-indigo-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">History 201</p>
-                        <p className="text-xs text-gray-600 truncate">Room F-103</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-indigo-600">1:00 PM</p>
-                        <p className="text-xs text-gray-500">Tomorrow</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-pink-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Art & Design</p>
-                        <p className="text-xs text-gray-600 truncate">Studio A</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-pink-600">3:00 PM</p>
-                        <p className="text-xs text-gray-500">Tomorrow</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-teal-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Computer Science</p>
-                        <p className="text-xs text-gray-600 truncate">Lab C-204</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-teal-600">4:30 PM</p>
-                        <p className="text-xs text-gray-500">Tomorrow</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Spanish 101</p>
-                        <p className="text-xs text-gray-600 truncate">Room G-108</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-orange-600">11:00 AM</p>
-                        <p className="text-xs text-gray-500">Wed</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 bg-cyan-50 rounded-lg">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 text-sm truncate">Music Theory</p>
-                        <p className="text-xs text-gray-600 truncate">Music Room</p>
-                      </div>
-                      <div className="text-right ml-2 flex-shrink-0">
-                        <p className="text-sm font-medium text-cyan-600">2:30 PM</p>
-                        <p className="text-xs text-gray-500">Wed</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -246,65 +224,80 @@ export default function AdminDashboard() {
             <div>
               <ChartCard title="Recent Activity">
                 <div className="space-y-3 lg:space-y-4">
-                  <div className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                        <Users className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">New student registered</p>
-                        <p className="text-xs text-gray-500">2 minutes ago</p>
-                      </div>
+                  {loading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-50">
-                        <BookOpen className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          Class "Advanced Mathematics" updated
-                        </p>
-                        <p className="text-xs text-gray-500">15 minutes ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="h-4 w-4 text-yellow-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          Class schedule updated for next week
-                        </p>
-                        <p className="text-xs text-gray-500">1 hour ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                        <Users className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">Payment received from John Smith</p>
-                        <p className="text-xs text-gray-500">2 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between py-2 lg:py-3">
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="h-4 w-4 text-red-600" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">Class "Physics Lab" cancelled</p>
-                        <p className="text-xs text-gray-500">3 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* Recent Student Registrations */}
+                      {students.slice(0, 2).map((student, index) => (
+                        <div key={`student-${student.id || student.user_id || `idx-${index}`}`} className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                              <Users className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {student.full_name || student.username} registered as student
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(student.date_joined).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Recent Webinars */}
+                      {webinars.slice(0, 2).map((webinar, index) => (
+                        <div key={`webinar-${webinar.id || webinar.webinar_id || `idx-${index}`}`} className="flex items-center justify-between py-2 lg:py-3 border-b border-gray-100">
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-50">
+                              <Video className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                Webinar "{webinar.title}" {webinar.status}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(webinar.start_time).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Recent Classes */}
+                      {classes.slice(0, 1).map((classItem, index) => (
+                        <div key={`class-${classItem.id || classItem.class_id || `idx-${index}`}`} className={`flex items-center justify-between py-2 lg:py-3 ${index < (students.length + webinars.length) ? 'border-b border-gray-100' : ''}`}>
+                          <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                              <BookOpen className="h-4 w-4 text-yellow-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                Class "{classItem.title}" created
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Instructor: {classItem.instructor_name || "Auto Assigned"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Fallback message if no data */}
+                      {students.length === 0 && webinars.length === 0 && classes.length === 0 && (
+                        <div className="flex items-center justify-center h-32 text-gray-500">
+                          <div className="text-center">
+                            <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p className="text-sm">No recent activity</p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </ChartCard>
             </div>
