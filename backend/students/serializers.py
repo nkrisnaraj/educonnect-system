@@ -109,3 +109,11 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalendarEvent
         fields = ['id','title','type','date','color']
+
+
+from .models import Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['note_id','student_id','title','message','type','read_status','created_at']

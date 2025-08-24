@@ -301,7 +301,7 @@ def initiate_payment(request):
         )
 
         for cid in class_ids:
-            cls = Class.objects.get(id=cid)
+            cls = Class.objects.get(classid=cid)
             Enrollment.objects.create(
                 payid=payment,
                 stuid=user.student_profile,
@@ -576,7 +576,6 @@ def student_classess(request):
 
 from instructor.models import Marks
 from collections import defaultdict
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getStudentMarks(request):
@@ -643,12 +642,27 @@ from instructor.models import Exams
 @permission_classes([IsAuthenticated])
 def calendarEvent(request):
     #fetch webinars
-    webinars = ZoomWebinar.objects.filter()
+    user = request.user
+    try:
+        student = StudentProfile.objects.get(user=user)
+    except:
+        return Response({"error": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Step 1: Get all enrolled classes for this student
+    enrolled_classes = Enrollment.objects.filter(stuid=student).select_related("classid")
+    class_ids = enrolled_classes.values_list("classid__id",flat=True)
+    
+
+   # 3. Get related webinars from those classes
+    webinar_ids = Class.objects.filter(id__in=class_ids).values_list("webinar_id", flat=True)
+
+    # 4. Now get all occurrences linked to those webinars
+    webinars = ZoomOccurrence.objects.filter(webinar_id__in=webinar_ids).select_related("webinar")
     webinar_data = [
         {
             "id": webinar.id,
-            "title": webinar.topic,
-            "webinarid":webinar.webinar_id,
+            "title": webinar.webinar.topic,
+            "webinarid":webinar.webinar.webinar_id,
             "type": "webinar",
             "date": webinar.start_time,
             "color": "red",
@@ -657,7 +671,7 @@ def calendarEvent(request):
     ]
 
     #fetch exams
-    exams = Exams.objects.all()
+    exams = Exams.objects.filter(classid__in=class_ids)
     exam_data = [
         {
             "id": exam.id,
@@ -674,26 +688,66 @@ def calendarEvent(request):
     return Response(events, status=status.HTTP_200_OK)
 
 
-# from .models import Notification
-# def get_notifications(request):
-#     student = request.user.student_profile
-#     notifications = Notification.objects.filter(stuid = student).order_by('-created_at')
+from .models import Notification
+from students.models import StudentProfile
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notifications(request):
+    try:
+        student = StudentProfile.objects.get(user=request.user)
+        notifications = Notification.objects.filter(student_id=student).order_by('-created_at')
 
-#     data = [
-#         {
-#             'id': n.id,
-#             'title': n.title,
-#             'message': n.message,
-#             'type': n.type,
-#             'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
-#             'read_status': n.read_status,
-#         }
-#         for n in notifications
-#     ]
+        data = [
+            {
+                'note_id': n.note_id,
+                'title': n.title,
+                'message': n.message,
+                'type': n.type,
+                'created_at': n.created_at.strftime('%Y-%m-%d %H:%M'),
+                'read_status': n.read_status,
+            }
+            for n in notifications
+        ]
+        unread_count = notifications.filter(read_status=False).count()
 
-#     return Response({'notifications':data},status=status.HTTP_200_OK)
+        return Response({'notifications': data, 'unread_count': unread_count}, status=status.HTTP_200_OK)
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_notification_read(request, pk):
+    try:
+        student_profile = request.user.student_profile  # get related StudentProfile
+        notif = Notification.objects.get(pk=pk, student_id=student_profile)
+        notif.read_status = True
+        notif.save()
+        return Response({'status': 'marked as read'})
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=404)
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=404)
+
+
+from instructor.models import StudyNote
+from instructor.serializers import StudyNoteSerializer
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_notes(request,pk):
+    try:
+        class_obj = Class.objects.get(id=pk)
+        webinar = class_obj.webinar
+
+        if not webinar:
+            return Response({'error': 'This class has no associated webinar'}, status=status.HTTP_404_NOT_FOUND)
+        notes = StudyNote.objects.filter(related_class=webinar)
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    except Class.DoesNotExist:
+        return Response({'error':"Class Not Found"},status=status.HTTP_404_NOT_FOUND)
 
 '''
 @api_view(['POST'])

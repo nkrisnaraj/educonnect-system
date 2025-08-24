@@ -1,12 +1,14 @@
 "use client";
 import { useAuth } from "@/context/AuthContext";
-import { Bell, CreditCard } from "lucide-react";
+import { Bell, BookAIcon, BookOpenCheck, CreditCard } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRef } from "react";
 import { Check } from "lucide-react";
+import StudentChatBox from "@/components/student/StudentChatBox";
+import { AnimatePresence, motion } from "framer-motion";
 
 
 export default function StudentPage() {
@@ -16,17 +18,46 @@ export default function StudentPage() {
   const [selectedChat, setSelectedChat] = useState('instructor');
   const [instructorMessages, setInstructorMessages] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
-  const [enrollClasses, setEnrollClasses] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
-  // const bottomRef = useRef(null);
-
+  const [classes, setClasses] = useState([]);
+  const [enrolledClasses, setEnrolledClasses] = useState([]);
+  const receiverId = selectedChat === 'admin' ? "admin" : "instructor";
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
+  const [currentAdIndex, setCurrentAdIndex] = useState(0);
+  
 
 
-  // useEffect(() => {
-  //   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // }, [messages]);
+useEffect(() => {
+      const fetchAllClasses = async () => {
+        try {
+          if (!accessToken || !refreshToken) {
+            console.log("Tokens not ready yet");
+            return;
+          }
+          const token = accessToken;
+          const response = await api.get("/students/classes/", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          console.log("Fetched Classes:", response.data);
+          setClasses(response.data.others);
+          setEnrolledClasses(response.data.enrolled);
+        } catch (error) {
+          console.error("Error fetching classes:", error);
+          alert("Failed to fetch classes. Please try again later.");
+        }
+      };
 
+      fetchAllClasses();
+    }, [accessToken]);
+
+  useEffect(() => {
+    if (classes.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentAdIndex((prevIndex) => (prevIndex + 1) % classes.length);
+    }, 10000); 
+    return () => clearInterval(interval); // cleanup on unmount
+  }, [classes.length]);
 
   console.log(accessToken);
 
@@ -96,80 +127,7 @@ export default function StudentPage() {
   };
 
   
-useEffect(() => {
-  const fetchChat = async () => {
-    if (!accessToken || !refreshToken) {
-      console.log("Tokens not ready yet");
-      return;
-    }
-    try {
-      await loadMessages(accessToken);
-    } catch (error) {
-      console.error("Failed to fetch messages", error);
-
-      if (error.response?.status === 401) {
-        // token expired, try refreshing
-        try {
-          const newAccess = await refreshAccessToken();
-          await loadMessages(newAccess);
-        } catch (refreshErr) {
-          console.error("Failed to refresh token", refreshErr);
-          logout();
-        }
-      } else {
-        console.error("Other error:", error);
-      }
-    }
-  };
-  fetchChat();
-}, [selectedChat, accessToken, refreshAccessToken, logout]);
-
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-
-    const messagePayload = {
-      message: inputMessage,
-    };
-    console.log("messagePayload", messagePayload);
-    const token = sessionStorage.getItem("accessToken");
-
-    try {
-      const response = await axios.post(`http://127.0.0.1:8000/students/messages/${selectedChat}/send/`,
-        messagePayload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-      const savedMessage = {
-        sender: 'student',
-        text: response.data.message,
-        time: new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        is_delivered: response.data.is_delivered || false,
-        is_seen: response.data.is_seen || false,
-      };
-
-      if (selectedChat === 'instructor') {
-        setInstructorMessages((prev) => [...prev, savedMessage]);
-      } else {
-        setAdminMessages((prev) => [...prev, savedMessage]);
-      }
-
-      setInputMessage('');
-    } catch (error) {
-      console.error("Failed to send message", error);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSendMessage()
-    }
-  }
-
+   
   const today = new Date();
   const formatdate = today.toLocaleDateString("en-GB",{
     weekday:"long",
@@ -178,7 +136,7 @@ useEffect(() => {
     day:"numeric"
   })
 
-console.log("messages:", messages);
+//console.log("messages:", messages);
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto w-full">
       {/* Welcome Banner */}
@@ -200,28 +158,54 @@ console.log("messages:", messages);
       </div>
 
       {/* Main Content Grid */}
-      <div className="flex flex-col lg:flex-row gap-6">
+    <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Content */}
         <div className="w-full lg:w-8/12 flex flex-col gap-6">
           {/* Ad Section */}
           <div>
             <h2 className="text-lg font-bold mb-2">New Classes</h2>
-            <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
-              <div className="relative z-10 space-y-2">
-                <p className="text-xs font-semibold mb-1">SPECIAL OFFER</p>
-                <h3 className="text-lg font-bold mb-1">50% Off Tuition Fee</h3>
-                <p className="text-xs mb-3">For early payment before October 15</p>
-                <button className="bg-white text-blue-600 px-4 py-1.5 rounded-md text-xs font-medium">
-                  Learn More
-                </button>
+            {classes.length === 0 ? (
+              <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
+                <p>No New Classes found</p>
               </div>
-
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:block">
-                <div className="bg-white/20 rounded-full p-3">
-                  <CreditCard className="w-14 h-14" />
-                </div>
-              </div>
-            </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={currentAdIndex}
+                  initial={{ opacity: 0, x: 100, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -100, scale: 0.9 }}
+                  transition={{ 
+                    duration: 1,
+                    ease: [0.4, 0.0, 0.2, 1], // Custom ease curve for smooth transitions
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden"
+                >
+                  <div className="relative z-10 space-y-3">
+                    <p className="text-xl font-semibold mb-1">
+                      {classes[currentAdIndex]?.title}
+                    </p>
+                    <h3 className="text-lg font-bold mb-1">
+                      RS.{classes[currentAdIndex]?.fee}
+                    </h3>
+                    <p className="text-sm mb-4 opacity-90">
+                      Start- {classes[currentAdIndex]?.start_date}
+                    </p>
+                    <button
+                      onClick={() => router.push(`/students/${id}/courses`)}
+                      className="bg-white text-blue-600 px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    >
+                      Learn More
+                    </button>
+                  </div>
+                  <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden sm:block">
+                    <div className="bg-white rounded-full p-4">
+                      <BookOpenCheck className="w-20 h-20 text-primary" />
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            )}
           </div>
 
           {/* Enrolled Courses */}
@@ -232,10 +216,10 @@ console.log("messages:", messages);
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {
-                enrollClasses.length === 0 ? ( 
+                enrolledClasses.length === 0 ? ( 
                   <p>No enrolled classes found.</p>
                 ) : (
-                  enrollClasses.map((cls, index) => (
+                  enrolledClasses.map((cls, index) => (
                 <div
                   key={index}
                   className="flex justify-between items-center p-6 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
@@ -257,93 +241,12 @@ console.log("messages:", messages);
         </div>
 
         {/* Right Content (Chat Box) */}
-       <div className="w-full lg:w-4/12 border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
-      {/* Header with chat target selector */}
-      <div className="bg-primary p-3 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="font-medium text-white text-md">Chat with {selectedChat === 'instructor' ? 'Instructor' : 'Admin'}</h3>
-        <select
-          value={selectedChat}
-          onChange={(e) => setSelectedChat(e.target.value)}
-          className="text-sm rounded p-1 text-white bg-accent font-semibold"
-        >
-          <option value="instructor">Instructor</option>
-          <option value="admin">Admin</option>
-        </select>
+      <div className="w-full lg:w-4/12 border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
+        <StudentChatBox  />
       </div>
-
-      {/* Chat messages */}
-      <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
-        {Array.isArray(messages) && messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex items-start gap-2 ${
-              msg.sender === 'student' ? 'flex-row-reverse' : ''
-            }`}
-          >
-            <div
-              className={`relative rounded-lg p-2 text-sm max-w-[80%] ${
-                msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
-              }`}
-            >
-              <p>{msg.text}</p>
-              <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
-
-              {msg.sender === 'student' && (
-               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs">
-                {renderTick(msg)}
-              </div>
-                    )}
-            </div>
-          </div>
-        ))}
-
-      </div>
-
-      {/* Input Box */}
-      <div className="border-t border-gray-200 p-3 bg-white">
-        <div className="flex gap-2">
-         <input
-            type="text"
-            placeholder="Type your message..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          <button
-            onClick={handleSendMessage}
-            className="bg-primary text-white rounded-full p-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
   </div>
   );
 }
 
 
-function SingleTick() {
-  return <Check className="w-4 h-4 text-gray-400" />;
-}
-
-function DoubleTick({ color }) {
-  return (
-    <div className="flex">
-      <Check className={`w-4 h-4 text-${color}-400`} />
-      <Check className={`w-4 h-4 text-${color}-400 -ml-2`} />
-    </div>
-  );
-}
