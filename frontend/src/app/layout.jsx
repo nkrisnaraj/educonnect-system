@@ -1,18 +1,32 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Add this import
+import { ThemeProvider } from "@/context/ThemeContext"; // ✅ Use correct path
+import Head from 'next/head';
 
 export const metadata = {
   title: "EduConnect",
   description: "EduConnect System",
+  icons:{
+    icon:'/logo.png',
+  }
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/logo.png" />
+        <link href="https://fonts.googleapis.com/css2?family=Lora&display=swap" rel="stylesheet" />
+        <script
+          src="https://www.payhere.lk/lib/payhere.js"
+          async
+          defer
+        ></script>
+
+      </head>
       <body>
         <AuthProvider>
-          <ThemeProvider> {/* ✅ Wrap children with ThemeProvider */}
+          <ThemeProvider>
             {children}
           </ThemeProvider>
         </AuthProvider>

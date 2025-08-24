@@ -7,15 +7,23 @@ import { useState } from "react";
 
 export default function Topbar({ toggleSidebar }) {
   
-  const {user} = useAuth();
-  //console.log(user?.username);
+  const {user,richUser} = useAuth();
+  //  if (!richUser) return null;
+  
+const profileSrc = richUser?.student_profile?.profile_image
+  ? `http://127.0.0.1:8000${richUser.student_profile.profile_image}`
+  : "/student.png";
+
+  console.log("Profile image URL:", profileSrc);
+  
+  console.log("user:",user);
 
   return (
-    <div className="flex justify-between items-center mb-6 gap-6 px-6 pt-6">
+    <div className="flex justify-between items-center mb-2  mt-2 gap-6 px-6 pt-6">
       <button className="md:hidden" onClick={toggleSidebar}>
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full mt-6 max-w-md">
         <input
           type="text"
           placeholder="Search"
@@ -25,11 +33,12 @@ export default function Topbar({ toggleSidebar }) {
       <div className="flex items-center gap-8">
         <div className="flex items-center gap-2">
           <Image
-            src="/images/icons/profile1.jpg"
-            alt="Profile"
+            src={profileSrc}
+            alt="Profile picture"
             width={40}
             height={40}
-            className="rounded-full bg-blue-300"
+            className="rounded-full "
+           
           />
           <div>
             <p className="text-sm font-medium">{user?.username || "Loading..."}</p>

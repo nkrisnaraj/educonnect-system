@@ -14,8 +14,9 @@ from dotenv import load_dotenv
 load_dotenv()
 import dj_database_url
 from datetime import timedelta
-
+import tempfile
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,6 +33,31 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# Email settings
+EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
+
+# import environ
+# env = environ.Env()
+# environ.Env.read_env()
+# EMAIL_BACKEND = env('EMAIL_BACKEND')
+# EMAIL_HOST = env('EMAIL_HOST')
+# EMAIL_PORT = env.int('EMAIL_PORT')
+# EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS')
+# EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+# DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+
+
+#BASE_DIR = Path(__file__).resolve().parent.parent
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR,'backend','backend','vision-key.json')
+#print(os.path.exists(os.path.join(BASE_DIR, 'backend','backend','vision-key.json')))
+
 
 # Application definition
 
@@ -44,14 +70,18 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    #'rest_framework_simplejwt.token_blacklist',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'students',
     'edu_admin',
     'instructor',
     # 'accounts',
     'accounts.apps.AccountsConfig',
+    'multiselectfield',
+    'channels'
 ]
+
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
 try:
     ZOOM_ACCOUNTS_JSON = os.getenv("ZOOM_ACCOUNTS_JSON", "{}")  # default to empty JSON
@@ -60,7 +90,46 @@ except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
 
+PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID")
+PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET")
+
+# Google Cloud Vision API credentials
+GOOGLE_APPLICATION_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDS_JSON")
+
+
+# creds_json_str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+# #  Write JSON string to a temporary file at runtime
+# if creds_json_str:
+#     creds_dict = json.loads(creds_json_str)
+#     # Create temp file with the credentials
+#     temp_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.json')
+#     json.dump(creds_dict, temp_file)
+#     temp_file.flush()
+
+#     # Tell Google library where to find this file
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_file.name
+
+
+
 AUTH_USER_MODEL = 'accounts.User'
+
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# Channels settings
+# Channels is used for WebSocket support and real-time features
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+
+MEDIA_ROOT = BASE_DIR / "media"   #your_project_folder/media/ - #your_project_folder/media/receipts/
+MEDIA_URL = "/media/"     #http://localhost:8000/media/receipts/receipt1.jpg
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
@@ -78,28 +147,54 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ) if not DEBUG else (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     )
 }
 
-# SIMPLE_JWT = {
-#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-#     'ROTATE_REFRESH_TOKENS': True,
-#     'BLACKLIST_AFTER_ROTATION': True,
-#     'AUTH_HEADER_TYPES': ('Bearer',),
-# }
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins for development; adjust for production
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES':[],
-}
+CORS_ALLOW_ALL_ORIGINS = False  # More secure approach
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -119,6 +214,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 
 # Database

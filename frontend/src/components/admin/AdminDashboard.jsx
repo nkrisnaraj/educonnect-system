@@ -17,6 +17,8 @@ import PaymentsPage from "./pages/PaymentsPage"
 import ReportsPage from "./pages/ReportsPage"
 import NotificationsPage from "./pages/NotificationsPage"
 import SettingsPage from "./pages/SettingsPage"
+import WebinarsPage from "./pages/WebinarsPage"
+
 
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -29,6 +31,8 @@ export default function AdminDashboard() {
         return <StudentsPage />
       case "classes":
         return <ClassesPage />
+      case "webinars":
+        return <WebinarsPage/>
       case "payments":
         return <PaymentsPage />
       case "reports":

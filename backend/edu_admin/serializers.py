@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from .models import ZoomOccurrence
+from .models import ZoomWebinar
+
 
 class ZoomWebinarSerializer(serializers.Serializer):
     account_key = serializers.CharField()
@@ -9,16 +12,49 @@ class ZoomWebinarSerializer(serializers.Serializer):
 
     repeat_type = serializers.ChoiceField(
         choices=['daily', 'weekly', 'monthly'],
-        default= "none",
+        default="none",
         required=False
     )
     repeat_interval = serializers.IntegerField(default=1, required=False)
     end_date_time = serializers.CharField(required=False, allow_blank=True)
 
+    # New field to support weekly repeat days
+    weekly_days = serializers.ListField(
+        child=serializers.IntegerField(min_value=1, max_value=7),
+        required=False,
+        allow_null=True
+    )
+
 class ZoomWebinarListSerializer(serializers.Serializer):
     account_key = serializers.CharField(required=True)
+
+
+class ZoomOccurrenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ZoomOccurrence
+        fields = ['occurrence_id', 'start_time', 'duration']
+
+
+class ZoomWebinarSerilizer(serializers.ModelSerializer):
+    occurrences = ZoomOccurrenceSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ZoomWebinar
+        fields = [
+            'webinar_id',
+            'account_key',
+            'topic',
+            'registration_url',
+            'start_time',
+            'duration',
+            'agenda',
+            'is_recurring',
+            'updated_at',
+            'occurrences',
+        ]
 
     # def validate_account_key(self, value):
     #     if not value:
     #         raise serializers.ValidationError("Account key is required")
     #     return value
+    # serializers.py

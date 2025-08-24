@@ -2,7 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import {Home,BookOpen,Users,GraduationCap,ClipboardList,Upload,BarChart3,Calendar,Bell,Settings,LogOut} from "lucide-react"
+import {Home,BookOpen,Users,GraduationCap,ClipboardList,Calendar,Bell,Settings,LogOut, Video, FileText} from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 
 const menuItems = [
@@ -12,14 +12,23 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "My Courses",
-    url: "/instructor/courses",
+    title: "Classes",
+    url: "/instructor/classes",
     icon: BookOpen,
   },
   {
     title: "Students",
     url: "/instructor/students",
     icon: Users,
+  },
+  {
+    title: "Webinars",
+    url: "/instructor/webinars",
+    icon: Video,
+  },{
+    title: "Notes",
+    url: "/instructor/notes",
+    icon: FileText,
   },
   {
     title: "Exams",
@@ -32,16 +41,6 @@ const menuItems = [
     icon: ClipboardList,
   },
   {
-    title: "Upload Marks",
-    url: "/instructor/upload-marks",
-    icon: Upload,
-  },
-  {
-    title: "Reports",
-    url: "/instructor/reports",
-    icon: BarChart3,
-  },
-  {
     title: "Calendar",
     url: "/instructor/calendar",
     icon: Calendar,
@@ -50,6 +49,11 @@ const menuItems = [
     title: "Notifications",
     url: "/instructor/notifications",
     icon: Bell,
+  },
+  {
+    title: "Settings",
+    url: "/instructor/settings",
+    icon: Settings,
   },
 ]
 
@@ -77,10 +81,10 @@ export function InstructorSidebar() {
             <Link
               key={item.title}
               href={item.url}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
                 pathname === item.url
-                  ? "bg-purple-100 text-purple-700"
-                  : "text-white hover:bg-accent hover:text-white"
+                  ? "bg-purple-100 text-lg text-purple-700"
+                  : "text-white text-lg hover:bg-accent hover:text-white"
               }`}
             >
               <item.icon className="h-4 w-4" />
@@ -92,21 +96,8 @@ export function InstructorSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-purple-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">SJ</span>
-          </div>
-          <div className="flex-1">
-            <p className="text-m text-white font-medium">Dr. Sarah Johnson</p>
-            <p className="text-m text-white">Senior Instructor</p>
-          </div>
-        </div>
         <div className="space-y-2">
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg">
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
-          <button className="w-full flex items-center gap-2 px-3 py-2 text-m text-white hover:bg-accent rounded-lg"
+          <button className="w-full flex items-center gap-2 px-3 py-2 text-lg text-white hover:bg-accent rounded-lg"
             onClick={()=>
               logout()
             }>
