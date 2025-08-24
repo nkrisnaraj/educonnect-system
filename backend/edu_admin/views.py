@@ -13,6 +13,48 @@ from students.serializers import MessageSerializer
 from students.models import User,Message
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, action
+from django.shortcuts import get_object_or_404, render
+from decimal import Decimal
+from instructor.models import Class, ClassSchedule
+from instructor.serializers import ClassSerializer
+from .serializers import ZoomWebinarSerializer, ZoomWebinarListSerializer, ZoomOccurrenceSerializer, ZoomWebinarSerilizer
+from django.contrib.auth import get_user_model
+from accounts.serializers import UserSerializer
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.decorators import api_view, permission_classes
+from .permissions import IsAdminRole
+
+# Add a simple admin test endpoint
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_test(request):
+    """Test endpoint to verify admin authentication"""
+    user = request.user
+    return Response({
+        'message': 'Admin authentication test successful',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'role': user.role,
+            'is_authenticated': user.is_authenticated,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser
+        }
+    }, status=status.HTTP_200_OK)
+from students.models import Payment, ReceiptPayment
+from students.serializers import PaymentSerializer, ReceiptPaymentSerializer
+from django.conf import settings
+from datetime import datetime, timedelta
+import pytz
+from django.utils.dateparse import parse_time, parse_date
+from rest_framework import viewsets
+
+User = get_user_model()
+
+# Define valid days for weekly repeat
+VALID_ZOOM_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7]
+
 
 # Create your views here.
 class CreateZoomWebinarView(APIView):
@@ -82,8 +124,6 @@ class SyncZoomWebinarsView(APIView):
             return Response({"error": str(e)}, status=500)
         
         
-from rest_framework.permissions import IsAuthenticated
-
 class WebinarListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -93,35 +133,14 @@ class WebinarListAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # get zoom accounts
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
-from django.conf import settings
-
 class ZoomAccountsListView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminRole]
 
     def get(self, request):
         return Response([
             {"key": k, "email": v["user_id"]}
             for k, v in settings.ZOOM_ACCOUNTS.items()
         ])
-
-from datetime import datetime, timedelta
-import pytz
-from django.utils.dateparse import parse_time, parse_date
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from instructor.models import Class, ClassSchedule
-from django.contrib.auth import get_user_model
-from .services import ZoomWebinarService
-import instructor.serializers as serializers
-
-User = get_user_model()
-
-# Zoom weekdays format: 1=Sun, 2=Mon, ..., 7=Sat
-VALID_ZOOM_WEEKDAYS = set(range(1, 8))
 
 class CreateClassWithWebinarView(APIView):
     def post(self, request):
@@ -215,36 +234,22 @@ class CreateClassWithWebinarView(APIView):
                         duration_minutes=int(sched["duration_minutes"]),
                     )
 
-            # ✅ Serialize and respond
-            serializer = serializers.ClassSerializer(new_class)
+            # ✅ Serialize and respond - refetch with relations
+            created_class = Class.objects.select_related('instructor').prefetch_related('schedules').get(id=new_class.id)
+            serializer = ClassSerializer(created_class)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             print("🔥 Error in CreateClassWithWebinarView:", str(e))
             return Response({"error": str(e)}, status=500)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions
-
-
 class ClassListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # or IsAdminUser if needed
+    permission_classes = [IsAuthenticated]  # or IsAdminUser if needed
 
     def get(self, request):
-        classes = Class.objects.all().order_by('-start_date')
-        serializer = serializers.ClassSerializer(classes, many=True)
+        classes = Class.objects.select_related('instructor').prefetch_related('schedules').all().order_by('-start_date')
+        serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-# views.py
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth import get_user_model
-from accounts.serializers import UserSerializer
-
-User = get_user_model()
 
 class StudentListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -254,12 +259,6 @@ class StudentListView(APIView):
         serializer = UserSerializer(students, many=True)
         return Response(serializer.data)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser  # or your own permission class
-from students.models import Payment
-from students.serializers import PaymentSerializer
-
 class PaymentListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -268,19 +267,10 @@ class PaymentListView(APIView):
         serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
         
-from decimal import Decimal
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from rest_framework.response import Response
-from students.models import ReceiptPayment
-from students.serializers import ReceiptPaymentSerializer
-from django.shortcuts import get_object_or_404
-
 class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
     queryset = ReceiptPayment.objects.select_related("payid", "payid__stuid")
     serializer_class = ReceiptPaymentSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     lookup_field = "receiptid"
 
     @action(detail=True, methods=["post"])
@@ -330,8 +320,8 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
         #     payment.amount = paid_amount_decimal
         #     updated_fields.append("amount")
 
-        if payment.status != "completed":
-            payment.status = "completed"
+        if payment.status not in ["success", "completed"]:
+            payment.status = "success"
             updated_fields.append("status")
 
         if updated_fields:
@@ -425,3 +415,381 @@ def mark_messages_read(request, student_id):
     ).update(is_seen=True)
 
     return Response({'status': 'ok'})
+
+class ComprehensiveWebinarSyncView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Comprehensive sync that:
+        1. Syncs webinars from all Zoom accounts
+        2. Creates classes for webinars without associated classes
+        """
+        try:
+            from django.conf import settings
+            
+            results = {}
+            total_created_classes = 0
+            
+            # Sync from all configured Zoom accounts
+            for account_key in settings.ZOOM_ACCOUNTS.keys():
+                try:
+                    service = ZoomWebinarService(account_key)
+                    result = service.sync_webinars_and_create_classes()
+                    results[account_key] = result
+                    total_created_classes += result['created_classes']
+                    
+                except Exception as e:
+                    results[account_key] = {'error': str(e)}
+                    print(f"Error syncing account {account_key}: {e}")
+            
+            return Response({
+                'message': 'Comprehensive webinar sync completed',
+                'total_created_classes': total_created_classes,
+                'results_by_account': results
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Sync failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class WebinarSyncStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Get sync status and statistics about webinars and classes
+        """
+        try:
+            # Count total webinars
+            total_webinars = ZoomWebinar.objects.count()
+            
+            # Count webinars with associated classes
+            webinars_with_classes = Class.objects.filter(
+                webinar__isnull=False
+            ).values_list('webinar__webinar_id', flat=True)
+            
+            webinars_without_classes_count = ZoomWebinar.objects.exclude(
+                webinar_id__in=webinars_with_classes
+            ).count()
+            
+            # Count total classes
+            total_classes = Class.objects.count()
+            
+            # Count classes with webinars
+            classes_with_webinars = Class.objects.filter(webinar__isnull=False).count()
+            
+            return Response({
+                'total_webinars': total_webinars,
+                'webinars_with_classes': len(webinars_with_classes),
+                'webinars_without_classes': webinars_without_classes_count,
+                'total_classes': total_classes,
+                'classes_with_webinars': classes_with_webinars,
+                'sync_needed': webinars_without_classes_count > 0
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to get sync status: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CreateClassFromWebinarView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Create a class from a specific webinar
+        """
+        try:
+            webinar_id = request.data.get('webinar_id')
+            account_key = request.data.get('account_key')
+            
+            if not webinar_id:
+                return Response({
+                    'error': 'webinar_id is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get the webinar
+            try:
+                webinar = ZoomWebinar.objects.get(webinar_id=webinar_id)
+            except ZoomWebinar.DoesNotExist:
+                return Response({
+                    'error': 'Webinar not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Check if class already exists for this webinar
+            if Class.objects.filter(webinar=webinar).exists():
+                return Response({
+                    'error': 'Class already exists for this webinar'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create the class
+            service = ZoomWebinarService(account_key or webinar.account_key)
+            new_class = service._create_class_from_webinar(webinar)
+            
+            if new_class:
+                from instructor.serializers import ClassSerializer
+                serializer = ClassSerializer(new_class)
+                return Response({
+                    'message': 'Class created successfully',
+                    'class': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    'error': 'Failed to create class'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({
+                'error': f'Failed to create class: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UpdateClassView(APIView):
+    permission_classes = [IsAuthenticated]  # only authenticated users (admins)
+
+    def put(self, request, class_id):
+        try:
+            class_obj = Class.objects.get(id=class_id)
+        except Class.DoesNotExist:
+            return Response({"error": "Class not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if this is an update-only operation (no webinar changes)
+        update_only = request.data.get('update_only', False)
+        
+        if update_only:
+            # Only update basic class information and schedules, not webinar-related fields
+            allowed_fields = ['title', 'description', 'fee', 'start_date', 'end_date', 'status', 'schedules']
+            update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
+            
+            serializer = ClassSerializer(class_obj, data=update_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "message": "Class details and schedules updated successfully (webinar settings unchanged)",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Full update including potential webinar changes
+            serializer = ClassSerializer(class_obj, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            from django.utils import timezone
+            from django.db.models import Sum, Count, Q
+            from datetime import datetime, timedelta
+            
+            now = timezone.now()
+            current_month = now.replace(day=1)
+            last_month = (current_month - timedelta(days=1)).replace(day=1)
+            
+            # Get basic stats
+            total_users = User.objects.count()
+            total_students = User.objects.filter(role='student').count()
+            total_instructors = User.objects.filter(role='instructor').count()
+            total_classes = Class.objects.count()
+            
+            # Calculate active classes (those whose end_date is in the future)
+            active_classes = Class.objects.filter(end_date__gte=now.date()).count()
+            
+            total_webinars = ZoomWebinar.objects.count()
+            
+            # Payment stats - count both 'success' and 'completed' as verified
+            total_payments = Payment.objects.count()
+            verified_payments = Payment.objects.filter(status__in=['success', 'completed']).count()
+            pending_payments = Payment.objects.filter(status='pending').count()
+            
+            # Revenue calculations - include both success and completed payments
+            total_revenue = Payment.objects.filter(status__in=['success', 'completed']).aggregate(
+                total=Sum('amount')
+            )['total'] or 0
+            
+            current_month_revenue = Payment.objects.filter(
+                status__in=['success', 'completed'],
+                date__gte=current_month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            last_month_revenue = Payment.objects.filter(
+                status__in=['success', 'completed'],
+                date__gte=last_month,
+                date__lt=current_month
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            
+            # Calculate growth
+            revenue_growth = 0
+            if last_month_revenue > 0:
+                revenue_growth = ((current_month_revenue - last_month_revenue) / last_month_revenue) * 100
+            
+            # Student enrollment this month vs last month
+            students_this_month = User.objects.filter(
+                role='student',
+                date_joined__gte=current_month
+            ).count()
+            
+            students_last_month = User.objects.filter(
+                role='student',
+                date_joined__gte=last_month,
+                date_joined__lt=current_month
+            ).count()
+            
+            student_growth = 0
+            if students_last_month > 0:
+                student_growth = ((students_this_month - students_last_month) / students_last_month) * 100
+            
+            stats = {
+                'users': {
+                    'total': total_users,
+                    'students': total_students,
+                    'instructors': total_instructors,
+                    'students_this_month': students_this_month,
+                    'students_last_month': students_last_month,
+                    'student_growth': round(student_growth, 1)
+                },
+                'classes': {
+                    'total': total_classes,
+                    'active': active_classes,
+                    'completed': total_classes - active_classes,
+                    'utilization': round((active_classes / total_classes * 100), 1) if total_classes > 0 else 0
+                },
+                'webinars': {
+                    'total': total_webinars,
+                },
+                'payments': {
+                    'total': total_payments,
+                    'verified': verified_payments,
+                    'pending': pending_payments,
+                    'success_rate': round((verified_payments / total_payments * 100), 1) if total_payments > 0 else 0
+                },
+                'revenue': {
+                    'total': float(total_revenue),
+                    'current_month': float(current_month_revenue),
+                    'last_month': float(last_month_revenue),
+                    'growth': round(revenue_growth, 1)
+                }
+            }
+            
+            return Response(stats, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to fetch dashboard stats: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ComprehensiveReportsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            from django.utils import timezone
+            from django.db.models import Sum, Count, Q, Avg
+            from datetime import datetime, timedelta
+            from students.models import Enrollment
+            
+            now = timezone.now()
+            current_month = now.replace(day=1)
+            
+            # Subject/Class statistics (based on class titles)
+            class_subjects = Class.objects.annotate(
+                enrollment_count=Count('enrollment', distinct=True),
+                revenue_generated=Sum('enrollment__payid__amount', filter=Q(enrollment__payid__status='success'))
+            ).order_by('-enrollment_count')[:10]
+            
+            # Monthly enrollment and revenue trends (last 6 months)
+            monthly_stats = []
+            for i in range(6):
+                month_start = (current_month - timedelta(days=30*i)).replace(day=1)
+                next_month = (month_start + timedelta(days=32)).replace(day=1)
+                
+                enrollments = User.objects.filter(
+                    role='student',
+                    date_joined__gte=month_start,
+                    date_joined__lt=next_month
+                ).count()
+                
+                revenue = Payment.objects.filter(
+                    status='success',
+                    date__gte=month_start.date(),
+                    date__lt=next_month.date()
+                ).aggregate(total=Sum('amount'))['total'] or 0
+                
+                monthly_stats.append({
+                    'month': month_start.strftime('%Y-%m'),
+                    'month_name': month_start.strftime('%B %Y'),
+                    'enrollments': enrollments,
+                    'revenue': float(revenue)
+                })
+            
+            # Payment method breakdown
+            payment_methods = Payment.objects.values('method').annotate(
+                count=Count('id'),
+                total_amount=Sum('amount', filter=Q(status__in=['success', 'completed']))
+            )
+            
+            # Class performance metrics
+            class_performance = Class.objects.annotate(
+                enrollment_count=Count('enrollment'),
+                revenue_generated=Sum('enrollment__payid__amount', filter=Q(enrollment__payid__status__in=['success', 'completed']))
+            ).order_by('-enrollment_count')[:10]
+            
+            # Instructor statistics
+            instructor_stats = User.objects.filter(role='instructor').annotate(
+                class_count=Count('class'),
+                total_students=Count('class__enrollment', distinct=True)
+            ).order_by('-class_count')[:10]
+            
+            report_data = {
+                'subjects': [
+                    {
+                        'name': cls.title,
+                        'students': cls.enrollment_count or 0,
+                        'classes': 1,  # Each class entry represents one class
+                        'revenue': float(cls.revenue_generated or 0),
+                        'avg_per_student': float(cls.revenue_generated or 0) / max(cls.enrollment_count or 1, 1)
+                    } for cls in class_subjects if cls.title
+                ],
+                'monthly_trends': list(reversed(monthly_stats)),
+                'payment_methods': [
+                    {
+                        'method': item['method'],
+                        'count': item['count'],
+                        'total_amount': float(item['total_amount'] or 0)
+                    } for item in payment_methods
+                ],
+                'top_classes': [
+                    {
+                        'name': cls.title,
+                        'instructor': cls.instructor.get_full_name() or cls.instructor.username,
+                        'enrollments': cls.enrollment_count or 0,
+                        'revenue': float(cls.revenue_generated or 0),
+                        'fee': float(cls.fee)
+                    } for cls in class_performance if cls.title
+                ],
+                'instructors': [
+                    {
+                        'name': instructor.get_full_name() or instructor.username,
+                        'email': instructor.email,
+                        'classes': instructor.class_count,
+                        'students': instructor.total_students or 0
+                    } for instructor in instructor_stats
+                ]
+            }
+            
+            return Response(report_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            print(f"Reports API Error: {str(e)}")
+            print(traceback.format_exc())
+            return Response(
+                {"error": f"Failed to fetch reports: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
