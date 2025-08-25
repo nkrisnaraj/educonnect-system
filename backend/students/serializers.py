@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from .models import Payment, OnlinePayment, ReceiptPayment, Enrollment
 from django.contrib.auth import get_user_model #Django's built-in auth system.
-from .models import CalendarEvent  # Importing calendarEvent model
+from .models import CalendarEvent 
+from .models import ChatRoom, Message 
+from .models import CalendarEvent
+
 User = get_user_model()
 
 
@@ -78,16 +81,39 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         model = Enrollment
         fields = ['enrollid', 'classid', 'timestamp', 'payid']
 
-from rest_framework import serializers
-from .models import CalendarEvent
 
-class CalendarEventSerializer(serializers.ModelSerializer):
-    class_title = serializers.CharField(source='classid.title', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.username', read_only=True)
 
     class Meta:
-        model = CalendarEvent
-        fields = [
-            'id','title','description','event_type','date','time','created_by','created_by_username','classid','class_title','created_at','updated_at',
-        ]
+        model = ChatRoom
+        fields = ['id', 'sender', 'sender_name', 'receiver', 'receiver_name', 'message', 'timestamp']
 
+class MessageSerializer(serializers.ModelSerializer):
+    sender = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = ['id', 'chat_room', 'sender', 'message', 'created_at', 'is_delivered', 'is_seen']
+        read_only_fields = ['created_at']
+
+    def get_sender(self, obj):
+        from accounts.serializers import UserSerializer  
+        return UserSerializer(obj.sender).data
+
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarEvent
+        fields = ['id','title','type','date','color']
+
+
+from .models import Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['note_id','student_id','title','message','type','read_status','created_at']

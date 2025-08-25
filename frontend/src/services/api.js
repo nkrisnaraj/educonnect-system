@@ -59,7 +59,7 @@ api.interceptors.response.use(
 // Create a separate instance for long-running operations
 export const apiLongTimeout = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000, // 60 seconds for long operations like Zoom sync
+  timeout: 300000, // 5 minutes for long operations like Zoom sync
   headers: {
     'Content-Type': 'application/json',
   },

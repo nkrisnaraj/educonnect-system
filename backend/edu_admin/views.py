@@ -508,7 +508,7 @@ class DashboardStatsView(APIView):
             total_classes = Class.objects.count()
             
             # Calculate active classes (those whose end_date is in the future)
-            active_classes = Class.objects.filter(end_date__gte=now.date()).count()
+            active_classes = Class.objects.filter(start_date__lte=now.date(),end_date__gte=now.date()).count()
             
             total_webinars = ZoomWebinar.objects.count()
             
