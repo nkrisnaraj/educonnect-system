@@ -1,102 +1,222 @@
-'use client';
+"use client";
+import { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
+import { Check } from "lucide-react";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useChat } from '@/hooks/useChat';
-
-const StudentChatBox = ({ roomId, instructorName }) => {
-  const [message, setMessage] = useState('');
-  const messagesEndRef = useRef(null);
-  const { messages, loading, error, connected, sendMessage } = useChat(roomId);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+const studentChatBox = ({  }) => {
+    const [inputMessage, setInputMessage] = useState('');
+    const [selectedChat, setSelectedChat] = useState('instructor');
+    const [instructorMessages, setInstructorMessages] = useState([]);
+    const [adminMessages, setAdminMessages] = useState([]);
+    const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
+    const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
+    const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
   };
+  // const bottomRef = useRef(null);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // useEffect(() => {
+  //   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    const success = await sendMessage(message);
-    if (success) {
-      setMessage('');
+  const loadMessages = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  const response = await axios.get(
+      `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const transformed = (Array.isArray(response.data) ? response.data : []).map(
+      (msg) => ({
+        sender: msg.sender.role,
+        text: msg.message,
+        time: new Date(msg.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        is_delivered: msg.is_delivered,
+        is_seen: msg.is_seen,
+      })
+    );
+    if (selectedChat === "instructor") {
+      setInstructorMessages(transformed);
+    } else {
+      setAdminMessages(transformed);
     }
   };
 
+    useEffect(() => {
+      const fetchChat = async () => {
+        if (!accessToken || !refreshToken) {
+          console.log("Tokens not ready yet");
+          return;
+        }
+        try {
+          await loadMessages(accessToken);
+        } catch (error) {
+          console.error("Failed to fetch messages", error);
+    
+          if (error.response?.status === 401) {
+            // token expired, try refreshing
+            try {
+              const newAccess = await refreshAccessToken();
+              await loadMessages(newAccess);
+            } catch (refreshErr) {
+              console.error("Failed to refresh token", refreshErr);
+              logout();
+            }
+          } else {
+            console.error("Other error:", error);
+          }
+        }
+      };
+      fetchChat();
+    }, [selectedChat, accessToken, refreshAccessToken, logout]);
+    
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage()
+    }
+  }
+    const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const messagePayload = {
+      message: inputMessage,
+    };
+    console.log("messagePayload", messagePayload);
+    const token = sessionStorage.getItem("accessToken");
+
+    try {
+      const response = await axios.post(`http://127.0.0.1:8000/students/messages/${selectedChat}/send/`,
+        messagePayload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+      const savedMessage = {
+        sender: 'student',
+        text: response.data.message,
+        time: new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        is_delivered: response.data.is_delivered || false,
+        is_seen: response.data.is_seen || false,
+      };
+
+      if (selectedChat === 'instructor') {
+        setInstructorMessages((prev) => [...prev, savedMessage]);
+      } else {
+        setAdminMessages((prev) => [...prev, savedMessage]);
+      }
+
+      setInputMessage('');
+    } catch (error) {
+      console.error("Failed to send message", error);
+    }
+  };
   return (
-    <div className="flex flex-col h-96 bg-white border rounded-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b bg-gray-50">
-        <h3 className="font-semibold text-gray-800">
-          Chat with {instructorName || 'Instructor'}
-        </h3>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-xs text-gray-500">
-            {connected ? 'Connected' : 'Disconnected'}
-          </span>
-        </div>
+     <div className="w-full  border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[500px]">
+      <div className="bg-primary p-3 border-b border-gray-200 flex justify-between items-center">
+        <h3 className="font-medium text-white text-md">Chat with {selectedChat === 'instructor' ? 'Instructor' : 'Admin'}</h3>
+        <select
+          value={selectedChat}
+          onChange={(e) => setSelectedChat(e.target.value)}
+          className="text-sm rounded p-1 text-white bg-accent font-semibold"
+        >
+          <option value="instructor">Instructor</option>
+          <option value="admin">Admin</option>
+        </select>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {loading && (
-          <div className="text-center text-gray-500">Loading messages...</div>
-        )}
-        
-        {error && (
-          <div className="text-center text-red-500 text-sm">{error}</div>
-        )}
-
-        {messages.map((msg, index) => (
+      {/* Chat messages */}
+      <div className="bg-white p-3 flex-1 overflow-y-auto flex flex-col space-y-3">
+        {Array.isArray(messages) && messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
+            className={`flex items-start gap-2 ${
+              msg.sender === 'student' ? 'flex-row-reverse' : ''
+            }`}
           >
             <div
-              className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
-                msg.sender === 'student'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-200 text-gray-800'
+              className={`relative rounded-lg p-2 text-sm max-w-[80%] ${
+                msg.sender === 'student' ? 'bg-purple-100' : 'bg-gray-100'
               }`}
             >
-              <p>{msg.content}</p>
-              <p className={`text-xs mt-1 ${
-                msg.sender === 'student' ? 'text-green-200' : 'text-gray-500'
-              }`}>
-                {new Date(msg.timestamp).toLocaleTimeString()}
-              </p>
+              <p>{msg.text}</p>
+              <span className="text-xs text-gray-500 mt-1 block">{msg.time}</span>
+
+              {msg.sender === 'student' && (
+               <div className="absolute bottom-1 right-2 flex items-center gap-1 text-xs">
+                {renderTick(msg)}
+              </div>
+                    )}
             </div>
           </div>
         ))}
-        <div ref={messagesEndRef} />
+        {/* <div ref={bottomRef} /> */}
+
       </div>
 
-      {/* Message Input */}
-      <form onSubmit={handleSendMessage} className="p-3 border-t">
+      {/* Input Box */}
+      <div className="border-t border-gray-200 p-3 bg-white">
         <div className="flex gap-2">
-          <input
+         <input
             type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            disabled={!connected}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
           <button
-            type="submit"
-            disabled={!message.trim() || !connected}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send
+            onClick={handleSendMessage}
+            className="bg-primary text-white rounded-full p-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
           </button>
         </div>
-      </form>
+      </div>
+    </div>
+    
+  )
+}
+
+function SingleTick() {
+  return <Check className="w-4 h-4 text-gray-400" />;
+}
+
+function DoubleTick({ color }) {
+  const colorClass = {
+    blue: "text-blue-400",
+    gray: "text-gray-400",
+  }[color] || "text-gray-400";
+
+  return (
+    <div className="flex">
+      <Check className={`w-4 h-4 ${colorClass}`} />
+      <Check className={`w-4 h-4 ${colorClass} -ml-2`} />
     </div>
   );
-};
+}
 
-export default StudentChatBox;
+export default studentChatBox

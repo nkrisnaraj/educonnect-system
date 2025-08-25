@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CreateZoomWebinarView, ListZoomWebinarsView, SyncZoomWebinarsView, WebinarListAPIView, ZoomAccountsListView,
     CreateClassWithWebinarView, ClassListView, StudentListView, PaymentListView,
-    ReceiptPaymentAdminViewSet, ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
+    ReceiptPaymentAdminViewSet, admin_get_chat_with_student, admin_list_students_with_chats, admin_send_message_to_student, mark_messages_read,
+    ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
     UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test
 )
 
@@ -25,6 +26,10 @@ urlpatterns = [
     path("classes/<int:class_id>/update/", UpdateClassView.as_view(), name="update_class"),
     path('students/', StudentListView.as_view(), name='student-list'),
     path("payments/", PaymentListView.as_view(), name="payment-list"),
+    path('chat/admin/students/', admin_list_students_with_chats, name='admin-list-students-with-chats'),
+    path('chat/admin/<int:student_id>/', admin_get_chat_with_student, name='admin-get-chat-with-student'),
+    path('chat/admin/<int:student_id>/send/', admin_send_message_to_student, name='admin-send-message-to-student'),
+    path('chat/admin/<int:student_id>/mark_messages_read/', mark_messages_read, name="mark_messages_read"),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('reports/', ComprehensiveReportsView.as_view(), name='comprehensive-reports'),
     path('admin-test/', admin_test, name='admin-test'),

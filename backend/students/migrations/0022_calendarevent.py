@@ -19,14 +19,13 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('title', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('event_type', models.CharField(choices=[('webinar', 'Webinar'), ('notes', 'Notes Uploaded'), ('exam', 'Exam Scheduled')], max_length=20)),
-                ('date', models.DateField()),
-                ('time', models.TimeField(blank=True, null=True)),
+                ('type', models.CharField(max_length=20, choices=[('exam', 'Exam'), ('webinar', 'Webinar'), ('custom', 'Custom')], default='custom')),
+                ('date', models.DateTimeField()),
+                ('color', models.CharField(max_length=20, default='gray')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('classid', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='calendar_events', to='instructor.class')),
-                ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                ('related_webinar', models.ForeignKey(null=True, blank=True, on_delete=models.SET_NULL, related_name='calendar_events', to='edu_admin.zoomwebinar')),
+                ('related_exam', models.ForeignKey(null=True, blank=True, on_delete=models.SET_NULL, related_name='calendar_events', to='instructor.exams')),
             ],
         ),
     ]
+

@@ -77,7 +77,7 @@ class OnlinePayment(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Invoice: {self.invoice_no} - {self.verified}"
+        return f"Invoice: {self.invoice_no} - {self.status}"
 
 
 #Receipt Payment
@@ -116,127 +116,67 @@ class Enrollment(models.Model):
         return f"Enrollment {self.enrollid} - Student {self.stuid} in Class {self.classid}"
 
 
-# Chat Models - Missing from original file but exist in database
-class ChatRoom(models.Model):
-    ROOM_TYPE_CHOICES = [
-        ('direct', 'Direct Message'),
-        ('group', 'Group Chat'),
-        ('class', 'Class Discussion'),
-    ]
-    
-    name = models.CharField(max_length=255)
-    room_type = models.CharField(max_length=10, choices=ROOM_TYPE_CHOICES, default='direct')
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_chatrooms')
-    participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='chat_rooms')
-    related_class = models.ForeignKey('instructor.Class', on_delete=models.CASCADE, null=True, blank=True, related_name='chat_rooms')
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.name} ({self.room_type})"
-
-
-class Message(models.Model):
-    MESSAGE_TYPE_CHOICES = [
-        ('text', 'Text'),
-        ('file', 'File'),
-        ('image', 'Image'),
-    ]
-    
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
-    content = models.TextField()
-    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPE_CHOICES, default='text')
-    file_attachment = models.FileField(upload_to='chat_files/', blank=True, null=True)
-    file_name = models.CharField(max_length=255, blank=True, null=True)
-    file_size = models.IntegerField(blank=True, null=True)
-    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
-    is_edited = models.BooleanField(default=False)
-    is_deleted = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    edited_at = models.DateTimeField(null=True, blank=True)
-    delivered_to = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='delivered_messages')
-    read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='read_messages')
-
-    class Meta:
-        ordering = ['created_at']
-
-    def __str__(self):
-        return f"{self.sender.username}: {self.content[:50]}..."
-
-
-class MessageReaction(models.Model):
-    REACTION_CHOICES = [
-        ('like', '👍'),
-        ('love', '❤️'),
-        ('laugh', '😂'),
-        ('angry', '😡'),
-        ('sad', '😢'),
-    ]
-    
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reactions')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ['message', 'user']
-
-    def __str__(self):
-        return f"{self.user.username} reacted {self.reaction_type} to message"
-
-
-class ChatNotification(models.Model):
-    NOTIFICATION_TYPE_CHOICES = [
-        ('message', 'New Message'),
-        ('mention', 'Mentioned'),
-        ('join', 'User Joined'),
-        ('leave', 'User Left'),
-    ]
-    
-    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_notifications')
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_chat_notifications')
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
-    message = models.ForeignKey(Message, on_delete=models.CASCADE, null=True, blank=True)
-    notification_type = models.CharField(max_length=10, choices=NOTIFICATION_TYPE_CHOICES)
-    title = models.CharField(max_length=255)
-    content = models.TextField()
-    is_read = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Notification for {self.recipient.username}: {self.title}"
-
+from django.db import models
+from edu_admin.models import ZoomWebinar, ZoomOccurrence
+from instructor.models import Exams
 
 class CalendarEvent(models.Model):
     EVENT_TYPES = [
+        ('exam', 'Exam'),
         ('webinar', 'Webinar'),
-        ('notes', 'Notes Uploaded'),
-        ('exam', 'Exam Scheduled'),
+        ('custom', 'Custom'),
     ]
 
     title = models.CharField(max_length=255)
-    type = models.CharField(max_length=20, choices=EVENT_TYPES, default='webinar')
+    type = models.CharField(max_length=20, choices=EVENT_TYPES, default='custom')
     date = models.DateTimeField()
-    color = models.CharField(max_length=7, default='#007bff')
-    related_exam = models.ForeignKey('instructor.Exams', on_delete=models.CASCADE, null=True, blank=True)
-    related_webinar = models.ForeignKey('edu_admin.ZoomWebinar', on_delete=models.CASCADE, null=True, blank=True)
+    related_webinar = models.ForeignKey(
+        'edu_admin.ZoomWebinar', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='calendar_events'
+    )
+    related_exam = models.ForeignKey(
+        'instructor.Exams', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='calendar_events'
+    )
+    color = models.CharField(max_length=20, default='gray')
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} - {self.date}"
+        return f"{self.title} ({self.type})"
+
+
+class ChatRoom(models.Model):
+    name = models.CharField(max_length=255)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatrooms_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Message(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_delivered = models.BooleanField(default= False)
+    is_seen = models.BooleanField(default=False)
 
 
 class Notification(models.Model):
+    NOTIFICATION_TYPES=[
+        ('exam','Exam'),
+        ('webinar','Webinar'),
+        ('notes','Notes'),
+        ('message','Message')
+    ]
     note_id = models.AutoField(primary_key=True)
-    student_id = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
+    student_id = models.ForeignKey('students.StudentProfile', on_delete=models.CASCADE, related_name='notifications')
     title = models.CharField(max_length=255)
     message = models.TextField()
-    type = models.CharField(max_length=50, null=True, blank=True)
+    type=models.CharField(max_length=50,choices=NOTIFICATION_TYPES,null=True, blank=True)
     read_status = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} - {self.student_id.user.username}"
+        return f"Notification for {self.student_id} - {self.title}"

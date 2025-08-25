@@ -4,6 +4,10 @@ from .models import Class, ClassSchedule, InstructorProfile, StudyNote
 from django.contrib.auth.models import User
 from edu_admin.models import ZoomWebinar
 
+class ClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Class
+        fields = ['id','classid', 'title', 'description', 'fee', 'instructor_name']
 
 
 class InstructorProfileSerializer(serializers.ModelSerializer):

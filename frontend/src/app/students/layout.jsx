@@ -1,4 +1,4 @@
-import StudentLayoutWrapper from "@/components/studentlayoutwrapper/StudentLayoutWrapper";
+import StudentLayoutWrapper from "@/components/student/studentlayoutwrapper/StudentLayoutWrapper";
 import "../globals.css";
 
 

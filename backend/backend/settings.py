@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     # 'accounts',
     'accounts.apps.AccountsConfig',
     'multiselectfield',
+    'channels'
 ]
 
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
@@ -91,7 +92,8 @@ except json.JSONDecodeError:
 
 PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID")
 PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET")
-# settings.py
+
+# Google Cloud Vision API credentials
 GOOGLE_APPLICATION_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDS_JSON")
 
 
@@ -110,6 +112,20 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON = os.environ.get("GOOGLE_CREDS_JSON")
 
 
 AUTH_USER_MODEL = 'accounts.User'
+
+ASGI_APPLICATION = 'backend.asgi.application'
+
+# Channels settings
+# Channels is used for WebSocket support and real-time features
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
 
 MEDIA_ROOT = BASE_DIR / "media"   #your_project_folder/media/ - #your_project_folder/media/receipts/
 MEDIA_URL = "/media/"     #http://localhost:8000/media/receipts/receipt1.jpg

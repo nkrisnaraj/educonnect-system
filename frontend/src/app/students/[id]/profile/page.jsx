@@ -13,6 +13,7 @@ export default function EditProfilePage() {
   const [success, setSuccess] = useState(null);
   const [image, setImage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const {user,accessToken,refreshToken,refreshAccessToken} = useAuth()
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -27,30 +28,21 @@ export default function EditProfilePage() {
     yearAL: '',
     password: ''
   });
-  const {accessToken,refreshAccessToken} = useAuth()
+  
 
   
-  // if (!accessToken) {
-  // console.error('No access token found! Please login again.');
-  // return;
-  // }
-  // const newAccessToken = await refreshAccessToken();
-
-  // const token = accessToken || newAccessToken;
+  console.log(accessToken);
+ 
 
   useEffect(()=>{
     const fetchProfile = async () => {
-      
       setLoading(true);
+      if (!accessToken || !refreshToken) {
+        console.log("Tokens not ready yet");
+        return;
+      }
+      const token = accessToken;
       try {
-        let token = accessToken;
-        if (!token) {
-          token = await refreshAccessToken();
-        }
-        if (!token) {
-          console.error('No access token available after refresh. Please login again.');
-          return;
-        }
         const response = await axios.get("http://127.0.0.1:8000/students/profile/",{
           headers:{
             Authorization: `Bearer ${token}`
@@ -148,9 +140,9 @@ export default function EditProfilePage() {
     setSelectedImage(null);
   };
 
-  if (loading) {
-    return <div className="text-center py-10">Loading profile...</div>;
-  }
+  // if (loading) {
+  //   return <div className="text-center py-10">Loading profile...</div>;
+  // }
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4">
