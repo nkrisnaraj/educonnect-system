@@ -37,7 +37,7 @@ const studentChatBox = ({  }) => {
     const transformed = (Array.isArray(response.data) ? response.data : []).map(
       (msg) => ({
         sender: msg.sender.role,
-        text: msg.message,
+        text: msg.content,  // Use 'content' instead of 'message'
         time: new Date(msg.created_at).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -90,7 +90,7 @@ const studentChatBox = ({  }) => {
     if (!inputMessage.trim()) return;
 
     const messagePayload = {
-      message: inputMessage,
+      message: inputMessage,  // Backend endpoint expects 'message' field
     };
     console.log("messagePayload", messagePayload);
     const token = sessionStorage.getItem("accessToken");
@@ -107,7 +107,7 @@ const studentChatBox = ({  }) => {
 
       const savedMessage = {
         sender: 'student',
-        text: response.data.message,
+        text: response.data.content,  // Use 'content' for response field
         time: new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         is_delivered: response.data.is_delivered || false,
         is_seen: response.data.is_seen || false,

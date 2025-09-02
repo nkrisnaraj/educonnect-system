@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Bell,
   Search,
@@ -15,6 +15,8 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react"
+
+import { adminApi } from "@/services/adminApi"
 
 const notificationsData = [
   {
@@ -132,15 +134,73 @@ export default function NotificationsPage() {
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedNotification, setSelectedNotification] = useState(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [notificationsData, setNotificationsData] = useState([])
+  const [stats, setStats] = useState({ total: 0, read: 0, unread: 0, high_priority: 0 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Fetch notifications from API
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const response = await adminApi.getNotifications()
+      setNotificationsData(response.data.notifications || [])
+      setStats(response.data.stats || { total: 0, read: 0, unread: 0, high_priority: 0 })
+      setError(null)
+    } catch (err) {
+      console.error('Error fetching notifications:', err)
+      setError('Failed to fetch notifications')
+      setNotificationsData([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteNotification = async (notificationId) => {
+    if (window.confirm('Are you sure you want to delete this notification?')) {
+      try {
+        await adminApi.deleteNotification(notificationId)
+        await fetchNotifications() // Refresh the list
+      } catch (err) {
+        console.error('Error deleting notification:', err)
+        alert('Failed to delete notification')
+      }
+    }
+  }
 
   const filteredNotifications = notificationsData.filter((notification) => {
     const matchesSearch =
       notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.message.toLowerCase().includes(searchTerm.toLowerCase())
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = selectedType === "all" || notification.type === selectedType
-    const matchesStatus = selectedStatus === "all" || notification.status === selectedStatus
+    const matchesStatus = selectedStatus === "all" || 
+      (selectedStatus === "read" && notification.read_status) ||
+      (selectedStatus === "unread" && !notification.read_status) ||
+      (selectedStatus === "sent" && notification.status === "read") ||
+      (selectedStatus === "draft" && notification.status === "unread")
     return matchesSearch && matchesType && matchesStatus
   })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600">Loading notifications...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -168,7 +228,7 @@ export default function NotificationsPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Notifications</p>
-              <p className="text-2xl font-bold text-gray-900">{notificationsData.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
           </div>
         </div>
@@ -178,10 +238,8 @@ export default function NotificationsPage() {
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Sent</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {notificationsData.filter((n) => n.status === "sent").length}
-              </p>
+              <p className="text-sm text-gray-600">Read</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.read}</p>
             </div>
           </div>
         </div>
@@ -191,10 +249,8 @@ export default function NotificationsPage() {
               <Calendar className="h-6 w-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Scheduled</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {notificationsData.filter((n) => n.status === "scheduled").length}
-              </p>
+              <p className="text-sm text-gray-600">Unread</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.unread}</p>
             </div>
           </div>
         </div>
@@ -205,9 +261,7 @@ export default function NotificationsPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600">High Priority</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {notificationsData.filter((n) => n.priority === "high").length}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{stats.high_priority}</p>
             </div>
           </div>
         </div>
@@ -232,10 +286,10 @@ export default function NotificationsPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <option value="all">All Types</option>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="alert">Alert</option>
-            <option value="reminder">Reminder</option>
+            <option value="exam">Exam</option>
+            <option value="webinar">Webinar</option>
+            <option value="notes">Notes</option>
+            <option value="message">Message</option>
           </select>
           <select
             value={selectedStatus}
@@ -243,10 +297,8 @@ export default function NotificationsPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <option value="all">All Status</option>
-            <option value="sent">Sent</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="draft">Draft</option>
-            <option value="failed">Failed</option>
+            <option value="read">Read</option>
+            <option value="unread">Unread</option>
           </select>
           <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
             <Filter className="h-4 w-4" />
@@ -300,20 +352,22 @@ export default function NotificationsPage() {
                   <td className="py-4 px-4">
                     <div className="flex items-center space-x-1">
                       <Users className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm text-gray-600">{notification.recipient.replace("_", " ")}</span>
+                      <span className="text-sm text-gray-600">{notification.student_name}</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(notification.status)}`}
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        notification.read_status ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50"
+                      }`}
                     >
-                      {notification.status}
+                      {notification.read_status ? "Read" : "Unread"}
                     </span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="text-sm text-gray-600">
-                      <p>{new Date(notification.createdAt).toLocaleDateString()}</p>
-                      <p className="text-xs text-gray-400">{new Date(notification.createdAt).toLocaleTimeString()}</p>
+                      <p>{new Date(notification.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-gray-400">{new Date(notification.created_at).toLocaleTimeString()}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4">
@@ -325,12 +379,11 @@ export default function NotificationsPage() {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      {notification.status === "draft" && (
-                        <button className="p-1 text-gray-400 hover:text-green-600" title="Send">
-                          <Send className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button className="p-1 text-gray-400 hover:text-red-600" title="Delete">
+                      <button 
+                        onClick={() => handleDeleteNotification(notification.id)}
+                        className="p-1 text-gray-400 hover:text-red-600" 
+                        title="Delete"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

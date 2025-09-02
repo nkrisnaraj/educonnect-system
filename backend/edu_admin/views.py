@@ -7,10 +7,11 @@ from .models import ZoomWebinar
 from .zoom_api import ZoomAPIClient
 import traceback
 from .services import ZoomWebinarService
-from students.models import ChatRoom
-from students.serializers import ChatRoomSerializer
+from students.models import ChatRoom, Message
 from students.serializers import MessageSerializer
-from students.models import User,Message
+from students.models import Notification
+from students.serializers import NotificationSerializer
+from accounts.models import User
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.decorators import api_view, action
@@ -335,22 +336,41 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def admin_list_students_with_chats(request):
     """
-    List all students who have chat rooms with admin.
+    List all students (whether they have chat rooms or not).
     """
     if request.user.role != 'admin':
         return Response({'error': 'Only admin allowed'}, status=403)
-    chat_rooms = ChatRoom.objects.filter(name='instructor')
-    student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
-    students = User.objects.filter(id__in=student_ids)
-    data = [
-        {
+    
+    # Get all students with student profiles
+    students = User.objects.filter(role='student').select_related('student_profile')
+    data = []
+    
+    for s in students:
+        student_data = {
             'id': s.id,
             'username': s.username,
             'first_name': s.first_name,
             'last_name': s.last_name,
             'email': s.email,
-        } for s in students
-    ]
+            'unread_count': 0,
+        }
+        
+        # Check if student has a chat room with admin
+        chat_room = ChatRoom.objects.filter(created_by=s, name='admin').first()
+        if chat_room:
+            student_data['has_chat_room'] = True
+            # Count unread messages from student to admin
+            unread_count = Message.objects.filter(
+                chat_room=chat_room,
+                sender=s,
+                is_seen=False
+            ).count()
+            student_data['unread_count'] = unread_count
+        else:
+            student_data['has_chat_room'] = False
+            
+        data.append(student_data)
+    
     return Response({'students': data})
 
 @api_view(['GET'])
@@ -365,9 +385,13 @@ def admin_get_chat_with_student(request, student_id):
         student = User.objects.get(id=student_id, role='student')
     except User.DoesNotExist:
         return Response({'error': 'Student not found'}, status=404)
+    
     chat_room = ChatRoom.objects.filter(created_by=student, name='admin').first()
     if not chat_room:
-        return Response({'messages': []})
+        # Return empty messages if no chat room exists
+        return Response([])
+    
+    # Get actual messages from the chat room
     messages = Message.objects.filter(chat_room=chat_room).order_by('created_at')
     serializer = MessageSerializer(messages, many=True)
     return Response(serializer.data)
@@ -384,11 +408,22 @@ def admin_send_message_to_student(request, student_id):
         student = User.objects.get(id=student_id, role='student')
     except User.DoesNotExist:
         return Response({'error': 'Student not found'}, status=404)
+    
     message_text = request.data.get('message')
     if not message_text:
         return Response({'error': 'Message text is required'}, status=400)
+    
     chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='admin')
-    message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
+    
+    # Create actual message in the database
+    message = Message.objects.create(
+        chat_room=chat_room,
+        sender=request.user,
+        content=message_text,
+        message_type='text',
+        is_delivered=True
+    )
+    
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -793,3 +828,150 @@ class ComprehensiveReportsView(APIView):
                 {"error": f"Failed to fetch reports: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# Notification Management Views
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_get_notifications(request):
+    """
+    Get all notifications for admin dashboard
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
+    
+    try:
+        # Get all notifications with student profile info
+        notifications = Notification.objects.select_related('student_id__user').order_by('-created_at')
+        
+        data = []
+        for notification in notifications:
+            notification_data = {
+                'id': notification.note_id,
+                'title': notification.title,
+                'message': notification.message,
+                'type': notification.type or 'info',
+                'priority': 'high' if notification.type in ['exam', 'message'] else 'medium',
+                'recipient': f"Student: {notification.student_id.user.first_name} {notification.student_id.user.last_name}",
+                'student_name': f"{notification.student_id.user.first_name} {notification.student_id.user.last_name}",
+                'student_id': notification.student_id.user.id,
+                'status': 'read' if notification.read_status else 'unread',
+                'read_status': notification.read_status,
+                'created_at': notification.created_at,
+                'category': notification.type or 'general',
+            }
+            data.append(notification_data)
+        
+        # Calculate stats
+        total_count = len(data)
+        read_count = len([n for n in data if n['read_status']])
+        unread_count = total_count - read_count
+        high_priority_count = len([n for n in data if n['priority'] == 'high'])
+        
+        return Response({
+            'notifications': data,
+            'stats': {
+                'total': total_count,
+                'read': read_count,
+                'unread': unread_count,
+                'high_priority': high_priority_count
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Admin Notifications Error: {str(e)}")
+        print(traceback.format_exc())
+        return Response(
+            {"error": f"Failed to fetch notifications: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_create_notification(request):
+    """
+    Create a new notification for students
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
+    
+    try:
+        title = request.data.get('title')
+        message = request.data.get('message')
+        notification_type = request.data.get('type', 'notes')
+        recipient_type = request.data.get('recipient_type', 'all')  # all, specific_student
+        student_ids = request.data.get('student_ids', [])
+        
+        if not title or not message:
+            return Response({'error': 'Title and message are required'}, status=400)
+        
+        created_notifications = []
+        
+        if recipient_type == 'all':
+            # Send to all students
+            from students.models import StudentProfile
+            all_students = StudentProfile.objects.all()
+            
+            for student_profile in all_students:
+                notification = Notification.objects.create(
+                    student_id=student_profile,
+                    title=title,
+                    message=message,
+                    type=notification_type,
+                    read_status=False
+                )
+                created_notifications.append(notification)
+        
+        elif recipient_type == 'specific' and student_ids:
+            # Send to specific students
+            from students.models import StudentProfile
+            for student_id in student_ids:
+                try:
+                    student_profile = StudentProfile.objects.get(user__id=student_id)
+                    notification = Notification.objects.create(
+                        student_id=student_profile,
+                        title=title,
+                        message=message,
+                        type=notification_type,
+                        read_status=False
+                    )
+                    created_notifications.append(notification)
+                except StudentProfile.DoesNotExist:
+                    continue
+        
+        return Response({
+            'success': True,
+            'message': f'Notification sent to {len(created_notifications)} students',
+            'count': len(created_notifications)
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Create Notification Error: {str(e)}")
+        print(traceback.format_exc())
+        return Response(
+            {"error": f"Failed to create notification: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def admin_delete_notification(request, notification_id):
+    """
+    Delete a notification
+    """
+    if request.user.role != 'admin':
+        return Response({'error': 'Only admin allowed'}, status=403)
+    
+    try:
+        notification = Notification.objects.get(note_id=notification_id)
+        notification.delete()
+        return Response({'success': True, 'message': 'Notification deleted successfully'})
+        
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=404)
+    except Exception as e:
+        return Response(
+            {"error": f"Failed to delete notification: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
