@@ -749,6 +749,20 @@ def get_notes(request,pk):
     except Class.DoesNotExist:
         return Response({'error':"Class Not Found"},status=status.HTTP_404_NOT_FOUND)
 
+
+from rest_framework.permissions import AllowAny
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getAllClass(request):
+    try:
+        classes = Class.objects.all()
+        serializer = ClassSerializer(classes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 '''
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

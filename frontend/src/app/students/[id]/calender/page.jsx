@@ -193,7 +193,7 @@ export default function Calendar() {
       {showModal && selectedEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">Event Details</h2>
+            <h2 className="text-xl font-semibold mb-4">Class Details</h2>
             <p className="text-gray-600">Title: {selectedEvent.title}</p>
             <p className="text-gray-600">Webinar_Id: {selectedEvent.webinarid}</p>
             <p className="text-gray-600">Type: {selectedEvent.type}</p>

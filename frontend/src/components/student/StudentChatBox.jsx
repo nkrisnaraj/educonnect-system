@@ -23,9 +23,9 @@ const studentChatBox = ({  }) => {
   // }, [messages]);
 
   const loadMessages = async (token) => {
-    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+    //   headers: { Authorization: `Bearer ${token}` },
+    // });
   const response = await axios.get(
       `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
       {
