@@ -97,42 +97,42 @@ export default function HomePage() {
       {/* Hero Section */}
       <section
         id="home"
-        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden bg-no-repeat"
+        className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden bg-no-repeat"
         style={{
           backgroundImage: "url('/home.png')",
           backgroundPosition: "right",
-          backgroundSize: "55vw auto",   // 20% of viewport width
+          backgroundSize: "55vw auto",
           height: "100vh",
           width: "100%",
         }}
       >
         {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-60 h-60 sm:w-80 sm:h-80 bg-gradient-to-br from-[#2064d4]/20 to-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-60 h-60 sm:w-80 sm:h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-96 sm:h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Content Section */}
             <div className="text-center lg:text-left space-y-8 animate-fade-in">
              {/* Main Heading */}
               <div className="space-y-4">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                   Welcome to{" "}
                   <span className="bg-gradient-to-r from-[#2064d4] via-blue-500 to-[#2064d4] bg-clip-text text-transparent">
                     EduConnect
                   </span>
                   !
                 </h1>
-                <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto lg:mx-0">
+                <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto lg:mx-0">
                   Streamline payments and webinars for education! Connect students and instructors seamlessly with our cutting-edge platform.
                 </p>
               </div>
 
               {/* Feature Highlights */}
-              <div className="flex flex-wrap gap-4 justify-center lg:justify-start text-sm">
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start text-xs sm:text-sm">
                 <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-2 rounded-full">
                   <Video className="w-4 h-4 text-[#2064d4]" />
                   <span>Live Webinars</span>
@@ -150,19 +150,19 @@ export default function HomePage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link href="/login">
-                  <button 
-                  className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
-                >
-                  Get Started
-                </button>
+                  <button
+                    className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-base sm:text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group w-full sm:w-auto"
+                  >
+                    Get Started
+                  </button>
                 </Link>
                 <Link href="/help">
-                  <button 
-                  onClick={() => console.log('Watch Demo clicked')}
-                  className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm"
-                >
-                  Watch Demo
-                </button>
+                  <button
+                    onClick={() => console.log('Watch Demo clicked')}
+                    className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-base sm:text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm w-full sm:w-auto"
+                  >
+                    Watch Demo
+                  </button>
                 </Link>
                 
               </div>
