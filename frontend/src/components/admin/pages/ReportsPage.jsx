@@ -14,7 +14,7 @@ export default function ReportsPage() {
 
   const tabs = [
     { id: "overview", label: "Overview" },
-    { id: "enrollment", label: "Enrollment" },
+    // { id: "enrollment", label: "Enrollment" },
     { id: "financial", label: "Financial" },
     { id: "academic", label: "Academic" },
     { id: "subjects", label: "Subjects" },

@@ -225,7 +225,7 @@ def instructor_send_message_to_student(request, student_id):
     chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
 
     # 6. Create the message
-    message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
+    message = Message.objects.create(chat_room=chat_room, sender=request.user, content=message_text)
 
     # 7. Create the notification for the specific student
     Notification.objects.create(

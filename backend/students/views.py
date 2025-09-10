@@ -476,7 +476,9 @@ def send_chat_message(request, recipient_role):
     message = Message.objects.create(
         chat_room=chat_room,
         sender=student,
-        message=message_text
+        content=message_text,  # Use 'content' instead of 'message'
+        message_type='text',
+        is_delivered=True
     )
 
     serializer = MessageSerializer(message)
@@ -486,19 +488,32 @@ def send_chat_message(request, recipient_role):
 @permission_classes([IsAuthenticated])
 def mark_messages_read_student(request):
     """
-    Mark all messages from student as read by instructor
+    Mark all messages from instructor and admin as read when student reads them
     """
     if(request.user.role != 'student'):
-         return Response({'error':'Only studentsa allowed'},status=403)
-    chat_room = ChatRoom.objects.filter(created_by=request.user,name='instructor').first()
-    if not chat_room:
-        return Response({'error':"No chat Room"},status=404)
-    instructor = User.objects.filter(role='instructor').first()
-    Message.objects.filter(
-        chat_room=chat_room,
-        sender=instructor,
-        is_seen=False
-    ).update(is_seen=True)
+         return Response({'error':'Only students allowed'},status=403)
+    
+    # Mark instructor messages as read
+    instructor_chat_room = ChatRoom.objects.filter(created_by=request.user, name='instructor').first()
+    if instructor_chat_room:
+        instructor = User.objects.filter(role='instructor').first()
+        if instructor:
+            Message.objects.filter(
+                chat_room=instructor_chat_room,
+                sender=instructor,
+                is_seen=False
+            ).update(is_seen=True)
+    
+    # Mark admin messages as read
+    admin_chat_room = ChatRoom.objects.filter(created_by=request.user, name='admin').first()
+    if admin_chat_room:
+        admin = User.objects.filter(role='admin').first()
+        if admin:
+            Message.objects.filter(
+                chat_room=admin_chat_room,
+                sender=admin,
+                is_seen=False
+            ).update(is_seen=True)
 
     return Response({'status': 'ok'})
 

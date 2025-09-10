@@ -39,6 +39,11 @@ export const adminApi = {
   // Reports - using long timeout for report generation
   generateUserReport: () => apiLongTimeout.get('/edu_admin/reports/users/'),
   generateFinancialReport: () => apiLongTimeout.get('/edu_admin/reports/financial/'),
+  
+  // Notification management
+  getNotifications: () => api.get('/edu_admin/notifications/'),
+  createNotification: (data) => api.post('/edu_admin/notifications/create/', data),
+  deleteNotification: (id) => api.delete(`/edu_admin/notifications/${id}/delete/`),
 };
 
 export default adminApi;

@@ -153,14 +153,26 @@ class ChatRoom(models.Model):
     name = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatrooms_created')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # Required field from database
+    is_active = models.BooleanField(default=True)
+    room_type = models.CharField(max_length=50, default='private')
 
 class Message(models.Model):
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
-    message = models.TextField()
+    content = models.TextField()  # Changed from 'message' to 'content' to match database
+    message_type = models.CharField(max_length=50, default='text')
+    file_attachment = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_size = models.IntegerField(null=True, blank=True)
+    is_edited = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    is_delivered = models.BooleanField(default=False)  # Re-added - now exists in database
+    is_seen = models.BooleanField(default=False)       # Re-added - now exists in database
+    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    is_delivered = models.BooleanField(default= False)
-    is_seen = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
 
 
 class Notification(models.Model):
