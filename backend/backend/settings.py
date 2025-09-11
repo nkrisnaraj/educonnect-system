@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.staticfiles', 
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
@@ -89,6 +89,11 @@ try:
 except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
+
+# Zoom OAuth settings
+ZOOM_CLIENT_ID = config('ZOOM_CLIENT_ID', default='')
+ZOOM_CLIENT_SECRET = config('ZOOM_CLIENT_SECRET', default='')
+ZOOM_REDIRECT_URI = config('ZOOM_REDIRECT_URI', default='http://localhost:8000/api/auth/zoom/callback/')
 
 PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID")
 PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET")

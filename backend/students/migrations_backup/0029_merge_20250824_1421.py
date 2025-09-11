@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('students', '0025_chat_models'),
+        ('students', '0027_fix_message_table'),
         ('students', '0028_remove_is_seen_column'),
     ]
 

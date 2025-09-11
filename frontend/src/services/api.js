@@ -11,6 +11,12 @@ const api = axios.create({
   },
 });
 
+// Zoom OAuth API endpoints
+export const zoomApi = {
+  initiateLogin: () => api.get('/api/auth/zoom/login/'),
+  handleCallback: (code, state) => api.get(`/api/auth/zoom/callback/?code=${code}&state=${state}`),
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
