@@ -1,3 +1,4 @@
+# Enhanced models for exam system with question types like Google Forms
 import uuid
 from django.conf import settings
 from django.db import models
@@ -9,91 +10,36 @@ import calendar
 from edu_admin.models import ZoomWebinar
 from students.models import StudentProfile
 
-# Weekdays choices
-DAYS = (
-    ('Monday', 'Monday'),
-    ('Tuesday', 'Tuesday'),
-    ('Wednesday', 'Wednesday'),
-    ('Thursday', 'Thursday'),
-    ('Friday', 'Friday'),
-    ('Saturday', 'Saturday'),
-    ('Sunday', 'Sunday'),
+# Question Types for Google Forms-style functionality
+QUESTION_TYPES = (
+    ('multiple_choice', 'Multiple Choice'),
+    ('multiple_select', 'Multiple Select'),
+    ('short_answer', 'Short Answer'),
+    ('paragraph', 'Paragraph'),
+    ('true_false', 'True/False'),
+    ('rating_scale', 'Rating Scale'),
+    ('linear_scale', 'Linear Scale'),
+    ('dropdown', 'Dropdown'),
+    ('file_upload', 'File Upload'),
+    ('date', 'Date'),
+    ('time', 'Time'),
 )
 
-# Utility functions
-def first_day_of_current_month():
-    today = datetime.date.today()
-    return today.replace(day=1)
+EXAM_STATUS_CHOICES = (
+    ('draft', 'Draft'),
+    ('published', 'Published'),
+    ('scheduled', 'Scheduled'),
+    ('active', 'Active'),
+    ('completed', 'Completed'),
+    ('archived', 'Archived'),
+)
 
-def last_day_of_current_month():
-    today = datetime.date.today()
-    last_day = calendar.monthrange(today.year, today.month)[1]
-    return today.replace(day=last_day)
-
-# Class Model
-class Class(models.Model):
-    classid = models.CharField(max_length=20, unique=True, blank=True)
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    fee = models.DecimalField(max_digits=10, decimal_places=2)
-    repeat = models.BooleanField(default=True)
-    start_date = models.DateField(default=first_day_of_current_month)
-    end_date = models.DateField(default=last_day_of_current_month)
-
-    instructor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        limit_choices_to={'role': 'instructor'}
-    )
-    webinar = models.ForeignKey(ZoomWebinar, on_delete=models.SET_NULL, null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.classid:
-            self.classid = f"CRS-{uuid.uuid4().hex[:6].upper()}"
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.title} ({self.classid})"
-
-# Class Schedule Model
-class ClassSchedule(models.Model):
-    class_obj = models.ForeignKey(Class, related_name='schedules', on_delete=models.CASCADE)
-    day_of_week = models.CharField(max_length=9, choices=DAYS)
-    start_time = models.TimeField()
-    duration_minutes = models.PositiveIntegerField(default=90)
-
-    def __str__(self):
-        return f"{self.class_obj.classid} - {self.day_of_week} {self.start_time}"
-
-# Enhanced Exams Model with Google Forms-style functionality
+# Enhanced Exam Model
 class Exam(models.Model):
-    QUESTION_TYPES = (
-        ('multiple_choice', 'Multiple Choice'),
-        ('multiple_select', 'Multiple Select'),
-        ('short_answer', 'Short Answer'),
-        ('paragraph', 'Paragraph'),
-        ('true_false', 'True/False'),
-        ('rating_scale', 'Rating Scale'),
-        ('linear_scale', 'Linear Scale'),
-        ('dropdown', 'Dropdown'),
-        ('file_upload', 'File Upload'),
-        ('date', 'Date'),
-        ('time', 'Time'),
-    )
-
-    EXAM_STATUS_CHOICES = (
-        ('draft', 'Draft'),
-        ('published', 'Published'),
-        ('scheduled', 'Scheduled'),
-        ('active', 'Active'),
-        ('completed', 'Completed'),
-        ('archived', 'Archived'),
-    )
-
     examid = models.CharField(max_length=20, unique=True, blank=True)
     examname = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    classid = models.ForeignKey(Class, on_delete=models.CASCADE)
+    classid = models.ForeignKey('Class', on_delete=models.CASCADE)
     instructor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -111,7 +57,7 @@ class Exam(models.Model):
     passing_marks = models.PositiveIntegerField(default=50)
     status = models.CharField(max_length=20, choices=EXAM_STATUS_CHOICES, default='draft')
     
-    # Google Forms-style settings
+    # Settings inspired by Google Forms
     is_published = models.BooleanField(default=False)
     allow_multiple_attempts = models.BooleanField(default=False)
     shuffle_questions = models.BooleanField(default=False)
@@ -123,6 +69,7 @@ class Exam(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Google Forms-style settings
     confirmation_message = models.TextField(
         default="Thank you for submitting your exam. Your responses have been recorded.",
         blank=True
@@ -155,14 +102,14 @@ class Exam(models.Model):
 class ExamQuestion(models.Model):
     exam = models.ForeignKey(Exam, related_name='questions', on_delete=models.CASCADE)
     question_text = models.TextField()
-    question_type = models.CharField(max_length=20, choices=Exam.QUESTION_TYPES)
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPES)
     order = models.PositiveIntegerField(default=0)
     
     # Validation
     is_required = models.BooleanField(default=True)
     marks = models.PositiveIntegerField(default=1)
     
-    # Additional fields
+    # For specific question types
     description = models.TextField(blank=True, help_text="Additional description or instructions")
     
     # For rating/linear scales
@@ -220,6 +167,22 @@ class ExamSubmission(models.Model):
     
     def __str__(self):
         return f"{self.student.stuid} - {self.exam.examname}"
+    
+    def calculate_score(self):
+        """Calculate the total score for this submission"""
+        answers = self.answers.all()
+        total_marks = 0
+        
+        for answer in answers:
+            if answer.is_correct:
+                total_marks += answer.question.marks
+        
+        self.total_marks_obtained = total_marks
+        if self.exam.total_marks > 0:
+            self.percentage = (total_marks / self.exam.total_marks) * 100
+        self.save()
+        
+        return total_marks
 
 # Student Answers
 class ExamAnswer(models.Model):
@@ -242,51 +205,43 @@ class ExamAnswer(models.Model):
     
     def __str__(self):
         return f"{self.submission.student.stuid} - {self.question.question_text[:30]}"
-
-# Keep the old Exams model for backward compatibility
-class Exams(models.Model):
-    examid = models.CharField(max_length=20, unique=True)
-    examname = models.CharField(max_length=100)
-    classid = models.ForeignKey(Class, on_delete=models.CASCADE)
-    date = models.DateField()
     
-    def __str__(self):
-        return f"{self.examname} - {self.classid.classid}"
-
-# Marks Model
-class Marks(models.Model):
-    marksid = models.CharField(unique=True, max_length=20)
-    stuid = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
-    examid = models.ForeignKey(Exams, on_delete=models.CASCADE)
-    marks = models.FloatField()
-
-    def __str__(self):
-        return f"{self.stuid.stuid} - {self.examid.examname} - {self.marks}"
-
-class InstructorProfile(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='instructor_profile'
-    )
-    phone = models.CharField(max_length=10, blank=True)
-    address = models.TextField(blank=True)
-    profile_image = models.ImageField(upload_to='instructor/', blank=True)
-
-    def __str__(self):
-        return f"{self.user.first_name} {self.user.last_name}"
-
-class StudyNote(models.Model):
-    title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    batch = models.CharField(max_length=50)
-    file = models.FileField(upload_to='study_notes')
-    upload_date = models.DateField(auto_now_add=True)
-
-    # Relations
-    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    related_class = models.ForeignKey(ZoomWebinar, on_delete=models.CASCADE, related_name="notes")
-
-    def __str__(self):
-        return f"{self.title} ({self.related_class.topic})"
-
+    def check_answer(self):
+        """Auto-check answer for objective questions"""
+        if self.question.question_type == 'multiple_choice':
+            correct_options = self.question.options.filter(is_correct=True)
+            selected_options = self.selected_options.all()
+            
+            if (selected_options.count() == 1 and 
+                correct_options.count() == 1 and 
+                selected_options.first() in correct_options):
+                self.is_correct = True
+                self.marks_obtained = self.question.marks
+            else:
+                self.is_correct = False
+                self.marks_obtained = 0
+                
+        elif self.question.question_type == 'multiple_select':
+            correct_options = set(self.question.options.filter(is_correct=True))
+            selected_options = set(self.selected_options.all())
+            
+            if correct_options == selected_options:
+                self.is_correct = True
+                self.marks_obtained = self.question.marks
+            else:
+                self.is_correct = False
+                self.marks_obtained = 0
+                
+        elif self.question.question_type == 'true_false':
+            correct_option = self.question.options.filter(is_correct=True).first()
+            selected_option = self.selected_options.first()
+            
+            if correct_option and selected_option == correct_option:
+                self.is_correct = True
+                self.marks_obtained = self.question.marks
+            else:
+                self.is_correct = False
+                self.marks_obtained = 0
+        
+        self.save()
+        return self.is_correct

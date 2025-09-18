@@ -45,7 +45,7 @@ export default function RegisterWithZoom() {
 
   const handleZoomLogin = async () => {
     try {
-      const response = await axios.get("/auth/zoom/login/");
+      const response = await axios.get("/api/accounts/zoom/login/");
       if (response.data.auth_url) {
         // Redirect to Zoom OAuth
         window.location.href = response.data.auth_url;

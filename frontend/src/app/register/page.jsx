@@ -139,7 +139,7 @@ export default function Register() {
     };
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/api/auth/register/", payload);
+      const res = await axios.post("http://127.0.0.1:8000/api/accounts/register/", payload);
       if (res.status === 201) {
         setMessage("Registered successfully!");
         setIsSuccess(true);

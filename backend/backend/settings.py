@@ -175,7 +175,7 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False  # More secure approach
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for debugging
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

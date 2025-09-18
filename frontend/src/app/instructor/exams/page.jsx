@@ -1,235 +1,306 @@
 "use client"
 
-import { useState } from "react"
-import { GraduationCap, Calendar, Users, Clock, Eye, Edit, } from "lucide-react"
+import { useState, useEffect } from "react"
+import { GraduationCap, Calendar, Users, Clock, Eye, Edit, FileText, AlertCircle, Plus } from "lucide-react"
+import { useInstructorApi } from "@/hooks/useInstructorApi"
 
 export default function ExamsPage() {
   const [selectedTab, setSelectedTab] = useState("upcoming")
+  const [exams, setExams] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const { getExams, loading: apiLoading, error } = useInstructorApi()
 
-  const exams = [
-    {
-      id: 1,
-      title: "Physics Final Exam - 2025 A/L",
-      course: "Physics",
-      date: "2024-06-25",
-      time: "14:00",
-      duration: "3 hours",
-      totalMarks: 100,
-      students: 45,
-      status: "upcoming",
-      type: "Final Exam",
-      batch: "2025 A/L",
-      questionsCount: 50,
-    },
-    {
-      id: 2,
-      title: "Chemistry Practical Test",
-      course: "Chemistry",
-      date: "2024-06-20",
-      time: "10:00",
-      duration: "2 hours",
-      totalMarks: 50,
-      students: 38,
-      status: "scheduled",
-      type: "Practical",
-      batch: "2026 A/L",
-      questionsCount: 25,
-    },
-    {
-      id: 3,
-      title: "Biology Theory Paper",
-      course: "Biology",
-      date: "2024-06-15",
-      time: "15:00",
-      duration: "3 hours",
-      totalMarks: 75,
-      students: 52,
-      status: "completed",
-      type: "Theory",
-      batch: "2025 A/L",
-      questionsCount: 40,
-    },
-  ]
+  useEffect(() => {
+    fetchExams()
+  }, [])
+
+  const fetchExams = async () => {
+    try {
+      setLoading(true)
+      const response = await getExams()
+      console.log('Exams API Response:', response)
+      if (response && response.exams) {
+        setExams(response.exams)
+      } else {
+        setExams([])
+      }
+    } catch (error) {
+      console.error('Failed to fetch exams:', error)
+      setExams([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getFilteredExams = () => {
+    let filtered = exams.filter((exam) => {
+      const today = new Date()
+      const examDate = new Date(exam.date)
+      
+      if (selectedTab === "upcoming") {
+        return exam.status === "draft" || exam.status === "published" || exam.status === "scheduled" || examDate >= today
+      }
+      if (selectedTab === "completed") {
+        return exam.status === "completed" || examDate < today
+      }
+      return true
+    })
+
+    if (searchQuery) {
+      filtered = filtered.filter((exam) =>
+        exam.examname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        exam.class_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        exam.examid?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    return filtered
+  }
+
+  const getExamStats = () => {
+    const totalExams = exams.length
+    const today = new Date()
+    
+    const upcomingExams = exams.filter(e => {
+      const examDate = new Date(e.date)
+      return e.status === "draft" || e.status === "published" || e.status === "scheduled" || examDate >= today
+    }).length
+    
+    const completedExams = exams.filter(e => {
+      const examDate = new Date(e.date)
+      return e.status === "completed" || examDate < today
+    }).length
+    
+    const pendingResults = exams.filter(e => e.status === "completed" && !e.results_published).length
+    
+    return { totalExams, upcomingExams, completedExams, pendingResults }
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "upcoming":
+      case "draft":
+        return "bg-gray-100 text-gray-800"
+      case "published":
         return "bg-blue-100 text-blue-800"
       case "scheduled":
         return "bg-green-100 text-green-800"
+      case "active":
+        return "bg-orange-100 text-orange-800"
       case "completed":
-        return "bg-gray-100 text-gray-800"
+        return "bg-purple-100 text-purple-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
   }
 
-  const filteredExams = exams.filter((exam) => {
-    if (selectedTab === "upcoming") return exam.status === "upcoming" || exam.status === "scheduled"
-    if (selectedTab === "completed") return exam.status === "completed"
-    return true
-  })
+  const formatDateTime = (date, time) => {
+    if (!date) return 'Not set'
+    const examDate = new Date(date)
+    return examDate.toLocaleDateString()
+  }
+
+  const formatDuration = (durationMinutes) => {
+    if (!durationMinutes) return 'Not set'
+    const hours = Math.floor(durationMinutes / 60)
+    const minutes = durationMinutes % 60
+    if (hours > 0) {
+      return `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`
+    }
+    return `${minutes}m`
+  }
+
+  const { totalExams, upcomingExams, completedExams, pendingResults } = getExamStats()
+  const filteredExams = getFilteredExams()
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">A/L Exams Management</h1>
-          <p className="text-gray-600">Create and manage your A/L exams and assessments</p>
+          <h1 className="text-2xl font-bold text-gray-900">Exams Management</h1>
+          <p className="text-gray-600">Create and manage your exams and assessments</p>
         </div>
+        <button 
+          onClick={() => window.location.href = '/instructor/exams/create'}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Create Exam
+        </button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-xl">
+            <div className="p-2 bg-blue-100 rounded-lg">
               <GraduationCap className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Total A/L Exams</p>
-              <p className="text-xl font-bold">24</p>
+              <p className="text-sm text-gray-600">Total Exams</p>
+              <p className="text-xl font-bold">{totalExams}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-xl">
+            <div className="p-2 bg-green-100 rounded-lg">
               <Calendar className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">This Week</p>
-              <p className="text-xl font-bold">3</p>
+              <p className="text-sm text-gray-600">Upcoming</p>
+              <p className="text-xl font-bold">{upcomingExams}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-xl">
+            <div className="p-2 bg-purple-100 rounded-lg">
               <Users className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Avg. Participation</p>
-              <p className="text-xl font-bold">92%</p>
+              <p className="text-sm text-gray-600">Completed</p>
+              <p className="text-xl font-bold">{completedExams}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-xl">
+            <div className="p-2 bg-orange-100 rounded-lg">
               <Clock className="h-5 w-5 text-orange-600" />
             </div>
             <div>
               <p className="text-sm text-gray-600">Pending Results</p>
-              <p className="text-xl font-bold">5</p>
+              <p className="text-xl font-bold">{pendingResults}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Exams List */}
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-        <div className="p-6 border-b border-purple-200">
-          <div className="flex items-center justify-between">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold">A/L Exams & Assessments</h3>
-              <p className="text-gray-600">Manage your A/L exams and view student participation</p>
+              <h3 className="text-lg font-semibold">Exams & Assessments</h3>
+              <p className="text-gray-600">Manage your exams and view student participation</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex-1 max-w-md">
               <input
                 type="text"
                 placeholder="Search exams..."
-                className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
         </div>
         <div className="p-6">
           {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl mb-6">
-            <button
-              onClick={() => setSelectedTab("upcoming")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                selectedTab === "upcoming" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Upcoming
-            </button>
-            <button
-              onClick={() => setSelectedTab("completed")}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium ${
-                selectedTab === "completed" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Completed
-            </button>
-            <button
-              onClick={() => setSelectedTab("all")}
-              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium ${
-                selectedTab === "all" ? "bg-white text-purple-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              All Exams
-            </button>
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6">
+            {["upcoming", "completed", "all"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setSelectedTab(tab)}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  selectedTab === tab
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Exam Title</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Subject</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Batch</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Date & Time</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Questions</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Students</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExams.map((exam) => (
-                  <tr key={exam.id} className="border-b border-gray-100">
-                    <td className="py-3 px-4 font-medium">{exam.title}</td>
-                    <td className="py-3 px-4">{exam.course}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{exam.batch}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col">
-                        <span>{new Date(exam.date).toLocaleDateString()}</span>
-                        <span className="text-sm text-gray-500">{exam.time}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">{exam.duration}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                        {exam.questionsCount} MCQs
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">{exam.students}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(exam.status)}`}>
-                        {exam.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+          {/* Content */}
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="animate-pulse bg-gray-200 h-16 rounded"></div>
+              ))}
+            </div>
+          ) : filteredExams.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Exam</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Subject</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Date & Time</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Duration</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Students</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredExams.map((exam) => (
+                    <tr key={exam.id} className="hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{exam.examname}</p>
+                          <p className="text-sm text-gray-500">ID: {exam.examid}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {exam.class_name || 'No Class'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <p className="text-sm font-medium">{formatDateTime(exam.date)}</p>
+                          <p className="text-sm text-gray-500">{exam.start_time || 'Not set'}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm">{formatDuration(exam.duration_minutes)}</td>
+                      <td className="py-4 px-4 text-sm">{exam.total_students_attempted || 0}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(exam.status)}`}>
+                          {exam.status_display || exam.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => window.location.href = `/instructor/exams/${exam.id}`}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="View Exam"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => window.location.href = `/instructor/exams/${exam.id}/edit`}
+                            className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                            title="Edit Exam"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-sm font-medium text-gray-900 mb-1">No exams found</h3>
+              <p className="text-sm text-gray-500">
+                {searchQuery 
+                  ? `No exams match "${searchQuery}"`
+                  : selectedTab === 'upcoming' 
+                    ? 'No upcoming exams scheduled'
+                    : selectedTab === 'completed'
+                      ? 'No completed exams available'
+                      : 'No exams available'
+                }
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
