@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { Search, Eye, RefreshCw, CalendarClock, PlusCircle, Pencil } from "lucide-react"
-import axios from "axios"
-import { useAuth } from "@/context/AuthContext"
+import { useAdminData } from "@/context/AdminDataContext"
+import { adminApi } from "@/services/adminApi"
 
 export default function WebinarsPage() {
-    const [webinars, setWebinars] = useState([])
     const [filtered, setFiltered] = useState([])
     const [searchTerm, setSearchTerm] = useState("")
-    const [loading, setLoading] = useState(true)
+    const [syncing, setSyncing] = useState(false)
     const [selected, setSelected] = useState(null)
     const [formData, setFormData] = useState({
         topic: "",
@@ -19,27 +18,40 @@ export default function WebinarsPage() {
     })
     const [showForm, setShowForm] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
+    const [syncStatus, setSyncStatus] = useState(null)
 
-    const { accessToken } = useAuth()
+    // Use AdminDataContext for webinars data
+    const { webinars, loading, error, fetchWebinars } = useAdminData()
 
     useEffect(() => {
-        fetchWebinars()
-    }, [])
+        fetchWebinars();
+        fetchSyncStatus();
+    }, []); // Empty dependency array to run only once
 
-    const fetchWebinars = async () => {
+    const fetchSyncStatus = async () => {
         try {
-            setLoading(true)
-            const res = await axios.get("http://localhost:8000/edu_admin/webinars-list/", {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            })
-            setWebinars(res.data)
-            setFiltered(res.data)
+            const response = await adminApi.getSyncStatus()
+            setSyncStatus(response.data)
         } catch (error) {
-            console.error("Failed to fetch webinars", error)
+            console.error("Failed to fetch sync status", error)
+        }
+    }
+
+    const handleComprehensiveSync = async () => {
+        try {
+            setSyncing(true)
+            const response = await adminApi.comprehensiveSync()
+            
+            alert(`Sync completed! Created ${response.data.total_created_classes} new classes from Zoom webinars.`)
+            
+            // Refresh webinars list and sync status after sync
+            fetchWebinars()
+            fetchSyncStatus()
+        } catch (error) {
+            console.error("Failed to sync webinars", error)
+            alert("Failed to sync webinars. Please try again.")
         } finally {
-            setLoading(false)
+            setSyncing(false)
         }
     }
 
@@ -92,6 +104,14 @@ export default function WebinarsPage() {
                 </div>
                 <div className="space-x-2">
                     <button
+                        onClick={handleComprehensiveSync}
+                        disabled={syncing}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Syncing...' : 'Sync & Create Classes'}
+                    </button>
+                    <button
                         onClick={fetchWebinars}
                         className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
@@ -107,6 +127,33 @@ export default function WebinarsPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Sync Status */}
+            {syncStatus && (
+                <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <div className="text-sm">
+                                <span className="font-medium">Total Webinars:</span> {syncStatus.total_webinars}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium">With Classes:</span> {syncStatus.webinars_with_classes}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium">Need Classes:</span> 
+                                <span className={`ml-1 ${syncStatus.webinars_without_classes > 0 ? 'text-orange-600 font-bold' : 'text-green-600'}`}>
+                                    {syncStatus.webinars_without_classes}
+                                </span>
+                            </div>
+                        </div>
+                        {syncStatus.sync_needed && (
+                            <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Sync Recommended
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Search */}
             <div className="relative">

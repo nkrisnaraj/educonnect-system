@@ -16,14 +16,14 @@ from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .serializers import ReceiptPaymentSerializer
 from accounts.serializers import StudentProfileSerializer, UserSerializer
-from google.cloud import vision
+# from google.cloud import vision  # Temporarily commented to fix import error
 import hashlib
 from django.conf import settings
 from django.db import IntegrityError
-from .utils.google_creds import setup_google_credentials  # Utility function to setup Google API creds
+# from .utils.google_creds import setup_google_credentials  # Temporarily commented
 from datetime import datetime
 # Initialize Google Cloud credentials once when module loads
-setup_google_credentials()
+# setup_google_credentials()  # Temporarily commented
 
 User = get_user_model()  # Get the User model used by Django project
 
@@ -94,20 +94,23 @@ class ReceiptUploadView(APIView):
         # Create initial Payment record with zero amount (to be updated after OCR)
         payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
 
-        # Initialize Google Vision API client
-        client = vision.ImageAnnotatorClient()
+        # Initialize Google Vision API client - TEMPORARILY DISABLED
+        # client = vision.ImageAnnotatorClient()
         
 
         # Read image content from uploaded file
         image_content = image.read()
-        vision_image = vision.Image(content=image_content)
+        # vision_image = vision.Image(content=image_content)
 
-        # Use Google Vision API to detect text in image
-        response = client.text_detection(image=vision_image)
+        # Use Google Vision API to detect text in image - TEMPORARILY DISABLED
+        # response = client.text_detection(image=vision_image)
 
-        # If no text detected, return a message to re-upload
-        if not response.text_annotations:
-            return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+        # If no text detected, return a message to re-upload - TEMPORARILY DISABLED
+        # if not response.text_annotations:
+        #     return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+        
+        # Temporary fallback - just return success for testing
+        return Response({'message': "Receipt uploaded successfully (Vision API temporarily disabled for testing)"}, status=200)
 
         # Extract full text from first annotation
         full_text = response.text_annotations[0].description
@@ -734,20 +737,51 @@ from instructor.models import StudyNote
 from instructor.serializers import StudyNoteSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_notes(request,pk):
+def get_notes(request, classid):
+    """
+    Get all StudyNotes for a class given its classid (e.g., CRS-475680)
+    """
     try:
-        class_obj = Class.objects.get(id=pk)
+        # Get class object by classid
+        class_obj = Class.objects.get(classid=classid)
+        print("class_obj is:", class_obj)
         webinar = class_obj.webinar
-
+        print("webinar is:", webinar)
+        # If no webinar is linked, return empty notes
         if not webinar:
-            return Response({'error': 'This class has no associated webinar'}, status=status.HTTP_404_NOT_FOUND)
-        notes = StudyNote.objects.filter(related_class=webinar)
-        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                'notes': [],
+                'class_details': None,
+                'error': 'This class has no associated webinar'
+            }, status=status.HTTP_404_NOT_FOUND)
 
+        # Get all notes related to this webinar
+        notes = webinar.notes.all() 
+        print("notes are:", notes)  # uses related_name="notes" from StudyNote
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+        print("serializer data is:", serializer.data)
+        # Prepare class details
+        class_details = {
+            'id': class_obj.id,
+            'title': class_obj.title,
+            'description': class_obj.description,
+            'instructor': class_obj.instructor.get_full_name() if class_obj.instructor else None,
+            'schedule': f"{class_obj.start_date} to {class_obj.end_date}",
+            'duration': None
+        }
+
+        return Response({
+            'notes': serializer.data,
+            'class_details': class_details
+        }, status=status.HTTP_200_OK)
 
     except Class.DoesNotExist:
-        return Response({'error':"Class Not Found"},status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'notes': [],
+            'class_details': None,
+            'error': 'Class Not Found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
 
 
 from rest_framework.permissions import AllowAny

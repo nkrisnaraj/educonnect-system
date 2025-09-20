@@ -7,7 +7,6 @@ import PayButton from "@/components/paybutton";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Classes() {
-
   const [selectedClass, setSelectedClass] = useState([]);
   const [selectedClassDetails, setSelectedClassDetails] = useState([]);
   const [showPaidClassModal, setShowPaidClassModal] = useState(false);

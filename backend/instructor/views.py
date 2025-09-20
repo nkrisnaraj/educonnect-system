@@ -13,9 +13,8 @@ from accounts.serializers import UserSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from edu_admin.models import ZoomWebinar
 from django.db.models import Q
-from students.models import ChatRoom,Message
+from students.models import ChatRoom, Message, Notification
 from students.serializers import MessageSerializer
-from students.models import StudentProfile
 
 # Create your views here.
 @api_view(['GET'])
@@ -239,7 +238,6 @@ def instructor_send_message_to_student(request, student_id):
     # 8. Return the message
     serializer = MessageSerializer(message)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 
 @api_view(['POST'])

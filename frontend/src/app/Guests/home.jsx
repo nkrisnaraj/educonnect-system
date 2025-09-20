@@ -95,16 +95,10 @@ export default function HomePage() {
     <MainNavbar />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Hero Section */}
+      
       <section
         id="home"
-        className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden bg-no-repeat"
-        style={{
-          backgroundImage: "url('/home.png')",
-          backgroundPosition: "right",
-          backgroundSize: "55vw auto",
-          height: "100vh",
-          width: "100%",
-        }}
+        className="relative min-h-screen flex flex-col items-center pt-28  md:pt-20 justify-center px-4 sm:px-6 lg:px-8 overflow-hidden"
       >
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -117,7 +111,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Content Section */}
             <div className="text-center lg:text-left space-y-8 animate-fade-in">
-             {/* Main Heading */}
+              {/* Main Heading */}
               <div className="space-y-4">
                 <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                   Welcome to{" "}
@@ -164,15 +158,22 @@ export default function HomePage() {
                     Watch Demo
                   </button>
                 </Link>
-                
               </div>
+            </div>
+
+            {/* Right Side Image */}
+            <div className="flex justify-center lg:justify-end">
+              <img
+                src="/home.png"
+                alt="EduConnect Illustration"
+                className="w-full max-w-xl lg:max-w-3xl object-contain h-auto"
+              />
             </div>
           </div>
         </div>
       </section>
 
-      
-    
+
 
       {/* About Section */}
       <section id="about" className="py-16 bg-white dark:bg-gray-900">

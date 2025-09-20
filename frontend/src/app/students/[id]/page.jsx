@@ -59,6 +59,73 @@ useEffect(() => {
     return () => clearInterval(interval); // cleanup on unmount
   }, [classes.length]);
 
+  console.log(accessToken);
+
+  const fetchEnrolledClass = async () => {
+    try {
+      const enrollClass = await api.get("/students/enroll-class/" ,{
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      console.log("Enrolled Classes:", enrollClass.data);
+      //const result = enrollClass.data?.enrolled_classes || [];
+      setEnrollClasses(enrollClass.data || []);
+
+    } catch (error) {
+      console.error("Failed to fetch enrolled classes", error);
+      
+    }
+  }
+
+  useEffect(() => {
+  if (!loading && accessToken) {
+    fetchEnrolledClass();
+  }
+}, [loading, accessToken]);
+
+  const markMessagesReadStudent = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
+
+  const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
+  };
+
+  const loadMessages = async (token) => {
+    const response = await axios.get(
+      `http://127.0.0.1:8000/students/messages/${selectedChat}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const transformed = (Array.isArray(response.data) ? response.data : []).map(
+      (msg) => ({
+        sender: msg.sender.role,
+        text: msg.message,
+        time: new Date(msg.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        is_delivered: msg.is_delivered,
+        is_seen: msg.is_seen,
+      })
+    );
+    if (selectedChat === "instructor") {
+      setInstructorMessages(transformed);
+      await markMessagesReadStudent(token);
+    } else {
+      setAdminMessages(transformed);
+      await markMessagesReadStudent(token);
+    }
+  };
+
   
    
   const today = new Date();
@@ -181,6 +248,5 @@ useEffect(() => {
   </div>
   );
 }
-
 
 
