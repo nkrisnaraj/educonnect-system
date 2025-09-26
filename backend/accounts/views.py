@@ -230,29 +230,29 @@ def register_user(request):
         if nic_error:
             return Response({"error": nic_error}, status=status.HTTP_400_BAD_REQUEST)
 
-    # If this registration includes a student_profile, enforce Gmail and Zoom verification
-    if request.data.get('student_profile'):
-        email = request.data.get('email') or request.data.get('username')
+    # Zoom verification temporarily disabled for development
+    # if request.data.get('student_profile'):
+    #     email = request.data.get('email') or request.data.get('username')
         
-        # Verify it's a Gmail address
-        if not email.lower().endswith('@gmail.com'):
-            return Response({
-                'error': 'Students must register with a valid Gmail address.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+    #     # Verify it's a Gmail address
+    #     if not email.lower().endswith('@gmail.com'):
+    #         return Response({
+    #             'error': 'Students must register with a valid Gmail address.'
+    #         }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if user has Zoom account (using existing function)
-        if not has_zoom_account_for_email(email):
-            return Response({
-                'error': f'No Zoom account found for {email}. Please ensure you have a Zoom account registered with this Gmail address.',
-                'zoom_verification_required': True
-            }, status=status.HTTP_400_BAD_REQUEST)
+    #     # Check if user has Zoom account (using existing function)
+    #     if not has_zoom_account_for_email(email):
+    #         return Response({
+    #             'error': f'No Zoom account found for {email}. Please ensure you have a Zoom account registered with this Gmail address.',
+    #             'zoom_verification_required': True
+    #         }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if email was verified through Zoom OAuth (if OAuth is working)
-        verified_email = request.session.get('verified_zoom_email')
-        if verified_email and email != verified_email:
-            return Response({
-                'error': f'Email mismatch. You verified {verified_email} with Zoom, but trying to register with {email}.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+    #     # Check if email was verified through Zoom OAuth (if OAuth is working)
+    #     verified_email = request.session.get('verified_zoom_email')
+    #     if verified_email and email != verified_email:
+    #         return Response({
+    #             'error': f'Email mismatch. You verified {verified_email} with Zoom, but trying to register with {email}.'
+    #         }, status=status.HTTP_400_BAD_REQUEST)
 
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
