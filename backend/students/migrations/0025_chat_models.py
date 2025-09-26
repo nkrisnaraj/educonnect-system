@@ -14,127 +14,60 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelOptions(
-            name='message',
-            options={'ordering': ['created_at']},
-        ),
-        migrations.RenameField(
-            model_name='message',
-            old_name='message',
-            new_name='content',
-        ),
-        # migrations.RenameField(
-        #     model_name='message',
-        #     old_name='read_status',
-        #     new_name='is_deleted',
-        # ),
-        migrations.AddField(
-            model_name='chatroom',
-            name='is_active',
-            field=models.BooleanField(default=True),
-        ),
-        migrations.AddField(
-            model_name='chatroom',
-            name='participants',
-            field=models.ManyToManyField(related_name='chat_rooms', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
-            model_name='chatroom',
-            name='related_class',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='chat_rooms', to='instructor.class'),
-        ),
-        migrations.AddField(
-            model_name='chatroom',
-            name='room_type',
-            field=models.CharField(choices=[('direct', 'Direct Message'), ('group', 'Group Chat'), ('class', 'Class Discussion')], default='direct', max_length=10),
-        ),
-        migrations.AddField(
-            model_name='chatroom',
-            name='updated_at',
-            field=models.DateTimeField(auto_now=True),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='delivered_to',
-            field=models.ManyToManyField(blank=True, related_name='delivered_messages', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='edited_at',
-            field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='file_attachment',
-            field=models.FileField(blank=True, null=True, upload_to='chat_files/'),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='file_name',
-            field=models.CharField(blank=True, max_length=255, null=True),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='file_size',
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='is_edited',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='message_type',
-            field=models.CharField(choices=[('text', 'Text Message'), ('file', 'File Attachment'), ('image', 'Image'), ('system', 'System Message')], default='text', max_length=10),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='read_by',
-            field=models.ManyToManyField(blank=True, related_name='read_messages', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='reply_to',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='replies', to='students.message'),
-        ),
-        migrations.AddField(
-            model_name='message',
-            name='updated_at',
-            field=models.DateTimeField(auto_now=True),
-        ),
+        # First create the ChatRoom model
         migrations.CreateModel(
-            name='ChatNotification',
+            name='ChatRoom',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('notification_type', models.CharField(choices=[('new_message', 'New Message'), ('mention', 'Mentioned'), ('room_invite', 'Room Invitation')], max_length=20)),
-                ('title', models.CharField(max_length=255)),
+                ('name', models.CharField(max_length=255)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('is_active', models.BooleanField(default=True)),
+                ('room_type', models.CharField(default='private', max_length=50)),
+                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chatrooms_created', to=settings.AUTH_USER_MODEL)),
+            ],
+        ),
+        # Then create the Message model
+        migrations.CreateModel(
+            name='Message',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('content', models.TextField()),
-                ('is_read', models.BooleanField(default=False)),
+                ('message_type', models.CharField(default='text', max_length=50)),
+                ('file_attachment', models.FileField(blank=True, null=True, upload_to='chat_files/')),
+                ('file_name', models.CharField(blank=True, max_length=255, null=True)),
+                ('file_size', models.IntegerField(blank=True, null=True)),
+                ('is_edited', models.BooleanField(default=False)),
+                ('is_deleted', models.BooleanField(default=False)),
+                ('is_delivered', models.BooleanField(default=False)),
+                ('is_seen', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('chat_room', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='students.chatroom')),
-                ('message', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='students.message')),
-                ('recipient', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_notifications', to=settings.AUTH_USER_MODEL)),
-                ('sender', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='sent_chat_notifications', to=settings.AUTH_USER_MODEL)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('edited_at', models.DateTimeField(blank=True, null=True)),
+                ('chat_room', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='students.chatroom')),
+                ('sender', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages_sent', to=settings.AUTH_USER_MODEL)),
+                ('reply_to', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='students.message')),
             ],
             options={
-                'ordering': ['-created_at'],
+                'ordering': ['created_at'],
             },
         ),
+        # Create Notification model
         migrations.CreateModel(
-            name='MessageReaction',
+            name='Notification',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('reaction_type', models.CharField(choices=[('like', '👍'), ('love', '❤️'), ('laugh', '😂'), ('wow', '😮'), ('sad', '😢'), ('angry', '😠')], max_length=10)),
+                ('note_id', models.AutoField(primary_key=True, serialize=False)),
+                ('title', models.CharField(max_length=255)),
+                ('message', models.TextField()),
+                ('type', models.CharField(blank=True, choices=[('exam', 'Exam'), ('webinar', 'Webinar'), ('notes', 'Notes'), ('message', 'Message')], max_length=50, null=True)),
+                ('read_status', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('message', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reactions', to='students.message')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                ('student_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to='students.studentprofile')),
             ],
-            options={
-                'unique_together': {('message', 'user')},
-            },
         ),
-        migrations.DeleteModel(
-            name='PaymentTest',
+        # Delete the PaymentTest model if it exists
+        migrations.RunSQL(
+            "DROP TABLE IF EXISTS students_paymenttest CASCADE;",
+            reverse_sql="",
         ),
     ]

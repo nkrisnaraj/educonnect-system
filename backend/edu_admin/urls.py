@@ -5,7 +5,8 @@ from .views import (
     CreateClassWithWebinarView, ClassListView, StudentListView, PaymentListView,
     ReceiptPaymentAdminViewSet, admin_get_chat_with_student, admin_list_students_with_chats, admin_send_message_to_student, mark_messages_read,
     ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
-    UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test
+    UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test,
+    admin_get_notifications, admin_create_notification, admin_delete_notification
 )
 
 
@@ -33,6 +34,11 @@ urlpatterns = [
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('reports/', ComprehensiveReportsView.as_view(), name='comprehensive-reports'),
     path('admin-test/', admin_test, name='admin-test'),
+    
+    # Notification management
+    path('notifications/', admin_get_notifications, name='admin-get-notifications'),
+    path('notifications/create/', admin_create_notification, name='admin-create-notification'),
+    path('notifications/<int:notification_id>/delete/', admin_delete_notification, name='admin-delete-notification'),
 
     path("", include(router.urls)),  # <-- include router URLs here
 ]

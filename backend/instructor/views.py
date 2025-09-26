@@ -6,13 +6,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from accounts.models import User
-from .models import InstructorProfile, StudyNote, Class
+from .models import InstructorProfile, StudyNote, Class, Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer
 from students.models import StudentProfile
-from .serializers import InstructorProfileSerializer, StudyNoteSerializer, ZoomWebinarSerializer, ClassSerializer
+from .serializers import (InstructorProfileSerializer, StudyNoteSerializer, ZoomWebinarSerializer, 
+                         ClassSerializer, ExamSerializer, ExamListSerializer, ExamQuestionSerializer, 
+                         ExamSubmissionSerializer, ExamAnswerSerializer)
 from accounts.serializers import UserSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
 from edu_admin.models import ZoomWebinar
-from django.db.models import Q
+from django.db.models import Q, Avg, Max, Min
 from students.models import ChatRoom, Message, Notification
 from students.serializers import MessageSerializer
 
@@ -225,7 +227,7 @@ def instructor_send_message_to_student(request, student_id):
     chat_room, created = ChatRoom.objects.get_or_create(created_by=student, name='instructor')
 
     # 6. Create the message
-    message = Message.objects.create(chat_room=chat_room, sender=request.user, message=message_text)
+    message = Message.objects.create(chat_room=chat_room, sender=request.user, content=message_text)
 
     # 7. Create the notification for the specific student
     Notification.objects.create(
@@ -262,3 +264,216 @@ def mark_messages_read(request, student_id):
     ).update(is_seen=True)
 
     return Response({'status': 'ok'})
+
+
+# Enhanced Exam API Views for Google Forms-style functionality
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_list_create(request):
+    """List all exams for instructor or create a new exam"""
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    
+    if request.method == 'GET':
+        exams = Exam.objects.filter(instructor=request.user).order_by('-created_at')
+        serializer = ExamListSerializer(exams, many=True)
+        return Response({"exams": serializer.data})
+    
+    elif request.method == 'POST':
+        data = request.data.copy()
+        data['instructor'] = request.user.id
+        serializer = ExamSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_detail(request, exam_id):
+    """Get, update, or delete a specific exam"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    if request.method == 'GET':
+        serializer = ExamSerializer(exam)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = ExamSerializer(exam, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        exam.delete()
+        return Response({'message': 'Exam deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_questions(request, exam_id):
+    """Get all questions for an exam or add a new question"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    if request.method == 'GET':
+        questions = exam.questions.all().order_by('order')
+        serializer = ExamQuestionSerializer(questions, many=True)
+        return Response({"questions": serializer.data})
+    
+    elif request.method == 'POST':
+        data = request.data.copy()
+        data['exam'] = exam.id
+        serializer = ExamQuestionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def question_detail(request, exam_id, question_id):
+    """Get, update, or delete a specific question"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+        question = exam.questions.get(id=question_id)
+    except (Exam.DoesNotExist, ExamQuestion.DoesNotExist):
+        return Response({'error': 'Question not found'}, status=404)
+    
+    if request.method == 'GET':
+        serializer = ExamQuestionSerializer(question)
+        return Response(serializer.data)
+    
+    elif request.method == 'PUT':
+        serializer = ExamQuestionSerializer(question, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        question.delete()
+        return Response({'message': 'Question deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def duplicate_exam(request, exam_id):
+    """Create a duplicate of an existing exam"""
+    try:
+        original_exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    # Create a duplicate exam
+    duplicate_exam = Exam.objects.create(
+        examname=f"{original_exam.examname} (Copy)",
+        description=original_exam.description,
+        classid=original_exam.classid,
+        instructor=request.user,
+        date=original_exam.date,
+        start_time=original_exam.start_time,
+        duration_minutes=original_exam.duration_minutes,
+        total_marks=original_exam.total_marks,
+        passing_marks=original_exam.passing_marks,
+        allow_multiple_attempts=original_exam.allow_multiple_attempts,
+        shuffle_questions=original_exam.shuffle_questions,
+        show_results_immediately=original_exam.show_results_immediately,
+        require_authentication=original_exam.require_authentication,
+        collect_email=original_exam.collect_email,
+        confirmation_message=original_exam.confirmation_message,
+    )
+    
+    # Duplicate all questions and their options
+    for question in original_exam.questions.all():
+        new_question = ExamQuestion.objects.create(
+            exam=duplicate_exam,
+            question_text=question.question_text,
+            question_type=question.question_type,
+            order=question.order,
+            is_required=question.is_required,
+            marks=question.marks,
+            description=question.description,
+            scale_min=question.scale_min,
+            scale_max=question.scale_max,
+            scale_min_label=question.scale_min_label,
+            scale_max_label=question.scale_max_label,
+            allow_other_option=question.allow_other_option,
+            shuffle_options=question.shuffle_options,
+        )
+        
+        # Duplicate options
+        for option in question.options.all():
+            QuestionOption.objects.create(
+                question=new_question,
+                option_text=option.option_text,
+                is_correct=option.is_correct,
+                order=option.order,
+            )
+    
+    serializer = ExamSerializer(duplicate_exam)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def publish_exam(request, exam_id):
+    """Publish an exam to make it available to students"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    if exam.questions.count() == 0:
+        return Response({'error': 'Cannot publish exam without questions'}, status=400)
+    
+    exam.is_published = True
+    exam.status = 'published'
+    exam.save()
+    
+    return Response({'message': 'Exam published successfully'})
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_submissions(request, exam_id):
+    """Get all submissions for a specific exam"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    submissions = ExamSubmission.objects.filter(exam=exam).order_by('-submitted_at')
+    serializer = ExamSubmissionSerializer(submissions, many=True)
+    return Response({"submissions": serializer.data})
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_analytics(request, exam_id):
+    """Get analytics data for an exam"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    
+    submissions = ExamSubmission.objects.filter(exam=exam, is_completed=True)
+    
+    analytics = {
+        'total_submissions': submissions.count(),
+        'average_score': submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0,
+        'highest_score': submissions.aggregate(Max('percentage'))['percentage__max'] or 0,
+        'lowest_score': submissions.aggregate(Min('percentage'))['percentage__min'] or 0,
+        'pass_rate': submissions.filter(percentage__gte=exam.passing_marks).count() / submissions.count() * 100 if submissions.count() > 0 else 0,
+    }
+    
+    return Response(analytics)

@@ -152,6 +152,7 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [studentsData, setStudentsData] = useState([])
+  const [newThisMonth, setNewThisMonth] = useState(0)
   
   // Use AdminDataContext for users (students) data
   const { users, loading, error, fetchUsers } = useAdminData()
@@ -185,6 +186,21 @@ export default function StudentsPage() {
     });
 
     setStudentsData(processedStudents);
+
+    // Calculate new students this month
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    const newStudentsThisMonth = studentsOnly.filter(student => {
+      if (student.date_joined) {
+        const joinDate = new Date(student.date_joined);
+        return joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear;
+      }
+      return false;
+    }).length;
+
+    setNewThisMonth(newStudentsThisMonth);
   }, [users]);
 
   useEffect(() => {
@@ -244,7 +260,7 @@ export default function StudentsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">New This Month</p>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">{newThisMonth}</p>
               </div>
             </div>
           </div>
