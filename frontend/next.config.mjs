@@ -4,7 +4,16 @@ const isDev = process.env.NODE_ENV !== 'production';
 const nextConfig = {
   images: {
     domains: ['127.0.0.1', 'localhost'],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "img.freepik.com",
+      },
+    ],
   },
+  
+    
+  
   async headers() {
     return [
       {

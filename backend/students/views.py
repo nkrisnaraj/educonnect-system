@@ -752,20 +752,65 @@ from instructor.models import StudyNote
 from instructor.serializers import StudyNoteSerializer
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_notes(request,pk):
+def get_notes(request, classid):
+    """
+    Get all StudyNotes for a class given its classid (e.g., CRS-475680)
+    """
     try:
-        class_obj = Class.objects.get(id=pk)
+        # Get class object by classid
+        class_obj = Class.objects.get(classid=classid)
+        print("class_obj is:", class_obj)
         webinar = class_obj.webinar
-
+        print("webinar is:", webinar)
+        # If no webinar is linked, return empty notes
         if not webinar:
-            return Response({'error': 'This class has no associated webinar'}, status=status.HTTP_404_NOT_FOUND)
-        notes = StudyNote.objects.filter(related_class=webinar)
-        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response({
+                'notes': [],
+                'class_details': None,
+                'error': 'This class has no associated webinar'
+            }, status=status.HTTP_404_NOT_FOUND)
 
+        # Get all notes related to this webinar
+        notes = webinar.notes.all() 
+        print("notes are:", notes)  # uses related_name="notes" from StudyNote
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+        print("serializer data is:", serializer.data)
+        # Prepare class details
+        class_details = {
+            'id': class_obj.id,
+            'title': class_obj.title,
+            'description': class_obj.description,
+            'instructor': class_obj.instructor.get_full_name() if class_obj.instructor else None,
+            'schedule': f"{class_obj.start_date} to {class_obj.end_date}",
+            'duration': None
+        }
+
+        return Response({
+            'notes': serializer.data,
+            'class_details': class_details
+        }, status=status.HTTP_200_OK)
 
     except Class.DoesNotExist:
-        return Response({'error':"Class Not Found"},status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'notes': [],
+            'class_details': None,
+            'error': 'Class Not Found'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+from rest_framework.permissions import AllowAny
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getAllClass(request):
+    try:
+        classes = Class.objects.all()
+        serializer = ClassSerializer(classes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 '''
 @api_view(['POST'])

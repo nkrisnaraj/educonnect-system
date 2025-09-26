@@ -2,15 +2,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, FileText, Calendar, Clock, User } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function ClassNotes() {
-  const { id: classId } = useParams();
-  const { id: studentId } = useParams();
+  const { classid } = useParams();
   const router = useRouter();
   const { accessToken, api, loading } = useAuth();
   const [notes, setNotes] = useState([]);
-  const [classDetails, setClassDetails] = useState(null);
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,15 +17,19 @@ export default function ClassNotes() {
       try {
         setLoadingNotes(true);
         setError(null);
-        
-        const response = await api.get(`/students/class/${classId}/notes/`, {
+
+        const response = await api.get(`/students/class/${classid}/notes/`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
         });
-        
-        setNotes(response.data.notes || []);
-        setClassDetails(response.data.class_details || null);
+
+        // Filter notes to only PDFs or images
+        const filteredNotes = (response.data.notes || []).filter(note => {
+          return note.file_url && (note.file_url.endsWith(".pdf") || /\.(jpg|jpeg|png|gif)$/i.test(note.file_url));
+        });
+
+        setNotes(filteredNotes);
       } catch (error) {
         console.error("Error fetching notes:", error);
         setError("Failed to load notes. Please try again.");
@@ -36,10 +38,10 @@ export default function ClassNotes() {
       }
     };
 
-    if (accessToken && classId) {
+    if (accessToken && classid) {
       fetchNotes();
     }
-  }, [accessToken, classId, api]);
+  }, [accessToken, classid, api]);
 
   if (loading || loadingNotes) {
     return (
@@ -72,52 +74,6 @@ export default function ClassNotes() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back to Classes
-              </button>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <h1 className="text-xl font-semibold text-gray-900">Class Notes</h1>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Class Details */}
-      {classDetails && (
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{classDetails.title}</h2>
-              <p className="text-gray-600 mb-4">{classDetails.description}</p>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <User className="w-4 h-4 mr-1" />
-                  Instructor: {classDetails.instructor || 'Mr. Sivathiran'}
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-1" />
-                  Schedule: {classDetails.schedule || 'Not specified'}
-                </div>
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  Duration: {classDetails.duration || 'Not specified'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notes Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {notes.length === 0 ? (
           <div className="text-center py-12">
@@ -126,45 +82,25 @@ export default function ClassNotes() {
             <p className="text-gray-600">Notes for this class haven't been uploaded yet.</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Notes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {notes.map((note, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">
-                      {note.title || `Note ${index + 1}`}
-                    </h4>
-                    {note.description && (
-                      <p className="text-gray-600 mb-3">{note.description}</p>
-                    )}
-                    <div className="flex items-center text-sm text-gray-500">
-                      {note.created_at && (
-                        <span className="flex items-center mr-4">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(note.created_at).toLocaleDateString()}
-                        </span>
-                      )}
-                      {note.file_size && (
-                        <span className="flex items-center">
-                          <FileText className="w-4 h-4 mr-1" />
-                          {note.file_size}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {note.file_url && (
-                    <a
-                      href={note.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      View Note
-                    </a>
-                  )}
-                </div>
+              <div key={index} className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
+                {note.file_url.endsWith(".pdf") ? (
+                  <a
+                    href={note.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center text-white bg-red-600 hover:bg-red-700 rounded-lg px-4 py-6"
+                  >
+                    📄 {note.title || `PDF Note ${index + 1}`}
+                  </a>
+                ) : (
+                  <img
+                    src={note.file_url}
+                    alt={note.title || `Image Note ${index + 1}`}
+                    className="rounded-lg object-cover w-full h-48"
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -172,4 +108,4 @@ export default function ClassNotes() {
       </div>
     </div>
   );
-} 
+}

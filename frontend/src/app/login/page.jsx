@@ -10,6 +10,7 @@ import "../globals.css";
 import MainNavbar from "@/components/MainNavbar";
 import Footer from "@/components/Footer";
 import Cookies from "js-cookie";
+import { X } from "lucide-react";
 
 export default function Login() {
   const router = useRouter();
@@ -248,8 +249,15 @@ export default function Login() {
     </div>
     {showEmailModel && (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-          {/* <h2 className="text-xl font-semibold mb-4">Forgot Password</h2> */}
+        <div className="relative bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+          {/* Close Button */}
+          <button
+            onClick={() => setShowEmailModel(false)}
+            className="absolute top-3 border border-gray-300 right-3 text-gray-700 hover:text-red-500 dark:hover:text-red-300 text-xl font-bold"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Please Enter the Email to send your OTP
           </p>
