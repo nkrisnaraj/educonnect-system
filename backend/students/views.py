@@ -742,46 +742,16 @@ def get_notes(request, classid):
     Get all StudyNotes for a class given its classid (e.g., CRS-475680)
     """
     try:
-        # Get class object by classid
-        class_obj = Class.objects.get(classid=classid)
-        print("class_obj is:", class_obj)
-        webinar = class_obj.webinar
-        print("webinar is:", webinar)
-        # If no webinar is linked, return empty notes
-        if not webinar:
-            return Response({
-                'notes': [],
-                'class_details': None,
-                'error': 'This class has no associated webinar'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        # Get all notes related to this webinar
-        notes = webinar.notes.all() 
-        print("notes are:", notes)  # uses related_name="notes" from StudyNote
-        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
-        print("serializer data is:", serializer.data)
-        # Prepare class details
-        class_details = {
-            'id': class_obj.id,
-            'title': class_obj.title,
-            'description': class_obj.description,
-            'instructor': class_obj.instructor.get_full_name() if class_obj.instructor else None,
-            'schedule': f"{class_obj.start_date} to {class_obj.end_date}",
-            'duration': None
-        }
-
-        return Response({
-            'notes': serializer.data,
-            'class_details': class_details
-        }, status=status.HTTP_200_OK)
-
+        cls = Class.objects.get(classid=classid)
     except Class.DoesNotExist:
-        return Response({
-            'notes': [],
-            'class_details': None,
-            'error': 'Class Not Found'
-        }, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"notes": [], "class_details": None, "error": "Class Not Found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
+    notes = StudyNote.objects.filter(related_class=cls)
+    serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+    return Response(serializer.data)
 
 
 from rest_framework.permissions import AllowAny

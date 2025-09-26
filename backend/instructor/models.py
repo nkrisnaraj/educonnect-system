@@ -107,8 +107,8 @@ class StudyNote(models.Model):
 
     # Relations
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    related_class = models.ForeignKey(ZoomWebinar, on_delete=models.CASCADE, related_name="notes")
+    related_class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="notes")
 
     def __str__(self):
-        return f"{self.title} ({self.related_class.topic})"
+        return f"{self.title} ({self.related_class.title})"
 
