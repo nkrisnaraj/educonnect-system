@@ -157,6 +157,9 @@ class ChatRoom(models.Model):
     is_active = models.BooleanField(default=True)
     room_type = models.CharField(max_length=50, default='private')
 
+    def __str__(self):
+        return self.name
+
 class Message(models.Model):
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
@@ -173,6 +176,9 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     edited_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"From {self.sender} in {self.chat_room}: {self.message[:30]}"
 
 
 class Notification(models.Model):
