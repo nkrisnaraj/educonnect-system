@@ -1,21 +1,57 @@
+"use client";
+import { useAuth } from "@/context/AuthContext";
 import { Download } from "lucide-react";
+import { useState } from "react";
+import axios from "axios";
+import { useEffect } from "react";
+import {Line} from "react-chartjs-2";
+import {Chart as ChartJS,LineElement,PointElement,CategoryScale,LinearScale,Tooltip,Legend,} from 'chart.js';
+
+
+ChartJS.register(LineElement, PointElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function Result() {
 
-    const subject = [
-  { name: "Mathematics", grade: "B+",  },
-  { name: "Biology", grade: "A",  },
-  { name: "History", grade: "B",  },
-  { name: "English", grade: "A-",  },
-]
+const [marks,setMarks ] = useState([])
+const {user,token,accessToken,refreshToken,refreshAccessToken,api,loading}  = useAuth();
 
-const resultsData = [
-  { date: "April 20", course: "Mathematics", result: "B+" },
-  { date: "April 18", course: "English", result: "A-" },
-  { date: "April 15", course: "Biology", result: "A" },
-  { date: "April 10", course: "History", result: "B" },
-  { date: "March 28", course: "Mathematics", result: "B" },
-]
+const fetchMarks = async () => {
+  if (!accessToken) {
+    console.warn("No access token yet, skipping fetchMarks");
+    return;
+  }
+  // Debug logging
+  console.log("accessToken", accessToken);
+  console.log("api.defaults.headers", api.defaults.headers);
+  try {
+    const res = await api.get("/students/marks/",{
+      headers:{ 
+        Authorization: `Bearer ${accessToken}`
+       }
+    });
+    if (res.status === 200) {
+      setMarks(res.data.marks);
+    }
+  } catch (err) {
+    console.error("Failed to fetch marks:", err);
+  }
+};
+
+
+useEffect(() => {
+  if (!loading && accessToken) {
+    fetchMarks();
+  }
+}, [loading, accessToken]);
+
+
+function PerformanceChart({ marks }) {
+  if (!marks.length) return <p>No marks yet.</p>;
+
+  return marks.map((cls) => (
+    <ClassLineChart key={cls.class_name} data={cls} />
+  ));
+}
 
     return(
         <div className="bg-gray-50 p-6">
@@ -30,23 +66,13 @@ const resultsData = [
 
                 </div>
             </div>
-            {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {subject.map((subject) => (
-                    <div 
-                        key={subject.name}
-                        className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition duration-300">
-                        <h3 className="text-lg font-semibold text-blue-700">{subject.name}</h3>
-                    
-                    
-                    </div>
-                ))}
-            </div> */}
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Performance Chart */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Performance</h2>
             <div className="relative h-64">
-              <PerformanceChart />
+              <PerformanceChart marks = {marks} />
             </div>
           </div>
 
@@ -63,13 +89,23 @@ const resultsData = [
                   </tr>
                 </thead>
                 <tbody>
-                  {resultsData.map((result, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-3 text-gray-900">{result.date}</td>
-                      <td className="py-3 text-gray-900">{result.course}</td>
-                      <td className="py-3 font-medium text-gray-900">{result.result}</td>
+                  {marks.length === 0 ? (
+                    <tr>
+                      <td colSpan='3' className="text-center text-gray-500">No Results</td>
                     </tr>
-                  ))}
+                  ):(
+                      marks.flatMap((cls) => 
+                      cls.marks.map((mark, idx) => ( 
+                      <tr key={`${cls.class_name}-${idx}`} className="border-b border-gray-100">
+                        <td className="py-3 text-gray-900">{mark.month}</td>
+                        <td className="py-3 text-gray-900">{cls.class_name}</td>
+                        <td className="py-3 font-medium text-gray-900">{mark.marks}</td>
+                      </tr>
+                      ))
+                    
+                  )
+                  )}
+                  
                 </tbody>
               </table>
             </div>
@@ -79,56 +115,28 @@ const resultsData = [
     )
 }
 
-function PerformanceChart() {
-  const grades = ["F", "D", "C", "B", "A", "A"]
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+function ClassLineChart({data}) {
+  const labels = data.marks.map((m)=> m.month);
+  const scores = data.marks.map((m)=> m.marks);
+
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: data.class_name,
+        data: scores,
+        fill: false,
+        borderColor: 'rgb(59, 130, 246)',
+        tension: 0.1,
+      },
+    ],
+  };
 
   return (
-    <div className="relative w-full h-full">
-      {/* Y-axis labels */}
-      <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-sm text-gray-500">
-        <span>A</span>
-        <span>A</span>
-        <span>B</span>
-        <span>C</span>
-        <span>D</span>
-        <span>F</span>
-      </div>
-
-      {/* Chart area */}
-      <div className="ml-8 mr-4 h-full relative">
-        {/* Grid lines */}
-        <div className="absolute inset-0 grid grid-rows-5 border-l border-b border-gray-200">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="border-t border-gray-100" />
-          ))}
-        </div>
-
-        {/* Performance line */}
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <polyline
-            fill="none"
-            stroke="#3b82f6"
-            strokeWidth="2"
-            points="0,85 20,70 40,55 60,40 80,25 100,15"
-            vectorEffect="non-scaling-stroke"
-          />
-          {/* Data points */}
-          <circle cx="0" cy="85" r="3" fill="#3b82f6" />
-          <circle cx="20" cy="70" r="3" fill="#3b82f6" />
-          <circle cx="40" cy="55" r="3" fill="#3b82f6" />
-          <circle cx="60" cy="40" r="3" fill="#3b82f6" />
-          <circle cx="80" cy="25" r="3" fill="#3b82f6" />
-          <circle cx="100" cy="15" r="3" fill="#3b82f6" />
-        </svg>
-
-        {/* X-axis labels */}
-        <div className="absolute -bottom-6 left-0 right-0 flex justify-between text-sm text-gray-500">
-          {months.map((month) => (
-            <span key={month}>{month}</span>
-          ))}
-        </div>
-      </div>
+    <div className="my-4">
+      <h3 className="text-lg font-semibold">{data.class_name}</h3>
+      <Line data={chartData} />
     </div>
-  )
+  );
+
 }

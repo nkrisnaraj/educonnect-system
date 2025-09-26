@@ -3,44 +3,17 @@
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Play } from "lucide-react"
 import axios from "axios"
+import { useAuth } from "@/context/AuthContext"
 
-const events = {
-  "2025-06-02": [
-    {
-      id: 1,
-      title: "ANSWERS- Multiple Choice Quiz",
-      type: "quiz",
-      color: "bg-purple-500",
-    },
-  ],
-  "2025-06-15": [
-    {
-      id: 2,
-      title: "Mathematics Exam",
-      type: "exam",
-      color: "bg-blue-500",
-    },
-  ],
-  "2025-06-22": [
-    {
-      id: 3,
-      title: "Biology Lab",
-      type: "lab",
-      color: "bg-green-500",
-    },
-  ],
-}
 
-// const eventTypeColors = {
-//   webinar: "bg-purple-500",
-//   exam: "bg-blue-500",
-//   notes: "bg-green-500",
-// };
-// const color = eventTypeColors[event.event_type] || "bg-gray-400";
 
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 1)) // June 2025
+  const [events, setEvents] = useState({})
+  const {user,api,loading,accessToken,token,refreshToken,refreshAccessToken} = useAuth()
+  const [showModal, setShowModal] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
 
   const monthNames = [
     "January",
@@ -113,7 +86,8 @@ export default function Calendar() {
           {dayEvents.map((event) => (
             <div
               key={event.id}
-              className={`${event.color} text-white text-xs px-2 py-1 rounded-md flex items-center gap-1 mb-1`}
+              className={`${event.color} text-white text-xs px-2 py-1 rounded-md flex items-center gap-1 mb-1 cursor-pointer`}
+              onClick={() =>{setSelectedEvent(event); setShowModal(true);}}
             >
               <Play className="w-3 h-3" />
               <span className="truncate">{event.title}</span>
@@ -126,29 +100,50 @@ export default function Calendar() {
     return days
   }
 
-  const token =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("accessToken")
-      : null;
-      
-  // useEffect(() => {
-  //   if (!token) {
-  //     console.error("No access token found in session storage");
-  //   }
-  //   const fetchdetails = async () => {
-  //     try {
-  //       const response = await axios.get("http://127.0.0.1:8000/edu_admin/calender/",{
-  //       headers:{
-  //         Authorization:`Bearer ${token}`,
-  //       },
-  //     }); 
-  //     } catch (error) {
-  //       console.error("Failed to fetch calendar details", error);
-  //     }
-  //   }
-      
-  //   fetchdetails();
-  // }, [token]);
+  
+ const fetchEvents = async () => {
+  try {
+    const response = await api.get("/students/calendar-events/",{
+      headers:{
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    console.log(response.data);
+    if (response.status === 200) {
+      const eventMap = {};
+      response.data.forEach(event => {
+        const dateKey = event.date.slice(0, 10); // "YYYY-MM-DD"
+        if (!eventMap[dateKey]) {
+          eventMap[dateKey] = [];
+        }
+
+        // Map backend color (string) to Tailwind classes
+        let colorClass = "bg-gray-400";
+        if (event.color === "blue") colorClass = "bg-blue-500";
+        else if (event.color === "purple") colorClass = "bg-purple-500";
+        else if (event.color === "red") colorClass = "bg-red-500";
+        else if (event.color === "green") colorClass = "bg-green-500";
+
+        eventMap[dateKey].push({
+          id: event.id,
+          title: event.title,
+          webinarid:event.webinarid,
+          date:event.date,
+          type: event.type,
+          color: colorClass,
+        });
+      });
+      setEvents(eventMap);
+    }
+  } catch (error) {
+    console.error("Error fetching events:", error);
+  }
+};
+
+  
+  useEffect(() => {
+    fetchEvents();
+  },[])
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -195,6 +190,38 @@ export default function Calendar() {
 
         
       </div>
+      {showModal && selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">Event Details</h2>
+            <p className="text-gray-600">Title: {selectedEvent.title}</p>
+            <p className="text-gray-600">Webinar_Id: {selectedEvent.webinarid}</p>
+            <p className="text-gray-600">Type: {selectedEvent.type}</p>
+            <p className="text-gray-600">
+  Time: {
+    selectedEvent.date
+      ? (() => {
+          const date = new Date(selectedEvent.date);
+          if (isNaN(date.getTime())) return "Invalid date";
+          const hours = date.getUTCHours().toString().padStart(2, '0');
+          const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+          return `${hours}:${minutes}`;
+        })()
+      : "No time available"
+  }
+</p>
+
+
+
+            <button
+              onClick={() => setShowModal(false)}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

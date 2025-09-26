@@ -14,22 +14,7 @@ export default function PaymentInfo() {
   const[payments, setPayments] = useState(null)
   const {id} = useParams();
   
-  const transactions = [
-    {
-      id: 1,
-      date: "2025-06-01",
-      amount: 150.0,
-      coursename: "Math 101",
-      method: "Credit Card",
-    },
-    {
-      id: 2,
-      date: "2025-06-01",
-      amount: 200.0,
-      coursename: "Science 201",
-      method: "PayPal",
-    },
-  ];
+ 
 
 console.log(accessToken);
 
@@ -37,17 +22,15 @@ console.log(accessToken);
  
   const fetchPayments = async()=>{
     try {
-       const response = await axios.get("http://127.0.0.1:8000/students/payment-info/",{
+      const response = await axios.get("http://127.0.0.1:8000/students/payment-info/",{
         headers : {
           Authorization: `Bearer ${accessToken}`
         }
        });
-       
-       if(response.status === 200){
+      if(response.status === 200){
         console.log(response.data);
         setPayments(response.data.payments);
-        
-    }
+      }
     } catch (error) {
       console.log(error);
       // If token expired
@@ -71,8 +54,6 @@ console.log(accessToken);
     }
   }
   
-
-
   useEffect(() => {
       if (user && accessToken) {
         fetchPayments();
@@ -121,7 +102,7 @@ console.log(accessToken);
                 <tr
                   key={p.payid}
                   className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    index === transactions.length - 1 ? "border-b-0" : ""
+                    index === payments.length - 1 ? "border-b-0" : ""
                   }`}
                 >
                   <td className="py-3 px-4 sm:px-6 text-gray-900">
@@ -131,7 +112,7 @@ console.log(accessToken);
                     Rs.{p.amount}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-700">
-                    {p.coursename}
+                    {p.class}
                   </td>
                   <td className="py-3 px-4 sm:px-6 text-gray-700">
                     {p.method}

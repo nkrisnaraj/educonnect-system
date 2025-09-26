@@ -1,11 +1,22 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { Plus, Calendar, Clock, Users, DollarSign, Search, Filter } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useEffect, useState } from "react";
+import { Plus, Calendar, Clock, Users, DollarSign, Search, Filter, Edit, Save, X } from "lucide-react";
+import { useAdminData } from "@/context/AdminDataContext";
+import { adminApi } from "@/services/adminApi";
 
 const defaultInstructorId = 1;
 const defaultWebinarId = 1;
+
+function formatTime(timeString) {
+  if (!timeString) return "Time not set";
+  // If timeString is already in HH:MM format, return as is
+  if (typeof timeString === 'string' && timeString.includes(':')) {
+    return timeString;
+  }
+  // Handle other time formats if needed
+  return timeString;
+}
 
 function getStatusColor(status) {
   switch (status) {
@@ -15,18 +26,31 @@ function getStatusColor(status) {
       return "text-red-600 bg-red-50";
     case "pending":
       return "text-yellow-600 bg-yellow-50";
+    case "completed":
+      return "text-blue-600 bg-blue-50";
     default:
       return "text-gray-600 bg-gray-50";
   }
 }
 
 export default function ClassesPage() {
-  const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showModal, setShowModal] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [updateSuccess, setUpdateSuccess] = useState(null);
   const [zoomAccounts, setZoomAccounts] = useState([]);
-  const { accessToken } = useAuth();
+  
+  // Use AdminDataContext instead of individual state
+  const { 
+    classes, 
+    loading, 
+    error, 
+    fetchClasses,
+    clearError 
+  } = useAdminData();
+  
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -45,33 +69,14 @@ export default function ClassesPage() {
   });
 
   useEffect(() => {
-    async function fetchClasses() {
-      try {
-        const res = await fetch("http://localhost:8000/edu_admin/classes/", { 
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        });
-        if (!res.ok) throw new Error("Failed to fetch classes");
-        const data = await res.json();  
-        setClasses(data.map(c => ({
-          ...c,
-          status: c.status || "active", // Default to active if no status
-          instructor_name: c.instructor_name || "Auto Assigned", // Default instructor name
-        })));
-      } catch (err) {
-        console.error("Error fetching classes:", err);
-        alert("Failed to load classes.");
-      }
-    }
+    // Use centralized data fetching
     fetchClasses();
-  }, []);
-  console.log("Classes fetched:", classes);
+  }, []); // Empty dependency array to run only once
 
   const filtered = classes.filter((c) => {
     const matchSearch =
-      c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.instructor_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.instructor_name || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = selectedStatus === "all" || c.status === selectedStatus;
     return matchSearch && matchStatus;
   });
@@ -114,14 +119,8 @@ export default function ClassesPage() {
   useEffect(() => {
     async function fetchZoomAccounts() {
       try {
-        const res = await fetch("http://localhost:8000/edu_admin/zoom-accounts/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          }
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch Zoom accounts");
-        const data = await res.json();
+        const response = await adminApi.getZoomAccounts();
+        const data = response.data;
         setZoomAccounts(data);
 
         if (data.length > 0) {
@@ -132,7 +131,7 @@ export default function ClassesPage() {
         }
       } catch (err) {
         console.error("Error fetching Zoom accounts:", err);
-        alert("Failed to load Zoom accounts.");
+        // Don't show alert for non-critical errors
       }
     }
 
@@ -177,26 +176,13 @@ export default function ClassesPage() {
     };
 
     try {
-      const res = await fetch("http://localhost:8000/edu_admin/create_with_webinar/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`, // If using JWT
-        },
-        body: JSON.stringify(payload),
-      });
+      // Use adminApi service instead of direct fetch
+      const response = await adminApi.createClass(payload);
+      console.log("New class created:", response.data);
 
-      if (!res.ok) throw new Error("Failed to save class");
-      const data = await res.json();
-
-      setClasses((prev) => [
-        ...prev,
-        {
-          ...data,
-          status: "active",
-          instructor_name: "K.Sivaththiran BSc.(Hons)",
-        },
-      ]);
+      // Refresh classes data through context
+      await fetchClasses();
+      
       setShowModal(false);
       setForm({
         title: "",
@@ -216,6 +202,112 @@ export default function ClassesPage() {
     } catch (err) {
       console.error("Error:", err);
       alert("Failed to create class.");
+    }
+  };
+
+  const handleEdit = (classData) => {
+    setEditingClass(classData.id);
+    const defaultSchedule = {
+      days_of_week: [],
+      start_time: "",
+      duration_minutes: 90
+    };
+    
+    setEditForm({
+      title: classData.title,
+      description: classData.description,
+      fee: classData.fee,
+      start_date: classData.start_date,
+      end_date: classData.end_date,
+      status: classData.status || 'active',
+      schedules: (classData.schedules && classData.schedules.length > 0) 
+        ? classData.schedules 
+        : [defaultSchedule]
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingClass(null);
+    setEditForm({});
+  };
+
+  const handleEditScheduleChange = (index, field, value) => {
+    const newSchedules = [...editForm.schedules];
+    newSchedules[index][field] = value;
+    setEditForm({ ...editForm, schedules: newSchedules });
+  };
+
+  const handleEditDayToggle = (index, day) => {
+    const newSchedules = [...editForm.schedules];
+    const exists = newSchedules[index].days_of_week.includes(day);
+    newSchedules[index].days_of_week = exists
+      ? newSchedules[index].days_of_week.filter((d) => d !== day)
+      : [...newSchedules[index].days_of_week, day];
+    setEditForm({ ...editForm, schedules: newSchedules });
+  };
+
+  const addEditScheduleBlock = () => {
+    setEditForm({
+      ...editForm,
+      schedules: [
+        ...editForm.schedules,
+        {
+          days_of_week: [],
+          start_time: "",
+          duration_minutes: 90,
+        },
+      ],
+    });
+  };
+
+  const removeEditScheduleBlock = (index) => {
+    const updated = [...editForm.schedules];
+    updated.splice(index, 1);
+    setEditForm({ ...editForm, schedules: updated });
+  };
+
+  const handleUpdateClass = async (classId) => {
+    try {
+      // Validate schedules
+      const validSchedules = editForm.schedules.filter(schedule => 
+        schedule.start_time && schedule.duration_minutes > 0
+      );
+      
+      if (validSchedules.length === 0) {
+        alert("Please add at least one valid schedule with start time and duration.");
+        return;
+      }
+
+      // Only update class details, not webinar settings
+      const updatePayload = {
+        title: editForm.title,
+        description: editForm.description,
+        fee: parseFloat(editForm.fee),
+        start_date: editForm.start_date,
+        end_date: editForm.end_date,
+        status: editForm.status,
+        schedules: validSchedules, // Include schedule updates
+        // Explicitly indicate this is an update operation (no webinar changes)
+        update_only: true
+      };
+
+      const response = await adminApi.updateClass(classId, updatePayload);
+      console.log("Class updated:", response.data);
+
+      // Refresh classes data through context
+      await fetchClasses();
+      
+      // Reset edit state
+      setEditingClass(null);
+      setEditForm({});
+      
+      // Show success message
+      setUpdateSuccess(`Class "${editForm.title}" updated successfully! (Webinar settings unchanged)`);
+      setTimeout(() => setUpdateSuccess(null), 4000);
+    } catch (err) {
+      console.error("Error updating class:", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to update class. Please try again.";
+      alert(errorMessage);
     }
   };
 
@@ -266,84 +358,349 @@ export default function ClassesPage() {
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
           </div>
         </div>
 
+        {/* Success Message */}
+        {updateSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="flex items-center">
+              <div className="text-green-600 text-sm font-medium">
+                ✅ {updateSuccess}
+              </div>
+              <button
+                onClick={() => setUpdateSuccess(null)}
+                className="ml-auto text-green-600 hover:text-green-800 text-sm underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center">
+              <div className="text-red-600 text-sm font-medium">
+                Error: {error}
+              </div>
+              <button
+                onClick={clearError}
+                className="ml-auto text-red-600 hover:text-red-800 text-sm underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-slate-600">Loading classes...</span>
+            </div>
+          </div>
+        )}
+
         {/* Classes Grid */}
         <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 ">
-          {filtered.map((c) => (
-            <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
-              <div className="p-6 space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors duration-200">
-                      {c.title}
-                    </h3>
-                    <p className="text-slate-600 font-medium">Mr K.Sivaththiran BSc.(Hons)</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor("active")}`}>
-                    Active
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
-                  {c.description}
-                </p>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-slate-600">
-                      <Calendar className="h-4 w-4 mr-2 text-blue-500" />
-                      <span className="text-sm font-medium">Duration</span>
+          {filtered.length > 0 ? (
+            filtered.map((c) => (
+              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-300 overflow-hidden group">
+                <div className="p-6 space-y-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      {editingClass === c.id ? (
+                        <input
+                          type="text"
+                          value={editForm.title}
+                          onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                          className="text-xl font-bold text-slate-900 mb-1 w-full border border-slate-300 rounded-lg px-2 py-1"
+                        />
+                      ) : (
+                        <h3 className="text-xl font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors duration-200">
+                          {c.title}
+                        </h3>
+                      )}
+                      <p className="text-slate-600 font-medium">{c.instructor_name || "Auto Assigned"}</p>
                     </div>
-                    <div className="text-sm text-slate-800">
-                      <div>{new Date(c.start_date).toLocaleDateString()}</div>
-                      <div className="text-slate-500">to {new Date(c.end_date).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center text-slate-600">
-                      <DollarSign className="h-4 w-4 mr-2 text-green-500" />
-                      <span className="text-sm font-medium">Fee</span>
-                    </div>
-                    <div className="text-lg font-bold text-slate-900">
-                      LKR {parseInt(c.fee).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Schedule */}
-                <div className="pt-4 border-t border-slate-100">
-                  <div className="flex items-center text-slate-600 mb-3">
-                    <Clock className="h-4 w-4 mr-2 text-indigo-500" />
-                    <span className="text-sm font-medium">Schedule</span>
-                  </div>
-                  <div className="space-y-2">
-                    {c.schedules?.map((s, i) => (
-                      <div key={i} className="bg-slate-50 rounded-lg p-3">
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {s.days_of_week?.map((day, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
-                              {day.slice(0, 3)}
-                            </span>
-                          ))}
+                    <div className="flex items-center space-x-2">
+                      {editingClass === c.id ? (
+                        <select
+                          value={editForm.status}
+                          onChange={(e) => setEditForm({...editForm, status: e.target.value})}
+                          className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(editForm.status)}`}
+                        >
+                          <option value="active">Active</option>
+                          <option value="pending">Pending</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      ) : (
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(c.status)}`}>
+                          {c.status ? c.status.charAt(0).toUpperCase() + c.status.slice(1) : "Active"}
+                        </span>
+                      )}
+                      
+                      {editingClass === c.id ? (
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => handleUpdateClass(c.id)}
+                            className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                            title="Save changes"
+                          >
+                            <Save className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                            title="Cancel edit"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                        <div className="text-sm text-slate-700 font-medium">
-                          {s.start_time} • {s.duration_minutes} minutes
+                      ) : (
+                        <button
+                          onClick={() => handleEdit(c)}
+                          className="p-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Edit class"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {editingClass === c.id ? (
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      className="text-slate-600 text-sm leading-relaxed w-full border border-slate-300 rounded-lg px-2 py-1 resize-none"
+                      rows={3}
+                    />
+                  ) : (
+                    <p className="text-slate-600 text-sm leading-relaxed line-clamp-2">
+                      {c.description}
+                    </p>
+                  )}
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                    <div className="space-y-2">
+                      <div className="flex items-center text-slate-600">
+                        <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                        <span className="text-sm font-medium">Duration</span>
+                      </div>
+                      {editingClass === c.id ? (
+                        <div className="space-y-2">
+                          <input
+                            type="date"
+                            value={editForm.start_date}
+                            onChange={(e) => setEditForm({...editForm, start_date: e.target.value})}
+                            className="text-sm text-slate-800 border border-slate-300 rounded px-2 py-1 w-full"
+                          />
+                          <input
+                            type="date"
+                            value={editForm.end_date}
+                            onChange={(e) => setEditForm({...editForm, end_date: e.target.value})}
+                            className="text-sm text-slate-500 border border-slate-300 rounded px-2 py-1 w-full"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-sm text-slate-800">
+                          <div>{c.start_date ? new Date(c.start_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : "Not set"}</div>
+                          <div className="text-slate-500">to {c.end_date ? new Date(c.end_date).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : "Not set"}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center text-slate-600">
+                        <DollarSign className="h-4 w-4 mr-2 text-green-500" />
+                        <span className="text-sm font-medium">Fee</span>
+                      </div>
+                      {editingClass === c.id ? (
+                        <input
+                          type="number"
+                          value={editForm.fee}
+                          onChange={(e) => setEditForm({...editForm, fee: e.target.value})}
+                          className="text-lg font-bold text-slate-900 border border-slate-300 rounded px-2 py-1 w-full"
+                          placeholder="Enter fee"
+                        />
+                      ) : (
+                        <div className="text-lg font-bold text-slate-900">
+                          LKR {c.fee ? parseInt(c.fee).toLocaleString() : "0"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Schedule */}
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="flex items-center text-slate-600 mb-3">
+                      <Clock className="h-4 w-4 mr-2 text-indigo-500" />
+                      <span className="text-sm font-medium">Schedule</span>
+                      {editingClass === c.id && (
+                        <div className="ml-auto">
+                          <button
+                            type="button"
+                            onClick={addEditScheduleBlock}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            + Add Schedule
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {editingClass === c.id ? (
+                      <div className="space-y-3">
+                        {editForm.schedules && editForm.schedules.map((schedule, index) => (
+                          <div key={index} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                            <div className="flex justify-between items-center mb-3">
+                              <span className="text-sm font-medium text-slate-700">Schedule {index + 1}</span>
+                              {editForm.schedules.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeEditScheduleBlock(index)}
+                                  className="text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                            
+                            {/* Days Selection */}
+                            <div className="mb-3">
+                              <label className="block text-xs font-medium text-slate-600 mb-1">Days</label>
+                              <div className="flex flex-wrap gap-1">
+                                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                                  <label key={day} className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={schedule.days_of_week.includes(day)}
+                                      onChange={() => handleEditDayToggle(index, day)}
+                                      className="sr-only"
+                                    />
+                                    <span
+                                      className={`px-2 py-1 text-xs font-medium rounded-md cursor-pointer transition-colors ${
+                                        schedule.days_of_week.includes(day)
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {day.slice(0, 3)}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            {/* Time and Duration */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">Start Time</label>
+                                <input
+                                  type="time"
+                                  value={schedule.start_time}
+                                  onChange={(e) => handleEditScheduleChange(index, 'start_time', e.target.value)}
+                                  className="w-full text-sm border border-slate-300 rounded px-2 py-1"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-slate-600 mb-1">Duration (min)</label>
+                                <input
+                                  type="number"
+                                  value={schedule.duration_minutes}
+                                  onChange={(e) => handleEditScheduleChange(index, 'duration_minutes', e.target.value)}
+                                  className="w-full text-sm border border-slate-300 rounded px-2 py-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                          ℹ️ Schedule changes update class information only, webinar settings remain unchanged
                         </div>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="space-y-2">
+                        {c.schedules && c.schedules.length > 0 ? (
+                          c.schedules.map((s, i) => (
+                            <div key={i} className="bg-slate-50 rounded-lg p-3">
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {s.days_of_week && s.days_of_week.length > 0 ? (
+                                  s.days_of_week.map((day, index) => (
+                                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
+                                      {day.slice(0, 3)}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
+                                    Daily
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-slate-700 font-medium">
+                                {formatTime(s.start_time)} • {s.duration_minutes || 90} minutes
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <div className="text-sm text-slate-500 text-center">
+                              No schedule information available
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="col-span-full">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
+                <div className="text-slate-400 mb-4">
+                  <Calendar className="h-16 w-16 mx-auto" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No Classes Found</h3>
+                <p className="text-slate-600 mb-6">
+                  {searchTerm || selectedStatus !== "all" 
+                    ? "No classes match your current filters. Try adjusting your search or filter criteria."
+                    : "You haven't created any classes yet. Click the 'Add New Class' button to get started."
+                  }
+                </p>
+                {(!searchTerm && selectedStatus === "all") && (
+                  <button
+                    onClick={() => setShowModal(true)}
+                    className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5 transition-all duration-200"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Add Your First Class
+                  </button>
+                )}
+              </div>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Modal */}

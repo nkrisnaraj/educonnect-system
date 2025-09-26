@@ -36,10 +36,18 @@ export default function Login() {
             setIsSuccess(true);
 
             const data = response.data;
-            console.log(data); //contains user, access, refresh
-            console.log(data.user.role);
+            console.log('🔐 Login successful:', data); //contains user, access, refresh
+            console.log('👤 User role:', data.user.role);
 
-            Cookies.set("accessToken", data.access, { path: "/" });
+            // Set cookie with explicit options
+            Cookies.set("accessToken", data.access, { 
+              path: "/",
+              expires: 1, // 1 day
+              secure: false, // Allow HTTP for development
+              sameSite: 'lax'
+            });
+            
+            console.log('🍪 Cookie set:', Cookies.get("accessToken") ? 'Success' : 'Failed');
 
             login(data); // this replace all loalstorage
             

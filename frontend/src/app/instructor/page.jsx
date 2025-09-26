@@ -1,17 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Search,
-  Bell,
-  BookOpen,
-  Clock,
-  MessageCircle,
-  Send,
-} from "lucide-react";
+import {Search,Bell,BookOpen,Clock,MessageCircle,Send,} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
 import axios from "axios";
+import { useParams, useRouter } from "next/navigation"
+import { Check } from "lucide-react";
+
+
 
 export default function InstructorDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +20,15 @@ export default function InstructorDashboard() {
   const [loadingWebinars, setLoadingWebinars] = useState(true);
   const { accessToken, user, refreshAccessToken, logout } = useAuth();
   const router = useRouter();
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [lastMessages, setLastMessages] = useState({});
+  
+  const params = useParams();
+  const studentId = params.student_id;
 
   const fetchClasses = async (token) => {
     try {
@@ -149,36 +154,112 @@ export default function InstructorDashboard() {
     }
   }, [accessToken]);
 
-  if (!user || user.role !== "instructor") {
-    return null;
-  }
+  // if (!user || user.role !== "instructor") {
+  //   return null;
+  // }
 
-  const chatMessages = [
-    {
-      id: 1,
-      sender: "Kasun Perera",
-      message: "Sir, when is the next Physics practical?",
-      time: "10:30 AM",
-    },
-    {
-      id: 2,
-      sender: "Nimali Silva",
-      message: "Can you share the Chemistry notes?",
-      time: "11:15 AM",
-    },
-    {
-      id: 3,
-      sender: "Tharindu Fernando",
-      message: "Thank you for the Biology revision session!",
-      time: "2:45 PM",
-    },
-  ];
+useEffect(() => {
+    if (!user || user.role !== "instructor") {
+      router.replace("/login");
+    }
+}, [user, router]);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      setNewMessage("");
+const renderTick = (msg) => {
+    if (msg.is_seen) return <DoubleTick color="blue" />;
+    if (msg.is_delivered) return <DoubleTick color="gray" />;
+    return <SingleTick />;
+  };
+// Fetch students on mount and get last message for each
+useEffect(() => {
+  const fetchStudents = async () => {
+    const token = sessionStorage.getItem("accessToken");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/instructor/chat/instructor/students/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setStudents(data.students);
+      // For each student, fetch their last message
+      const lastMsgObj = {};
+      await Promise.all(
+        data.students.map(async (student) => {
+          try {
+            const resMsg = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${student.id}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const messages = await resMsg.json();
+            if (messages && messages.length > 0) {
+              lastMsgObj[student.id] = messages[messages.length - 1];
+            }
+          } catch (err) {
+            // ignore error for individual student
+          }
+        })
+      );
+      setLastMessages(lastMsgObj);
+    } catch (err) {
+      console.error("Error fetching students", err);
+    } finally {
+      setLoading(false);
     }
   };
+  fetchStudents();
+}, []);
+
+// Fetch messages when a student is selected
+useEffect(() => {
+  if (!selectedStudent) return;
+  const markMessagesReadStudent = async (token) => {
+    await axios.post(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/mark_messages_read/`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  };
+  const fetchMessages = async () => {
+    const token = sessionStorage.getItem("accessToken");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      console.log(res);
+      setChatMessages(data);
+    } catch (err) {
+      console.error("Error fetching chat messages", err);
+    }
+  };
+  const token = accessToken;
+
+  const run = async () => {
+      await markMessagesReadStudent(token);
+      await fetchMessages();
+    };
+
+    run();
+}, [selectedStudent]);
+
+
+const handleSendMessage = async () => {
+  if (!newMessage.trim() || !selectedStudent) return;
+  const token = sessionStorage.getItem("accessToken");
+  try {
+    const res = await fetch(
+      `http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/send/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: newMessage }),
+      }
+    );
+    const data = await res.json();
+    setChatMessages((prev) => [...prev, data]);
+    setNewMessage("");
+  } catch (err) {
+    console.error("Error sending message", err);
+  }
+};
 
   return (
     <div className="flex flex-col h-screen">
@@ -241,6 +322,7 @@ export default function InstructorDashboard() {
             <BookOpen className="h-24 w-24" />
           </div>
         </div>
+      
 
         {/* Classes */}
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
@@ -307,52 +389,122 @@ export default function InstructorDashboard() {
             </div>
           </div>
               
-          {/* Chat Box */}
-          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer">
-            <div className="p-6 border-b border-purple-200">
-              <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-purple-600" />
-                Student Messages
-              </h3>
-            </div>
-            <div className="flex flex-col h-64">
-              <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-                {chatMessages.map((message) => (
-                  <div key={message.id} className="bg-white/50 rounded-xl p-3">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-medium text-lg">
-                        {message.sender}
-                      </span>
-                      <span className="text-lg text-gray-500">
-                        {message.time}
-                      </span>
-                    </div>
-                    <p className="text-lg text-gray-700">{message.message}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-purple-200">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700 flex items-center gap-2"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+        
+          
+
+          
+              
+            {/* Chat Box */}
+            <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+              <div className="p-6 border-b border-purple-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex  gap-2 mb-2">
+                  <MessageCircle className="h-5 w-5 text-purple-600" />
+                  Student Messages
+                </h3>
+                {/* Student name tabs with last message preview */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-200">
+                  {students.map((student) => {
+                    const lastMsg = lastMessages[student.id];
+                    return (
+                      <button
+                        key={student.id}
+                        className={`px-4 py-2 rounded-lg w-full font-medium  items-start border border-purple-200 focus:outline-none  flex flex-col 
+                          ${selectedStudent === student.id ? 'bg-primary text-white border-purple-500' : 'bg-white'}`}
+                        onClick={() => setSelectedStudent(student.id)}
+                        title={student.first_name + ' ' + student.last_name}
+                      >
+                        <span className="font-bold truncate w-full">{student.first_name} {student.last_name}</span>
+                        <span className="text-xs text-gray-300 truncate w-full mt-1">
+                          {lastMsg ? (lastMsg.message.length > 30 ? lastMsg.message.slice(0, 30) + '…' : lastMsg.message) : 'No messages yet.'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {students.length === 0 && (
+                    <span className="text-gray-500 text-sm ml-2">No students found.</span>
+                  )}
                 </div>
+              </div>
+              <div className="flex flex-col h-96">
+                <div className="flex-1 p-4 space-y-3 overflow-y-auto bg-gradient-to-b from-purple-50 to-white rounded-b-xl">
+                  {selectedStudent && chatMessages.length > 0 ? (
+                    chatMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-md mb-2 flex flex-col
+                          ${msg.sender.id === user.id ? 'ml-auto bg-white text-right border border-purple-200' : 'mr-auto bg-white border border-gray-200'}`}
+                      >
+                        <div className="text-xs font-semibold text-purple-600 mb-1">
+                          {msg.sender.username}
+                        </div>
+                        <div className="text-base text-gray-900">{msg.message}</div>
+                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
+                          {new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {msg.sender.id === user.id && renderTick(msg)}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500 text-sm flex h-full">
+                      {selectedStudent
+                        ? "No messages yet."
+                        : "Select a student to view messages."}
+                    </div>
+                  )}
+                </div>
+                {selectedStudent && (
+                  <div className="p-4 border-t border-purple-100 bg-white rounded-b-xl">
+                    <form
+                      className="flex gap-2"
+                      onSubmit={e => {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Type a message..."
+                        className="flex-1 px-4 py-2 border border-purple-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-400 bg-purple-50 text-gray-900"
+                        autoComplete="off"
+                      />
+                      <button
+                        type="submit"
+                        className="px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-400 text-white rounded-full font-semibold shadow-md hover:from-purple-600 hover:to-indigo-500 transition-colors duration-150 flex items-center gap-2"
+                      >
+                        <Send className="h-5 w-5" />
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+    
+  );
+}
+
+
+function SingleTick() {
+  return <Check className="w-4 h-4 text-gray-400" />;
+}
+
+function DoubleTick({ color }) {
+  const colorClass = {
+    blue: "text-blue-400",
+    gray: "text-gray-400",
+  }[color] || "text-gray-400";
+
+  return (
+    <div className="flex">
+      <Check className={`w-4 h-4 ${colorClass}`} />
+      <Check className={`w-4 h-4 ${colorClass} -ml-2`} />
     </div>
   );
 }

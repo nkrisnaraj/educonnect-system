@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import StudentNavbar from "@/components/studentnavbar/StudentNavbar";
+import StudentNavbar from "@/components/student/studentnavbar/StudentNavbar";
 import Topbar from "../studenttopbar/studenttopbar";
 
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Send,
   User,
@@ -15,118 +15,432 @@ import {
   ArrowLeft,
 } from "lucide-react"
 
-// Mock student data
-const students = [
-  { id: 1, name: "John Smith", avatar: "JS", status: "online", lastSeen: "now", unreadCount: 2 },
-  { id: 2, name: "Sarah Johnson", avatar: "SJ", status: "offline", lastSeen: "2 hours ago", unreadCount: 0 },
-  { id: 3, name: "Mike Davis", avatar: "MD", status: "online", lastSeen: "now", unreadCount: 1 },
-  { id: 4, name: "Emily Brown", avatar: "EB", status: "offline", lastSeen: "1 day ago", unreadCount: 0 },
-  { id: 5, name: "David Wilson", avatar: "DW", status: "online", lastSeen: "now", unreadCount: 3 },
-  { id: 6, name: "Lisa Anderson", avatar: "LA", status: "offline", lastSeen: "5 minutes ago", unreadCount: 0 },
-  { id: 7, name: "Alex Chen", avatar: "AC", status: "online", lastSeen: "now", unreadCount: 1 },
-  { id: 8, name: "Maria Garcia", avatar: "MG", status: "offline", lastSeen: "3 hours ago", unreadCount: 0 },
-]
-
-// Mock chat messages for each student
-const mockChats = {
-  1: [
-    {
-      id: 1,
-      text: "Hello sir, I have a question about today's assignment",
-      sender: "student",
-      timestamp: "10:30 AM",
-      status: "delivered",
-    },
-    {
-      id: 2,
-      text: "Hi John! Sure, what would you like to know?",
-      sender: "admin",
-      timestamp: "10:32 AM",
-      status: "read",
-    },
-    {
-      id: 3,
-      text: "I'm having trouble with question 5. Could you help me understand the concept?",
-      sender: "student",
-      timestamp: "10:35 AM",
-      status: "delivered",
-    },
-  ],
-  2: [
-    {
-      id: 1,
-      text: "Good morning! When is the next exam scheduled?",
-      sender: "student",
-      timestamp: "9:15 AM",
-      status: "read",
-    },
-    {
-      id: 2,
-      text: "Good morning Sarah! The exam is scheduled for next Friday at 10 AM.",
-      sender: "admin",
-      timestamp: "9:20 AM",
-      status: "read",
-    },
-  ],
-  3: [
-    {
-      id: 1,
-      text: "Can I get an extension for the project deadline?",
-      sender: "student",
-      timestamp: "2:45 PM",
-      status: "delivered",
-    },
-  ],
-  5: [
-    {
-      id: 1,
-      text: "I missed today's class. Can you share the notes?",
-      sender: "student",
-      timestamp: "3:20 PM",
-      status: "delivered",
-    },
-    {
-      id: 2,
-      text: "Also, what's the homework for tomorrow?",
-      sender: "student",
-      timestamp: "3:21 PM",
-      status: "delivered",
-    },
-    {
-      id: 3,
-      text: "Is there any makeup class this week?",
-      sender: "student",
-      timestamp: "3:22 PM",
-      status: "delivered",
-    },
-  ],
-  7: [
-    {
-      id: 1,
-      text: "Thank you for the feedback on my presentation!",
-      sender: "student",
-      timestamp: "1:10 PM",
-      status: "delivered",
-    },
-  ],
-}
 
 export default function Chatbot() {
   const [isMinimized, setIsMinimized] = useState(true)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [inputValue, setInputValue] = useState("")
-  const [chats, setChats] = useState(mockChats)
+  const [students, setStudents] = useState([]) // Students with existing chats
+  const [allStudents, setAllStudents] = useState([]) // All students for search
+  const [searchResults, setSearchResults] = useState([]) // Search results for new chats
+  const [chats, setChats] = useState({})
   const [notifications, setNotifications] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [lastMessages, setLastMessages] = useState({})
+  const [onlineUsers, setOnlineUsers] = useState(new Set())
+  const wsRef = useRef(null)
+  const messagesEndRef = useRef(null)
 
-  // Check if device is mobile
-//   useEffect(() => {
-//   const isMobile = window.innerWidth < 768
-//   setIsMobile(isMobile)
-//   setIsMinimized(isMobile)
-// }, [])
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [chats, selectedStudent])
+
+  // Fetch students with existing chats
+  useEffect(() => {
+    const fetchStudentsWithChats = async () => {
+      const token = sessionStorage.getItem("accessToken");
+      if (!token) return;
+      
+      setLoading(true);
+      try {
+        const res = await fetch("http://127.0.0.1:8000/edu_admin/chat/admin/students/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        
+        if (data.students) {
+          // Only include students who have existing chat messages
+          const studentsWithChats = [];
+          
+          await Promise.all(
+            data.students.map(async (student) => {
+              try {
+                const resMsg = await fetch(`http://127.0.0.1:8000/edu_admin/chat/admin/${student.id}/`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                const messages = await resMsg.json();
+                
+                // Only add student if they have messages in admin chat
+                if (messages && messages.length > 0) {
+                  const lastMessage = messages[messages.length - 1];
+                  // Only count messages from student that are not seen by admin
+                  // AND make sure the sender is actually a student (not admin/instructor)
+                  // AND only count messages from admin chat room
+                  const unreadCount = messages.filter(msg => 
+                    msg.sender.id === student.id && 
+                    msg.sender.role === 'student' && 
+                    !msg.is_seen
+                  ).length;
+                  
+                  studentsWithChats.push({
+                    ...student,
+                    avatar: `${student.first_name?.charAt(0) || student.username?.charAt(0)}${student.last_name?.charAt(0) || student.username?.charAt(1) || ''}`.toUpperCase(),
+                    status: onlineUsers.has(student.id) ? "online" : "offline",
+                    lastSeen: onlineUsers.has(student.id) ? "now" : "recently",
+                    unreadCount: unreadCount,
+                    lastMessage: lastMessage,
+                    lastMessageTime: new Date(lastMessage.created_at)
+                  });
+                  
+                  // Update last messages
+                  setLastMessages(prev => ({
+                    ...prev,
+                    [student.id]: lastMessage
+                  }));
+                }
+              } catch (err) {
+                console.error(`Error fetching messages for student ${student.id}`, err);
+              }
+            })
+          );
+          
+          // Sort by most recent message time
+          studentsWithChats.sort((a, b) => b.lastMessageTime - a.lastMessageTime);
+          setStudents(studentsWithChats);
+        }
+      } catch (err) {
+        console.error("Error fetching students", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStudentsWithChats();
+  }, [onlineUsers]);
+
+  // Function to refresh unread counts for all students
+  const refreshUnreadCounts = async () => {
+    const token = sessionStorage.getItem("accessToken");
+    if (!token) return;
+
+    const updatedStudents = await Promise.all(
+      students.map(async (student) => {
+        try {
+          const resMsg = await fetch(`http://127.0.0.1:8000/edu_admin/chat/admin/${student.id}/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const messages = await resMsg.json();
+          
+          if (messages && messages.length > 0) {
+            const unreadCount = messages.filter(msg => 
+              msg.sender.id === student.id && 
+              msg.sender.role === 'student' && 
+              !msg.is_seen
+            ).length;
+            
+            return { ...student, unreadCount };
+          }
+          return { ...student, unreadCount: 0 };
+        } catch (err) {
+          console.error(`Error refreshing unread count for student ${student.id}`, err);
+          return student;
+        }
+      })
+    );
+    
+    setStudents(updatedStudents);
+  };
+
+  // Periodic refresh of unread counts every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (students.length > 0 && !selectedStudent) {
+        refreshUnreadCounts();
+      }
+    }, 30000); // Refresh every 30 seconds when not in a chat
+
+    return () => clearInterval(interval);
+  }, [students, selectedStudent]);
+
+  // Refresh unread counts when window gains focus (user returns to tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (students.length > 0) {
+        refreshUnreadCounts();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && students.length > 0) {
+        refreshUnreadCounts();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [students]);
+
+  // Fetch all students for search functionality
+  useEffect(() => {
+    const fetchAllStudents = async () => {
+      const token = sessionStorage.getItem("accessToken");
+      if (!token) return;
+      
+      try {
+        const res = await fetch("http://127.0.0.1:8000/edu_admin/chat/admin/students/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        
+        if (data.students) {
+          const allStudentsWithMetadata = data.students.map(student => ({
+            ...student,
+            avatar: `${student.first_name?.charAt(0) || student.username?.charAt(0)}${student.last_name?.charAt(0) || student.username?.charAt(1) || ''}`.toUpperCase(),
+            status: onlineUsers.has(student.id) ? "online" : "offline",
+            lastSeen: onlineUsers.has(student.id) ? "now" : "recently",
+          }));
+          setAllStudents(allStudentsWithMetadata);
+        }
+      } catch (err) {
+        console.error("Error fetching all students", err);
+      }
+    };
+    fetchAllStudents();
+  }, []);
+
+  // Handle search functionality
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      const filtered = allStudents.filter((student) => 
+        student.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.last_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchTerm, allStudents]);
+
+  // Fetch messages when a student is selected
+  useEffect(() => {
+    if (!selectedStudent) return;
+    
+    const fetchMessages = async () => {
+      const token = sessionStorage.getItem("accessToken");
+      try {
+        const res = await fetch(`http://127.0.0.1:8000/edu_admin/chat/admin/${selectedStudent.id}/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        
+        const formattedMessages = data.map(msg => ({
+          id: msg.id,
+          text: msg.content,
+          sender: msg.sender.id === selectedStudent.id ? "student" : "admin",
+          timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          status: msg.is_seen ? "read" : msg.is_delivered ? "delivered" : "sent",
+          senderData: msg.sender,
+          is_seen: msg.is_seen,
+          is_delivered: msg.is_delivered
+        }));
+        
+        setChats(prev => ({
+          ...prev,
+          [selectedStudent.id]: formattedMessages
+        }));
+
+        // Mark messages as read and update unread count
+        await markMessagesAsRead(selectedStudent.id);
+        
+        // Update the local student's unread count to 0 since we just read the messages
+        setStudents(prev => prev.map(s => 
+          s.id === selectedStudent.id ? { ...s, unreadCount: 0 } : s
+        ));
+        
+      } catch (err) {
+        console.error("Error fetching chat messages", err);
+      }
+    };
+    fetchMessages();
+  }, [selectedStudent]);
+
+  // Mark messages as read
+  const markMessagesAsRead = async (studentId) => {
+    const token = sessionStorage.getItem("accessToken");
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/edu_admin/chat/admin/${studentId}/mark_messages_read/`, {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+      });
+      
+      if (response.ok) {
+        // Update unread count locally immediately
+        setStudents(prev => prev.map(s => 
+          s.id === studentId ? { ...s, unreadCount: 0 } : s
+        ));
+        
+        // Also update the chats state to mark student messages as read
+        setChats(prev => ({
+          ...prev,
+          [studentId]: (prev[studentId] || []).map(msg => 
+            msg.sender === "student" ? { ...msg, status: "read", is_seen: true } : msg
+          )
+        }));
+      }
+      
+    } catch (err) {
+      console.error("Error marking messages as read", err);
+    }
+  };
+
+  // WebSocket connection for real-time messaging
+  useEffect(() => {
+    if (!selectedStudent) return;
+
+    const token = sessionStorage.getItem("accessToken");
+    if (!token) return;
+
+    // Create WebSocket connection with error handling
+    const wsUrl = `ws://127.0.0.1:8000/ws/chat/${selectedStudent.id}/admin/`;
+    
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("✅ WebSocket connected for student:", selectedStudent.id);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'chat') {
+            const newMessage = {
+              id: Date.now(),
+              text: data.content || data.message, // Support both content and message for backward compatibility
+              sender: data.sender_id === selectedStudent.id ? "student" : "admin",
+              timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              status: data.is_seen ? "read" : data.is_delivered ? "delivered" : "sent",
+              is_seen: data.is_seen || false,
+              is_delivered: data.is_delivered || false
+            };
+
+            setChats(prev => ({
+              ...prev,
+              [selectedStudent.id]: [...(prev[selectedStudent.id] || []), newMessage]
+            }));
+
+            // If message is from student, show notification
+            if (data.sender_id === selectedStudent.id && data.sender_role === 'student') {
+              setNotifications(prev => [
+                ...prev,
+                {
+                  id: Date.now(),
+                  studentName: selectedStudent.first_name + " " + selectedStudent.last_name,
+                  message: data.content || data.message,
+                  timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                },
+              ]);
+              
+              // Update unread count if chat is not active
+              setStudents(prev => prev.map(s => 
+                s.id === selectedStudent.id ? { ...s, unreadCount: s.unreadCount + 1 } : s
+              ));
+            }
+          } else if (data.type === 'message_read') {
+            // Handle message read status updates
+            setChats(prev => ({
+              ...prev,
+              [selectedStudent.id]: (prev[selectedStudent.id] || []).map(msg => 
+                msg.id === data.message_id ? { ...msg, status: "read", is_seen: true } : msg
+              )
+            }));
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("🔌 WebSocket disconnected for student:", selectedStudent.id);
+      };
+
+      ws.onerror = (error) => {
+        console.warn("⚠️ WebSocket error (chat will work without real-time updates):", error);
+      };
+
+      return () => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+      };
+    } catch (error) {
+      console.warn("⚠️ WebSocket connection failed (chat will work without real-time updates):", error);
+    }
+  }, [selectedStudent]);
+
+  // Send message function
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !selectedStudent) return;
+
+    const token = sessionStorage.getItem("accessToken");
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/edu_admin/chat/admin/${selectedStudent.id}/send/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: inputValue }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const newMessage = {
+          id: data.id,
+          text: data.content,
+          sender: "admin",
+          timestamp: new Date(data.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          status: data.is_seen ? "read" : data.is_delivered ? "delivered" : "sent",
+          is_seen: data.is_seen || false,
+          is_delivered: data.is_delivered || false
+        };
+
+        setChats(prev => ({
+          ...prev,
+          [selectedStudent.id]: [...(prev[selectedStudent.id] || []), newMessage]
+        }));
+
+        setInputValue("");
+        
+        // If this was a new conversation, add the student to the main students list
+        const existingStudent = students.find(s => s.id === selectedStudent.id);
+        if (!existingStudent) {
+          const newStudentEntry = {
+            ...selectedStudent,
+            unreadCount: 0,
+            lastMessage: data,
+            lastMessageTime: new Date(data.created_at)
+          };
+          
+          setStudents(prev => [newStudentEntry, ...prev]);
+          setLastMessages(prev => ({
+            ...prev,
+            [selectedStudent.id]: data
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Error sending message", err);
+    }
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -136,97 +450,67 @@ export default function Chatbot() {
     }
 
     checkMobile()
-    console.log("ismobile in set ", isMobile);
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
-  },[])
-
-
-  // Filter students based on search
-  const filteredStudents = students.filter((student) => student.name.toLowerCase().includes(searchTerm.toLowerCase()))
-
-  // Get total unread count
-  const totalUnreadCount = students.reduce((total, student) => total + student.unreadCount, 0)
-
-  // Simulate receiving new messages
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly send a message from a student
-      if (Math.random() > 0.98) {
-        // 2% chance every second
-        const randomStudent = students[Math.floor(Math.random() * students.length)]
-        const newMessage = {
-          id: Date.now(),
-          text: "New message from student",
-          sender: "student",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          status: "delivered",
-        }
-
-        setChats((prev) => ({
-          ...prev,
-          [randomStudent.id]: [...(prev[randomStudent.id] || []), newMessage],
-        }))
-
-        // Add notification
-        setNotifications((prev) => [
-          ...prev,
-          {
-            id: Date.now(),
-            studentName: randomStudent.name,
-            message: newMessage.text,
-            timestamp: newMessage.timestamp,
-          },
-        ])
-
-        // Update unread count
-        const studentIndex = students.findIndex((s) => s.id === randomStudent.id)
-        if (studentIndex !== -1) {
-          students[studentIndex].unreadCount += 1
-        }
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
   }, [])
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() && selectedStudent) {
-      const newMessage = {
-        id: Date.now(),
-        text: inputValue,
-        sender: "admin",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        status: "sent",
-      }
+  // Filter students based on search
+  const displayedStudents = searchTerm.trim() ? searchResults : students;
 
-      setChats((prev) => ({
-        ...prev,
-        [selectedStudent.id]: [...(prev[selectedStudent.id] || []), newMessage],
-      }))
-
-      setInputValue("")
-    }
-  }
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSendMessage()
-    }
-  }
+  // Get total unread count
+  const totalUnreadCount = students.reduce((total, student) => total + (student.unreadCount || 0), 0)
 
   const selectStudent = (student) => {
     setSelectedStudent(student)
-    // Mark messages as read
-    const studentIndex = students.findIndex((s) => s.id === student.id)
-    if (studentIndex !== -1) {
-      students[studentIndex].unreadCount = 0
+    // Clear search when selecting a student
+    setSearchTerm("")
+    setSearchResults([])
+    
+    // Immediately update unread count to 0 for better UX
+    setStudents(prev => prev.map(s => 
+      s.id === student.id ? { ...s, unreadCount: 0 } : s
+    ));
+    
+    // Only mark messages as read if the student has existing chats
+    const existingStudent = students.find(s => s.id === student.id)
+    if (existingStudent && existingStudent.unreadCount > 0) {
+      markMessagesAsRead(student.id)
     }
   }
 
   const clearNotifications = () => {
     setNotifications([])
     setShowNotifications(false)
+  }
+
+  const getStudentDisplayName = (student) => {
+    if (student.first_name && student.last_name) {
+      return `${student.first_name} ${student.last_name}`
+    }
+    return student.username
+  }
+
+  const getLastMessagePreview = (studentId) => {
+    const studentChats = chats[studentId]
+    if (studentChats && studentChats.length > 0) {
+      const lastMessage = studentChats[studentChats.length - 1]
+      return lastMessage.text.length > 30 ? lastMessage.text.substring(0, 30) + "..." : lastMessage.text
+    }
+    
+    // Check if there's a last message from the initial fetch
+    const lastMsg = lastMessages[studentId]
+    if (lastMsg) {
+      const content = lastMsg.content || lastMsg.message || ""
+      return content.length > 30 ? content.substring(0, 30) + "..." : content
+    }
+    
+    return "No messages yet"
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage()
+    }
   }
 
   // Mobile minimized state
@@ -268,7 +552,7 @@ export default function Chatbot() {
               </div>
             )}
             <div>
-              <h3 className="font-semibold text-gray-900">{selectedStudent ? selectedStudent.name : "Student Chat"}</h3>
+              <h3 className="font-semibold text-gray-900">{selectedStudent ? getStudentDisplayName(selectedStudent) : "Student Chat"}</h3>
               {selectedStudent ? (
                 <p className="text-xs text-gray-500">
                   {selectedStudent.status === "online" ? "Online" : `Last seen ${selectedStudent.lastSeen}`}
@@ -327,42 +611,48 @@ export default function Chatbot() {
 
             {/* Student List */}
             <div className="flex-1 overflow-y-auto">
-              {filteredStudents.map((student) => (
-                <div
-                  key={student.id}
-                  onClick={() => selectStudent(student)}
-                  className="flex items-center space-x-4 p-4 hover:bg-gray-50 active:bg-gray-100 cursor-pointer border-b border-gray-100"
-                >
-                  <div className="relative">
-                    <div className="h-12 w-12 rounded-full flex items-center justify-center bg-blue-50">
-                      <span className="text-base font-medium text-primary">{student.avatar}</span>
-                    </div>
-                    <div
-                      className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white ${
-                        student.status === "online" ? "bg-green-400" : "bg-gray-400"
-                      }`}
-                    ></div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-base font-medium text-gray-900 truncate">{student.name}</p>
-                      {student.unreadCount > 0 && (
-                        <span className="text-white text-xs rounded-full h-6 w-6 flex items-center justify-center bg-primary ml-2">
-                          {student.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {student.status === "online" ? "Online" : `Last seen ${student.lastSeen}`}
-                    </p>
-                    {chats[student.id] && chats[student.id].length > 0 && (
-                      <p className="text-sm text-gray-400 truncate mt-1">
-                        {chats[student.id][chats[student.id].length - 1].text}
-                      </p>
-                    )}
-                  </div>
+              {loading ? (
+                <div className="p-4 text-center text-gray-500">Loading students...</div>
+              ) : displayedStudents.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  {searchTerm.trim() ? "No students found" : "No recent chats"}
                 </div>
-              ))}
+              ) : (
+                displayedStudents.map((student) => (
+                  <div
+                    key={student.id}
+                    onClick={() => selectStudent(student)}
+                    className="flex items-center space-x-4 p-4 hover:bg-gray-50 active:bg-gray-100 cursor-pointer border-b border-gray-100"
+                  >
+                    <div className="relative">
+                      <div className="h-12 w-12 rounded-full flex items-center justify-center bg-blue-50">
+                        <span className="text-base font-medium text-primary">{student.avatar}</span>
+                      </div>
+                      <div
+                        className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white ${
+                          student.status === "online" ? "bg-green-400" : "bg-gray-400"
+                        }`}
+                      ></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-base font-medium text-gray-900 truncate">{getStudentDisplayName(student)}</p>
+                        {student.unreadCount > 0 && (
+                          <span className="text-white text-xs rounded-full h-6 w-6 flex items-center justify-center bg-primary ml-2">
+                            {student.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {student.status === "online" ? "Online" : `Last seen ${student.lastSeen}`}
+                      </p>
+                      <p className="text-sm text-gray-400 truncate mt-1">
+                        {searchTerm.trim() ? "Start new conversation" : getLastMessagePreview(student.id)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </>
         ) : (
@@ -402,14 +692,13 @@ export default function Chatbot() {
                         <p className="text-xs text-gray-500">{message.timestamp}</p>
                         {message.sender === "admin" && (
                           <span
-                            className={`text-xs ${
+                            className={`text-xs font-medium ${
                               message.status === "read"
-                                ? ""
+                                ? "text-blue-500"
                                 : message.status === "delivered"
                                   ? "text-gray-500"
                                   : "text-gray-400"
                             }`}
-                            style={message.status === "read" ? { color: "#2064d4" } : {}}
                           >
                             {message.status === "read" ? "✓✓" : message.status === "delivered" ? "✓✓" : "✓"}
                           </span>
@@ -419,6 +708,7 @@ export default function Chatbot() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
@@ -429,7 +719,7 @@ export default function Chatbot() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={`Message ${selectedStudent.name}...`}
+                  placeholder={`Message ${getStudentDisplayName(selectedStudent)}...`}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-primary focus:border-primary"
                 />
                 <button
@@ -549,42 +839,48 @@ export default function Chatbot() {
 
           {/* Student List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredStudents.map((student) => (
-              <div
-                key={student.id}
-                onClick={() => selectStudent(student)}
-                className="flex items-center space-x-3 p-3 sm:p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
-              >
-                <div className="relative">
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-50">
-                    <span className="text-sm font-medium text-primary">{student.avatar}</span>
-                  </div>
-                  <div
-                    className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
-                      student.status === "online" ? "bg-green-400" : "bg-gray-400"
-                    }`}
-                  ></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-900 truncate">{student.name}</p>
-                    {student.unreadCount > 0 && (
-                      <span className="text-white text-xs rounded-full h-5 w-5 flex items-center justify-center bg-primary">
-                        {student.unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {student.status === "online" ? "Online" : `Last seen ${student.lastSeen}`}
-                  </p>
-                  {chats[student.id] && chats[student.id].length > 0 && (
-                    <p className="text-xs text-gray-400 truncate mt-1">
-                      {chats[student.id][chats[student.id].length - 1].text}
-                    </p>
-                  )}
-                </div>
+            {loading ? (
+              <div className="p-4 text-center text-gray-500">Loading students...</div>
+            ) : displayedStudents.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                {searchTerm.trim() ? "No students found" : "No recent chats"}
               </div>
-            ))}
+            ) : (
+              displayedStudents.map((student) => (
+                <div
+                  key={student.id}
+                  onClick={() => selectStudent(student)}
+                  className="flex items-center space-x-3 p-3 sm:p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                >
+                  <div className="relative">
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-50">
+                      <span className="text-sm font-medium text-primary">{student.avatar}</span>
+                    </div>
+                    <div
+                      className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                        student.status === "online" ? "bg-green-400" : "bg-gray-400"
+                      }`}
+                    ></div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900 truncate">{getStudentDisplayName(student)}</p>
+                      {student.unreadCount > 0 && (
+                        <span className="text-white text-xs rounded-full h-5 w-5 flex items-center justify-center bg-primary">
+                          {student.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {student.status === "online" ? "Online" : `Last seen ${student.lastSeen}`}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate mt-1">
+                      {searchTerm.trim() ? "Start new conversation" : getLastMessagePreview(student.id)}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </>
       ) : (
@@ -607,7 +903,7 @@ export default function Chatbot() {
                 ></div>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 text-sm">{selectedStudent.name}</h4>
+                <h4 className="font-semibold text-gray-900 text-sm">{getStudentDisplayName(selectedStudent)}</h4>
                 <p className="text-xs text-gray-500">
                   {selectedStudent.status === "online" ? "Online" : `Last seen ${selectedStudent.lastSeen}`}
                 </p>
@@ -658,14 +954,13 @@ export default function Chatbot() {
                       <p className="text-xs text-gray-500">{message.timestamp}</p>
                       {message.sender === "admin" && (
                         <span
-                          className={`text-xs ${
+                          className={`text-xs font-medium ${
                             message.status === "read"
-                              ? ""
+                              ? "text-blue-500"
                               : message.status === "delivered"
                                 ? "text-gray-500"
                                 : "text-gray-400"
                           }`}
-                          style={message.status === "read" ? { color: "#2064d4" } : {}}
                         >
                           {message.status === "read" ? "✓✓" : message.status === "delivered" ? "✓✓" : "✓"}
                         </span>
@@ -675,6 +970,7 @@ export default function Chatbot() {
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
@@ -685,7 +981,7 @@ export default function Chatbot() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={`Message ${selectedStudent.name}...`}
+                placeholder={`Message ${getStudentDisplayName(selectedStudent)}...`}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
               />
               <button

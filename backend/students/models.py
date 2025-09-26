@@ -117,23 +117,78 @@ class Enrollment(models.Model):
 
 
 
+from django.db import models
+from edu_admin.models import ZoomWebinar, ZoomOccurrence
+from instructor.models import Exams
+
 class CalendarEvent(models.Model):
     EVENT_TYPES = [
+        ('exam', 'Exam'),
         ('webinar', 'Webinar'),
-        ('notes', 'Notes Uploaded'),
-        ('exam', 'Exam Scheduled'),
+        ('custom', 'Custom'),
     ]
 
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
-    date = models.DateField()
-    time = models.TimeField(blank=True, null=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    classid = models.ForeignKey("instructor.Class", on_delete=models.CASCADE, related_name="calendar_events")
+    type = models.CharField(max_length=20, choices=EVENT_TYPES, default='custom')
+    date = models.DateTimeField()
+    related_webinar = models.ForeignKey(
+        'edu_admin.ZoomWebinar', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='calendar_events'
+    )
+    related_exam = models.ForeignKey(
+        'instructor.Exams', null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='calendar_events'
+    )
+    color = models.CharField(max_length=20, default='gray')
 
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.title} - {self.classid.title} - {self.date}"
+        return f"{self.title} ({self.type})"
+
+
+class ChatRoom(models.Model):
+    name = models.CharField(max_length=255)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatrooms_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # Required field from database
+    is_active = models.BooleanField(default=True)
+    room_type = models.CharField(max_length=50, default='private')
+
+class Message(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='messages_sent')
+    content = models.TextField()  # Changed from 'message' to 'content' to match database
+    message_type = models.CharField(max_length=50, default='text')
+    file_attachment = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_size = models.IntegerField(null=True, blank=True)
+    is_edited = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    is_delivered = models.BooleanField(default=False)  # Re-added - now exists in database
+    is_seen = models.BooleanField(default=False)       # Re-added - now exists in database
+    reply_to = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES=[
+        ('exam','Exam'),
+        ('webinar','Webinar'),
+        ('notes','Notes'),
+        ('message','Message')
+    ]
+    note_id = models.AutoField(primary_key=True)
+    student_id = models.ForeignKey('students.StudentProfile', on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type=models.CharField(max_length=50,choices=NOTIFICATION_TYPES,null=True, blank=True)
+    read_status = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification for {self.student_id} - {self.title}"

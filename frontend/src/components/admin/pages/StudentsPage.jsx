@@ -17,7 +17,8 @@ import {
   Award,
 } from "lucide-react"
 
-import { useAuth } from "@/context/AuthContext"
+import { useAdminData } from "@/context/AdminDataContext"
+import { adminApi } from "@/services/adminApi"
 
 // const studentsData = [
 //   {
@@ -150,9 +151,11 @@ export default function StudentsPage() {
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  const { accessToken } = useAuth();
   const [studentsData, setStudentsData] = useState([])
-  const [loading, setLoading] = useState(true);
+  const [newThisMonth, setNewThisMonth] = useState(0)
+  
+  // Use AdminDataContext for users (students) data
+  const { users, loading, error, fetchUsers } = useAdminData()
 
   const filteredStudents = studentsData.filter((student) => {
     const matchesSearch =
@@ -165,46 +168,45 @@ export default function StudentsPage() {
   })
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const res = await fetch('http://localhost:8000/edu_admin/students/', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+    // Use centralized users data and filter for students
+    const studentsOnly = users.filter(user => user.role === 'student' || user.student_profile);
+    
+    const processedStudents = studentsOnly.map((student) => {
+      const enrollments = student.student_profile?.enrollments || [];
+      const now = new Date();
+      const isActive = enrollments.some((enrollment) => {
+        const endDate = enrollment.classid?.end_date;
+        return endDate && new Date(endDate) > now;
+      });
 
-        const data = await res.json();
+      return {
+        ...student,
+        status: isActive ? "active" : "inactive",
+      };
+    });
 
-        if (res.ok) {
-          const now = new Date();
+    setStudentsData(processedStudents);
 
-          const filtered = data
-            .filter((student) => student.student_profile !== null)
-            .map((student) => {
-              const enrollments = student.student_profile.enrollments || [];
-              const isActive = enrollments.some((enrollment) => {
-                const endDate = enrollment.classid?.end_date;
-                return endDate && new Date(endDate) > now;
-              });
+    // Calculate new students this month
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
 
-              return {
-                ...student,
-                status: isActive ? "active" : "inactive",
-              };
-            });
-
-          setStudentsData(filtered);
-          console.log("Fetched students with status:", filtered);
-        }
-      } catch (error) {
-        console.error("Failed to fetch students:", error);
-      } finally {
-        setLoading(false);
+    const newStudentsThisMonth = studentsOnly.filter(student => {
+      if (student.date_joined) {
+        const joinDate = new Date(student.date_joined);
+        return joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear;
       }
-    };
+      return false;
+    }).length;
 
-    fetchStudents();
-  }, [accessToken]);
+    setNewThisMonth(newStudentsThisMonth);
+  }, [users]);
+
+  useEffect(() => {
+    // Fetch users data on component mount
+    fetchUsers();
+  }, []); // Empty dependency array to run only once
 
   return (
     // <div className="space-y-6">
@@ -258,7 +260,7 @@ export default function StudentsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">New This Month</p>
-                <p className="text-2xl font-bold text-gray-900">12</p>
+                <p className="text-2xl font-bold text-gray-900">{newThisMonth}</p>
               </div>
             </div>
           </div>
