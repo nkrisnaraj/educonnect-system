@@ -22,10 +22,6 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Webinars",
-    url: "/instructor/webinars",
-    icon: Video,
-  },{
     title: "Notes",
     url: "/instructor/notes",
     icon: FileText,

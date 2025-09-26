@@ -25,11 +25,59 @@ export default function Login() {
 
     const handleLogin = async(e) => {
         e.preventDefault();
+        
+        console.log('🔍 Form submission values:');
+        console.log('Username:', username);
+        console.log('Password:', password);
+        console.log('Username length:', username.length);
+        console.log('Password length:', password.length);
+        console.log('Username type:', typeof username);
+        console.log('Password type:', typeof password);
+        
+        // Check for empty values
+        if (!username || !password) {
+            console.error('❌ Empty username or password');
+            setMessage('Please enter both username and password');
+            return;
+        }
+        
         try {
-          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
-            username,
-            password
+          const requestData = {
+            username: username.trim(),  // Trim whitespace
+            password: password.trim()   // Trim whitespace
+          };
+          
+          console.log('🚀 Sending request with data:', requestData);
+          console.log('🚀 Request URL:', 'http://127.0.0.1:8000/api/accounts/login/');
+          
+          // Add axios interceptor to log the actual request
+          const requestInterceptor = axios.interceptors.request.use(
+            (config) => {
+              console.log('📤 Actual axios request config:', config);
+              console.log('📤 Request data:', config.data);
+              console.log('📤 Request headers:', config.headers);
+              return config;
+            },
+            (error) => {
+              console.error('📤 Request interceptor error:', error);
+              return Promise.reject(error);
+            }
+          );
+          
+          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/", requestData, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            timeout: 10000  // 10 second timeout
           });
+          
+          // Remove interceptor
+          axios.interceptors.request.eject(requestInterceptor);
+          
+          console.log('✅ Response status:', response.status);
+          console.log('✅ Response data:', response.data);
+          
           if(response.status === 200){
 
             setMessage("Login Successfully")
@@ -77,7 +125,12 @@ export default function Login() {
             console.log("Login Failed");
           }
         } catch (error) {
-            console.error("Login error:", error);
+            console.error("❌ Login error:", error);
+            console.error("❌ Error response:", error.response);
+            console.error("❌ Error status:", error.response?.status);
+            console.error("❌ Error data:", error.response?.data);
+            console.error("❌ Request config:", error.config);
+            
             if(error.response){
               setMessage(error.response.data?.detail || "Invalid Credentials");
             }

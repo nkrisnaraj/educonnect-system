@@ -1,13 +1,10 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Class, ClassSchedule, InstructorProfile, StudyNote
+from .models import Class, ClassSchedule, InstructorProfile, StudyNote, Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer, Exams
 from django.contrib.auth.models import User
 from edu_admin.models import ZoomWebinar
 
-class ClassSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Class
-        fields = ['id','classid', 'title', 'description', 'fee', 'instructor_name']
+# This ClassSerializer is replaced by the more complete one below
 
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
@@ -80,13 +77,14 @@ class ClassSerializer(serializers.ModelSerializer):
     instructor_name = serializers.SerializerMethodField()
     schedules = serializers.JSONField(required=False)
     status = serializers.SerializerMethodField()
+    webinar_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Class
         fields = [
             'id', 'classid', 'title', 'description', 'fee', 
             'start_date', 'end_date', 'instructor_name', 
-            'schedules', 'status'
+            'schedules', 'status', 'webinar_info'
         ]
 
     def get_instructor_name(self, obj):
@@ -104,6 +102,18 @@ class ClassSerializer(serializers.ModelSerializer):
             return "pending"
         else:
             return "active"
+
+    def get_webinar_info(self, obj):
+        if obj.webinar:
+            return {
+                'webinar_id': obj.webinar.webinar_id,
+                'topic': obj.webinar.topic,
+                'registration_url': obj.webinar.registration_url,
+                'start_time': obj.webinar.start_time,
+                'duration': obj.webinar.duration,
+                'agenda': obj.webinar.agenda
+            }
+        return None
 
     def to_representation(self, instance):
         """Override to provide proper schedules representation for reading"""
@@ -153,3 +163,153 @@ class ClassSerializer(serializers.ModelSerializer):
                     )
         
         return instance
+
+
+# Enhanced Exam Serializers for Google Forms-style functionality
+class QuestionOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionOption
+        fields = ['id', 'option_text', 'is_correct', 'order']
+
+class ExamQuestionSerializer(serializers.ModelSerializer):
+    options = QuestionOptionSerializer(many=True, required=False)
+    
+    class Meta:
+        model = ExamQuestion
+        fields = [
+            'id', 'question_text', 'question_type', 'order', 'is_required', 
+            'marks', 'description', 'scale_min', 'scale_max', 'scale_min_label', 
+            'scale_max_label', 'allow_other_option', 'shuffle_options', 'options'
+        ]
+    
+    def create(self, validated_data):
+        options_data = validated_data.pop('options', [])
+        question = ExamQuestion.objects.create(**validated_data)
+        
+        for option_data in options_data:
+            QuestionOption.objects.create(question=question, **option_data)
+        
+        return question
+    
+    def update(self, instance, validated_data):
+        options_data = validated_data.pop('options', [])
+        
+        # Update question fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Update options
+        if options_data:
+            # Delete existing options
+            instance.options.all().delete()
+            
+            # Create new options
+            for option_data in options_data:
+                QuestionOption.objects.create(question=instance, **option_data)
+        
+        return instance
+
+class ExamSerializer(serializers.ModelSerializer):
+    questions = ExamQuestionSerializer(many=True, read_only=True)
+    class_name = serializers.CharField(source='classid.title', read_only=True)
+    instructor_name = serializers.SerializerMethodField()
+    questions_count = serializers.ReadOnlyField()
+    total_students_attempted = serializers.ReadOnlyField()
+    duration_hours = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Exam
+        fields = [
+            'id', 'examid', 'examname', 'description', 'classid', 'class_name',
+            'instructor', 'instructor_name', 'date', 'start_time', 'end_time',
+            'duration_minutes', 'duration_hours', 'total_marks', 'passing_marks',
+            'status', 'status_display', 'is_published', 'allow_multiple_attempts',
+            'shuffle_questions', 'show_results_immediately', 'require_authentication',
+            'collect_email', 'confirmation_message', 'created_at', 'updated_at',
+            'questions', 'questions_count', 'total_students_attempted'
+        ]
+        read_only_fields = ['examid', 'created_at', 'updated_at', 'end_time']
+    
+    def get_instructor_name(self, obj):
+        if obj.instructor:
+            return f"{obj.instructor.first_name} {obj.instructor.last_name}".strip()
+        return "Unknown Instructor"
+    
+    def get_duration_hours(self, obj):
+        hours = obj.duration_minutes // 60
+        minutes = obj.duration_minutes % 60
+        if hours > 0:
+            return f"{hours}h {minutes}m" if minutes > 0 else f"{hours}h"
+        return f"{minutes}m"
+
+class ExamListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for exam list view"""
+    class_name = serializers.CharField(source='classid.title', read_only=True)
+    instructor_name = serializers.SerializerMethodField()
+    questions_count = serializers.ReadOnlyField()
+    total_students_attempted = serializers.ReadOnlyField()
+    duration_display = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    
+    class Meta:
+        model = Exam
+        fields = [
+            'id', 'examid', 'examname', 'class_name', 'instructor_name',
+            'date', 'start_time', 'duration_display', 'total_marks',
+            'status', 'status_display', 'is_published', 'questions_count',
+            'total_students_attempted', 'created_at'
+        ]
+    
+    def get_instructor_name(self, obj):
+        if obj.instructor:
+            return f"{obj.instructor.first_name} {obj.instructor.last_name}".strip()
+        return "Unknown Instructor"
+    
+    def get_duration_display(self, obj):
+        hours = obj.duration_minutes // 60
+        minutes = obj.duration_minutes % 60
+        if hours > 0:
+            return f"{hours}h {minutes}m" if minutes > 0 else f"{hours}h"
+        return f"{minutes}m"
+
+class ExamSubmissionSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+    exam_name = serializers.CharField(source='exam.examname', read_only=True)
+    
+    class Meta:
+        model = ExamSubmission
+        fields = [
+            'id', 'exam', 'exam_name', 'student', 'student_name',
+            'started_at', 'submitted_at', 'is_completed',
+            'total_marks_obtained', 'percentage'
+        ]
+    
+    def get_student_name(self, obj):
+        return f"{obj.student.user.first_name} {obj.student.user.last_name}".strip()
+
+class ExamAnswerSerializer(serializers.ModelSerializer):
+    question_text = serializers.CharField(source='question.question_text', read_only=True)
+    question_type = serializers.CharField(source='question.question_type', read_only=True)
+    selected_option_texts = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ExamAnswer
+        fields = [
+            'id', 'question', 'question_text', 'question_type',
+            'text_answer', 'selected_options', 'selected_option_texts',
+            'file_answer', 'numeric_answer', 'date_answer', 'time_answer',
+            'is_correct', 'marks_obtained'
+        ]
+    
+    def get_selected_option_texts(self, obj):
+        return [option.option_text for option in obj.selected_options.all()]
+
+# Serializer for the old Exams model (backward compatibility)
+class OldExamsSerializer(serializers.ModelSerializer):
+    class_name = serializers.CharField(source='classid.title', read_only=True)
+    
+    class Meta:
+        model = Exams
+        fields = ['id', 'examid', 'examname', 'classid', 'class_name', 'date']

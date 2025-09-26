@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Login Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Direct Login Test</h1>
+    <form id="loginForm">
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" value="nkrisnaraj007@gmail.com" />
+        </div>
+        <div>
+            <label>Password:</label>
+            <input type="password" id="password" value="instructor123" />
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            console.log('🧪 Testing login with:', { username, password });
+            
+            try {
+                const response = await axios.post('http://127.0.0.1:8000/api/accounts/login/', {
+                    username: username,
+                    password: password
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('✅ Success:', response);
+                resultDiv.innerHTML = `
+                    <h3 style="color: green;">Success!</h3>
+                    <p>Status: ${response.status}</p>
+                    <p>User: ${response.data.user.username}</p>
+                    <p>Role: ${response.data.user.role}</p>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                resultDiv.innerHTML = `
+                    <h3 style="color: red;">Error!</h3>
+                    <p>Status: ${error.response?.status || 'N/A'}</p>
+                    <p>Message: ${error.response?.data?.detail || error.message}</p>
+                    <p>Full error: ${JSON.stringify(error.response?.data || error.message)}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
