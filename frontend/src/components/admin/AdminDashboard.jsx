@@ -111,9 +111,9 @@ export default function AdminDashboard() {
             {/* Main Grid Layout - Responsive */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
               {/* Left Column: Stats Cards + Payments */}
-              <div className="xl:col-span-2 space-y-4 lg:space-y-6">
+              <div className="xl:col-span-2 space-y-4 lg:space-y-8">
                 {/* Stats Cards Row - Responsive Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 lg:gap-2">
                   <StatsCard 
                     title="Total Students" 
                     value={totalStudents.toString()} 
@@ -135,13 +135,13 @@ export default function AdminDashboard() {
                     changeType="neutral" 
                     icon={GraduationCap} 
                   />
-                  <StatsCard 
+                  {/* <StatsCard 
                     title="Total Revenue" 
                     value={`LKR ${totalRevenue.toLocaleString()}`} 
                     change={`${completedPayments}/${totalPayments} paid`} 
                     changeType={completedPayments === totalPayments ? "positive" : "neutral"} 
                     icon={DollarSign} 
-                  />
+                  /> */}
                 </div>
 
                 {/* Payments Table */}

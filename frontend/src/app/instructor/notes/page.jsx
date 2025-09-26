@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
-import axios from "axios";
+import { useInstructorApi } from "@/hooks/useInstructorApi";
 import {
   Plus,
   FileText,
@@ -11,10 +10,14 @@ import {
   Filter,
   Trash2,
   Pencil,
+  Download,
+  BookOpen,
+  Calendar,
+  Users,
 } from "lucide-react";
 
 export default function NotesPage() {
-  const { accessToken, refreshAccessToken, logout } = useAuth();
+  const instructorApi = useInstructorApi();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [notes, setNotes] = useState([]);
@@ -22,55 +25,44 @@ export default function NotesPage() {
   const [selectedClass, setSelectedClass] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [noteBeingEdited, setNoteBeingEdited] = useState(null); // <-- for edit mode
+  const [noteBeingEdited, setNoteBeingEdited] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const fetchNotes = async (token = accessToken) => {
+  const fetchData = async () => {
     try {
-      const params = {};
-      if (searchQuery) params.search = searchQuery;
-      if (selectedClass !== "all") params.related_class = selectedClass;
-
-      const res = await axios.get("http://127.0.0.1:8000/instructor/notes/", {
-        headers: { Authorization: `Bearer ${token}` },
-        params,
-      });
-      setNotes(res.data);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) fetchNotes(newToken);
-        else logout();
+      setLoading(true);
+      setError(null);
+      
+      const [notesData, classesData] = await Promise.all([
+        instructorApi.getNotes(searchQuery || '', selectedClass !== "all" ? selectedClass : ''),
+        instructorApi.getClasses()
+      ]);
+      
+      if (notesData) {
+        setNotes(notesData || []);
       } else {
-        console.error(err);
-        alert("Failed to load notes.");
+        throw new Error("Failed to fetch notes");
       }
-    }
-  };
-
-  const fetchClasses = async (token = accessToken) => {
-    try {
-      const res = await axios.get("http://127.0.0.1:8000/instructor/classes/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setClasses([{ id: "all", topic: "All Classes" }, ...res.data]);
+      
+      if (classesData) {
+        setClasses([
+          { id: "all", topic: "All Classes" }, 
+          ...(classesData || [])
+        ]);
+      }
+      
     } catch (err) {
-      if (err.response?.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) fetchClasses(newToken);
-        else logout();
-      } else {
-        console.error(err);
-        alert("Failed to load classes.");
-      }
+      console.error("Error fetching data:", err);
+      setError(err.message || "Failed to load data");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (accessToken) {
-      fetchNotes();
-      fetchClasses();
-    }
-  }, [accessToken, searchQuery, selectedClass]);
+    fetchData();
+  }, [searchQuery, selectedClass]);
 
   const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);

@@ -1,119 +1,146 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  CalendarIcon,
-  Clock,
-  Users,
-  X
-} from "lucide-react";
-import axios from "axios";
-import { useAuth } from "@/context/AuthContext";
-
-const generateColorPalette = (n) => {
-  const baseColors = [
-    "bg-blue-500", "bg-rose-500", "bg-indigo-500", "bg-red-500",
-    "bg-yellow-500", "bg-orange-500", "bg-purple-500", "bg-pink-500",
-    "bg-green-500", "bg-teal-500"
-  ];
-  return Array.from({ length: n }, (_, i) => baseColors[i % baseColors.length]);
-};
+import { CalendarIcon, ChevronLeft, ChevronRight, Clock, Video, BookOpen } from "lucide-react";
+import { useInstructorApi } from "@/hooks/useInstructorApi";
 
 export default function CalendarPage() {
+  const instructorApi = useInstructorApi();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState("month");
-  const [webinarEvents, setWebinarEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const { accessToken, refreshAccessToken, logout } = useAuth();
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const fetchWebinars = async (token = accessToken) => {
+  const fetchCalendarData = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/edu_admin/webinars-list/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const colorMap = {};
-      const colors = generateColorPalette(res.data.length);
-
-      const processedEvents = res.data.flatMap((webinar, idx) => {
-        const color = colors[idx];
-        colorMap[webinar.id] = color;
-
-        return (webinar.occurrences || []).map((occurrence, occIdx) => {
-          const baseDate = new Date(occurrence.start_time);
-
-          const datePart = baseDate.toISOString().split("T")[0];
-          const time = baseDate.toLocaleTimeString("en-GB", { hour: '2-digit', minute: '2-digit', hour12: false });
-
-          return {
-            id: `webinar-${webinar.id}-${occIdx}-${baseDate.getTime()}`,
-            topic: webinar.topic,
-            date: datePart,
-            time,
-            duration: webinar.duration || "90 min",
-            color,
-          };
-        });
-      });
-
-      setWebinarEvents(processedEvents);
+      setLoading(true);
+      setError(null);
+      const classesData = await instructorApi.getClasses();
+      
+      setClasses(classesData?.classes || []);
     } catch (error) {
-      if (error.response?.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) fetchWebinars(newToken);
-        else logout();
-      } else {
-        console.error("Failed to load webinars:", error);
-      }
+      console.error('Error fetching calendar data:', error);
+      setError(error.message || 'Failed to load calendar data');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (accessToken) {
-      fetchWebinars(accessToken);
-    }
-  }, [accessToken]);
-
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-
-    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
-    for (let day = 1; day <= lastDay.getDate(); day++) days.push(day);
-
-    return days;
-  };
-
-  const getDaysInWeek = (date) => {
-    const start = new Date(date);
-    const day = start.getDay();
-    start.setDate(start.getDate() - day);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d;
-    });
-  };
-
-  const getEventsForDate = (date) => {
-    const dateString = date.toISOString().split("T")[0];
-    return webinarEvents.filter((event) => event.date === dateString);
-  };
+    fetchCalendarData();
+  }, []);
 
   const navigate = (direction) => {
     const newDate = new Date(currentDate);
     if (viewMode === "month") {
       newDate.setMonth(currentDate.getMonth() + direction);
     } else {
-      newDate.setDate(currentDate.getDate() + 7 * direction);
+      newDate.setDate(currentDate.getDate() + direction * 7);
     }
     setCurrentDate(newDate);
+  };
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const days = [];
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(startDate);
+      day.setDate(startDate.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  };
+
+  const getDaysInWeek = (date) => {
+    const startOfWeek = new Date(date);
+    startOfWeek.setDate(date.getDate() - date.getDay());
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    return days;
+  };
+
+  const getAllEvents = () => {
+    const allEvents = [];
+
+    // Add class events
+    classes.forEach(classItem => {
+      if (classItem.schedules && classItem.schedules.length > 0) {
+        classItem.schedules.forEach(schedule => {
+          if (schedule.date && schedule.start_time) {
+            const classDate = new Date(`${schedule.date}T${schedule.start_time}`);
+            allEvents.push({
+              id: `class-${classItem.id}-${schedule.id}`,
+              title: classItem.title,
+              date: classDate,
+              type: 'class',
+              data: classItem
+            });
+          }
+        });
+      }
+      
+      // Add webinar events from class webinar_info
+      if (classItem.webinar_info && classItem.webinar_info.start_time) {
+        const webinarDate = new Date(classItem.webinar_info.start_time);
+        allEvents.push({
+          id: `webinar-${classItem.id}`,
+          title: classItem.webinar_info.topic || classItem.title,
+          date: webinarDate,
+          type: 'webinar',
+          data: classItem.webinar_info
+        });
+      }
+    });
+
+    return allEvents;
+  };
+
+  const getEventsForDate = (date) => {
+    const allEvents = getAllEvents();
+    return allEvents.filter(event => 
+      event.date.toDateString() === date.toDateString()
+    );
+  };
+
+  const getCalendarStats = () => {
+    const allEvents = getAllEvents();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayEvents = allEvents.filter(event => 
+      event.date.toDateString() === today.toDateString()
+    ).length;
+    
+    const upcomingEvents = allEvents.filter(event => 
+      event.date > today
+    ).length;
+    
+    const webinarsCount = allEvents.filter(event => 
+      event.type === 'webinar'
+    ).length;
+    
+    const classesCount = allEvents.filter(event => 
+      event.type === 'class'
+    ).length;
+
+    return {
+      totalEvents: allEvents.length,
+      todayEvents,
+      upcomingEvents,
+      webinarsCount,
+      classesCount
+    };
   };
 
   const monthNames = [
@@ -122,146 +149,193 @@ export default function CalendarPage() {
   ];
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const days = viewMode === "month" ? getDaysInMonth(currentDate) : getDaysInWeek(currentDate);
+  const { totalEvents, todayEvents, upcomingEvents, webinarsCount, classesCount } = getCalendarStats();
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-medium">Error</h3>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={fetchCalendarData}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 relative">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">A/L Class Calendar</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+          <p className="text-gray-600">View your classes and webinar schedules</p>
+        </div>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg">
-        <div className="p-6 border-b border-purple-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <h2 className="text-xl font-semibold">
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-              </h2>
-              <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <ChevronRight className="h-5 w-5" />
-              </button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <CalendarIcon className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentDate(new Date())}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Today
-              </button>
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode("month")}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === "month" ? "bg-white shadow-sm" : "text-gray-600"}`}
-                >
-                  Month
-                </button>
-                <button
-                  onClick={() => setViewMode("week")}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === "week" ? "bg-white shadow-sm" : "text-gray-600"}`}
-                >
-                  Week
-                </button>
-              </div>
+            <div>
+              <p className="text-xs text-gray-600">Total Events</p>
+              <p className="text-lg font-bold">{totalEvents}</p>
             </div>
           </div>
         </div>
-
-        <div className="p-6">
-          <div className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"} gap-1 mb-4`}>
-            {dayNames.map((day) => (
-              <div key={day} className="p-3 text-center font-medium text-gray-500 text-sm">
-                {day}
-              </div>
-            ))}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Clock className="h-4 w-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Today</p>
+              <p className="text-lg font-bold">{todayEvents}</p>
+            </div>
           </div>
-          <div className={`grid ${viewMode === "month" ? "grid-cols-7" : "grid-cols-7"} gap-1`}>
-            {days.map((day, index) => {
-              const date = viewMode === "month"
-                ? day === null ? null : new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-                : day;
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <CalendarIcon className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Upcoming</p>
+              <p className="text-lg font-bold">{upcomingEvents}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Video className="h-4 w-4 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Webinars</p>
+              <p className="text-lg font-bold">{webinarsCount}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <BookOpen className="h-4 w-4 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Classes</p>
+              <p className="text-lg font-bold">{classesCount}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              if (!date) return <div key={`empty-${index}`} className="h-24 p-1"></div>;
-
-              const dayEvents = getEventsForDate(date);
-              const isToday = new Date().toDateString() === date.toDateString();
-              const isSelected = selectedDate && selectedDate.toDateString() === date.toDateString();
-
-              return (
-                <div
-                  key={`day-${date.toISOString()}`}
-                  onClick={() => setSelectedDate(date)}
-                  className={`h-24 p-1 border border-gray-200 rounded cursor-pointer hover:bg-purple-50 ${
-                    isToday ? "bg-purple-100 border-purple-300" : ""
-                  } ${isSelected ? "bg-purple-200 border-purple-400" : ""}`}
-                >
-                  <div className="h-full flex flex-col">
-                    <span className={`text-sm font-medium ${isToday ? "text-purple-700" : "text-gray-900"}`}>
-                      {date.getDate()}
-                    </span>
-                    <div className="flex-1 overflow-hidden">
-                      {dayEvents.slice(0, 2).map((event) => (
-                        <div
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(event);
-                          }}
-                          className={`text-xs p-1 mb-1 rounded text-white truncate cursor-pointer ${event.color}`}
-                        >
-                          {event.time} {event.topic}
-                        </div>
-                      ))}
-                      {dayEvents.length > 2 && (
-                        <div className="text-xs text-gray-500">+{dayEvents.length - 2} more</div>
-                      )}
-                    </div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {loading ? (
+          <div className="p-6">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="grid grid-cols-7 gap-2">
+                {[...Array(35)].map((_, i) => (
+                  <div key={i} className="h-24 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <h2 className="text-xl font-semibold">
+                    {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+                  </h2>
+                  <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-lg">
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentDate(new Date())}
+                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Today
+                  </button>
+                  <div className="flex bg-gray-100 rounded-lg">
+                    <button
+                      onClick={() => setViewMode("month")}
+                      className={`px-3 py-2 rounded-lg ${viewMode === "month" ? "bg-white shadow-sm" : ""}`}
+                    >
+                      Month
+                    </button>
+                    <button
+                      onClick={() => setViewMode("week")}
+                      className={`px-3 py-2 rounded-lg ${viewMode === "week" ? "bg-white shadow-sm" : ""}`}
+                    >
+                      Week
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Event Types</h3>
-        <div className="flex flex-wrap gap-4">
-          {Array.from(new Set(webinarEvents.map(e => e.color))).map((color, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={`w-4 h-4 rounded ${color}`}></div>
-              <span className="text-sm text-gray-700">Webinar</span>
+              </div>
             </div>
-          ))}
-        </div>
-      </div> */}
 
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-            <button
-              onClick={() => setSelectedEvent(null)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-            >
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-            </button>
-            <h2 className="text-xl font-semibold mb-2">{selectedEvent.topic}</h2>
-            <p className="text-gray-700">
-              <CalendarIcon className="inline h-4 w-4 mr-1" />
-              Date: {selectedEvent.date}
-            </p>
-            <p className="text-gray-700">
-              <Clock className="inline h-4 w-4 mr-1" />
-              Time: {selectedEvent.time}
-            </p>
-            <p className="text-gray-700">
-              <Users className="inline h-4 w-4 mr-1" />
-              Duration: {selectedEvent.duration} minutes
-            </p>
-          </div>
-        </div>
-      )}
+            <div className="p-6">
+              <div className="grid grid-cols-7 gap-2 mb-6">
+                {dayNames.map((day) => (
+                  <div key={day} className="text-center font-medium text-gray-700 py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {days.map((day, index) => {
+                  const events = getEventsForDate(day);
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  return (
+                    <div
+                      key={index}
+                      className={`min-h-24 border border-gray-200 rounded-lg p-2 relative ${
+                        isToday ? "bg-blue-50 border-blue-300" : "bg-white"
+                      }`}
+                    >
+                      <div
+                        className={`text-sm font-medium mb-1 ${
+                          isToday ? "text-blue-600" : "text-gray-700"
+                        }`}
+                      >
+                        {day.getDate()}
+                      </div>
+                      {events.map((event) => (
+                        <div
+                          key={event.id}
+                          className={`text-xs p-1 mb-1 rounded truncate ${
+                            event.type === "webinar"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                          title={`${event.title} (${event.type === "webinar" ? "Webinar" : "Class"})`}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

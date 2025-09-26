@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -15,11 +15,12 @@ import {
   Users,
   Award,
   Clock,Video,Button,
+  BookCopy,
 } from "lucide-react";
-
 import MainNavbar from "@/components/MainNavbar";
 import "../globals.css";
 import Footer from "@/components/Footer";
+import axios from "axios";
 
 export default function HomePage() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -31,6 +32,8 @@ export default function HomePage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("");
+  const [classList, setClassList] = useState([]);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -71,51 +74,59 @@ export default function HomePage() {
     }
   };
 
+  useEffect(() =>{
+    const fetchAllClass = async() =>{
+      try {
+          const response = await axios.get('http://localhost:8000/students/getallclass/');
+          if(response.status === 200){
+            console.log(response.data);
+            setClassList(response.data);
+          }
+      } catch (error) {
+        console.error("Error fetching classes:", error);
+      }
+    }
+    fetchAllClass();
+  },[])
+
+
   return (
     <>
     <MainNavbar />
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       {/* Hero Section */}
+      
       <section
         id="home"
-        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden bg-no-repeat"
-        style={{
-          backgroundImage: "url('/home.png')",
-          backgroundPosition: "right",
-          backgroundSize: "55vw auto",   // 20% of viewport width
-          height: "100vh",
-          width: "100%",
-        }}
+        className="relative min-h-screen flex flex-col items-center pt-28  md:pt-20 justify-center px-4 sm:px-6 lg:px-8 overflow-hidden"
       >
         {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-60 h-60 sm:w-80 sm:h-80 bg-gradient-to-br from-[#2064d4]/20 to-blue-600/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-60 h-60 sm:w-80 sm:h-80 bg-gradient-to-br from-[#2064d4]/20 to-cyan-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 sm:w-96 sm:h-96 bg-gradient-to-br from-[#2064d4]/10 to-pink-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Content Section */}
             <div className="text-center lg:text-left space-y-8 animate-fade-in">
-             
-
               {/* Main Heading */}
               <div className="space-y-4">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-tight">
                   Welcome to{" "}
                   <span className="bg-gradient-to-r from-[#2064d4] via-blue-500 to-[#2064d4] bg-clip-text text-transparent">
                     EduConnect
                   </span>
                   !
                 </h1>
-                <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto lg:mx-0">
+                <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto lg:mx-0">
                   Streamline payments and webinars for education! Connect students and instructors seamlessly with our cutting-edge platform.
                 </p>
               </div>
 
               {/* Feature Highlights */}
-              <div className="flex flex-wrap gap-4 justify-center lg:justify-start text-sm">
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start text-xs sm:text-sm">
                 <div className="flex items-center gap-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-2 rounded-full">
                   <Video className="w-4 h-4 text-[#2064d4]" />
                   <span>Live Webinars</span>
@@ -133,54 +144,36 @@ export default function HomePage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link href="/login">
-                  <button 
-                  className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group"
-                >
-                  Get Started
-                </button>
+                  <button
+                    className="bg-gradient-to-r from-[#2064d4] to-[#3c7ce6] hover:from-[#1a56b8] hover:to-[#154ea3] text-white px-8 py-3 rounded-xl text-base sm:text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 group w-full sm:w-auto"
+                  >
+                    Get Started
+                  </button>
                 </Link>
                 <Link href="/help">
-                  <button 
-                  onClick={() => console.log('Watch Demo clicked')}
-                  className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm"
-                >
-                  Watch Demo
-                </button>
+                  <button
+                    onClick={() => console.log('Watch Demo clicked')}
+                    className="border-2 border-gray-300 dark:border-gray-600 hover:border-[#2064d4] dark:hover:border-[#2064d4] px-8 py-3 rounded-xl text-base sm:text-lg font-semibold transition-all duration-300 hover:shadow-lg group backdrop-blur-sm w-full sm:w-auto"
+                  >
+                    Watch Demo
+                  </button>
                 </Link>
-                
               </div>
-
-
-             
             </div>
 
-            {/* Image Section */}
-            {/* <div className="relative animate-fade-in delay-300">
-              <div className="relative">
-                {/* Decorative Elements */}
-                {/* <div className="absolute -inset-4 bg-gradient-to-r from-[#2064d4]/20 to-purple-600/20 rounded-3xl blur-2xl"></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-[#2064d4]/10 to-purple-600/10 rounded-2xl"></div>
-                 */}
-                {/* Main Image Container */}
-                {/* <div className="relative">
-                  <img
-                    src="home.png"
-                    alt="Student Learning Online"
-                    className="w-full h-auto rounded-xl shadow-lg"
-                  />
-                  
-                 
-                </div>
-              </div>
-            </div> */} 
+            {/* Right Side Image */}
+            <div className="flex justify-center lg:justify-end">
+              <img
+                src="/home.png"
+                alt="EduConnect Illustration"
+                className="w-full max-w-xl lg:max-w-3xl object-contain h-auto"
+              />
+            </div>
           </div>
         </div>
-
-    
       </section>
 
-      
-    
+
 
       {/* About Section */}
       <section id="about" className="py-16 bg-white dark:bg-gray-900">
@@ -285,8 +278,7 @@ export default function HomePage() {
     </div>
   </div>
 </section>
-
-      {/* Courses Section */}
+{/* Courses Section */}
 <section id="courses" className="p-8 py-16 bg-[#FAF9F6] dark:bg-gray-800">
   <div className="max-w-6xl mx-auto">
     <h2 className="text-3xl font-bold mb-6 text-blue-700 dark:text-blue-400 text-center">
@@ -298,86 +290,21 @@ export default function HomePage() {
 
     {/* First Row - Course Categories */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-           {[
-        {
-          title: "2025 A/L Theory",
-          icon: <Users className="w-8 h-8 text-blue-600" />,
-          students: "1,200+",
-          description: "Comprehensive coverage of A/L Theory syllabus for 2025 examination"
-        },
-        {
-          title: "2025 A/L Revision",
-          icon: <BookOpen className="w-8 h-8 text-blue-600" />,
-          students: "2,500+",
-          description: "Intensive revision classes and practice sessions for A/L 2025"
-        },
-        {
-          title: "2025 A/L Papers",
-          icon: <Award className="w-8 h-8 text-blue-600" />,
-          students: "800+",
-          description: "Past papers and model papers for A/L 2025 examination practice"
-        }
-      ].map((category, i) => (
+      {(showAll ? classList : classList.slice(0, 6)).map((category, i) => (
         <div
           key={i}
           className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105"
         >
           <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
-              {category.icon}
-            </div>
+            {/* <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
+              {BookCopy}
+            </div> */}
             <div>
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
                 {category.title}
               </h3>
               <p className="text-sm text-blue-600 dark:text-blue-400">
-                {category.students} students
-              </p>
-            </div>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 text-sm">
-            {category.description}
-          </p>
-        </div>
-      ))}
-    </div>
-
-    {/* Second Row - Additional Courses */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-      {[
-        {
-          title: "2026 A/L Theory",
-          icon: <Users className="w-8 h-8 text-blue-600" />,
-          students: "1,800+",
-          description: "Early preparation for A/L Theory syllabus for 2026 examination"
-        },
-        {
-          title: "2026 A/L Revision",
-          icon: <BookOpen className="w-8 h-8 text-blue-600" />,
-          students: "1,500+",
-          description: "Advanced revision classes and mock tests for A/L 2026"
-        },
-        {
-          title: "2026 A/L Papers",
-          icon: <Award className="w-8 h-8 text-blue-600" />,
-          students: "3,200+",
-          description: "Question papers and practice materials for A/L 2026 preparation"
-        }
-      ].map((category, i) => (
-        <div
-          key={i}
-          className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105"
-        >
-          <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mr-4">
-              {category.icon}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-                {category.title}
-              </h3>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                {category.students} students
+                Rs.{ category.fee}
               </p>
             </div>
           </div>
@@ -390,15 +317,17 @@ export default function HomePage() {
 
     {/* See More Courses Button */}
     <div className="text-center">
-      <Link href="/courses">
-        <button className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 inline-flex items-center space-x-2">
-          <BookOpen className="w-5 h-5" />
-          <span>See More Courses</span>
-        </button>
-      </Link>
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 inline-flex items-center space-x-2"
+          >
+            <BookOpen className="w-5 h-5" />
+            <span>{showAll ? 'Show Less Courses' : 'See More Courses'}</span>
+          </button>
     </div>
   </div>
 </section>
+
 
       {/* Contact Section */}
       <section id="contact" className="p-8 py-16 bg-white dark:bg-gray-900">
