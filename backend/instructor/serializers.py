@@ -51,26 +51,14 @@ class ZoomWebinarSerializer(serializers.ModelSerializer):
 
 class StudyNoteSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='related_class.title', read_only=True)
-    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyNote
         fields = [
-            'id', 'title', 'description', 'batch',
-            'upload_date', 'file_url', 'class_name',
-            'related_class', 'file'
+            'id', 'title', 'description', 'file',
+            'upload_date', 'class_name'  # Changed from 'uploaded_at' to 'upload_date'
         ]
-        read_only_fields = ['upload_date']
-        extra_kwargs = {
-            'file': {'write_only': True},
-            'related_class': {'write_only': True},
-        }
-
-    def get_file_url(self, obj):
-        request = self.context.get('request')
-        if obj.file and hasattr(obj.file, 'url'):
-            return request.build_absolute_uri(obj.file.url)
-        return None
+        read_only_fields = ['upload_date']  # Changed from 'uploaded_at' to 'upload_date'
 
     
 class ClassScheduleSerializer(serializers.ModelSerializer):

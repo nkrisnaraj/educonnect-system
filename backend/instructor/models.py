@@ -279,7 +279,6 @@ class InstructorProfile(models.Model):
 class StudyNote(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    batch = models.CharField(max_length=50)
     file = models.FileField(upload_to='study_notes')
     upload_date = models.DateField(auto_now_add=True)
 
