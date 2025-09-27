@@ -3,13 +3,46 @@
 import { useState, useEffect } from "react"
 import { GraduationCap, Calendar, Users, Clock, Eye, Edit, FileText, AlertCircle, Plus } from "lucide-react"
 import { useInstructorApi } from "@/hooks/useInstructorApi"
+import { useRouter } from "next/navigation"
 
 export default function ExamsPage() {
+  const router = useRouter()
   const [selectedTab, setSelectedTab] = useState("upcoming")
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const { getExams, loading: apiLoading, error } = useInstructorApi()
+  const { getExams, publishExam, loading: apiLoading, error } = useInstructorApi()
+
+  const handleNavigation = (path) => {
+    try {
+      console.log('Navigating to:', path)
+      router.push(path)
+    } catch (error) {
+      console.error('Navigation error:', error)
+      // Fallback to window.location if router fails
+      window.location.href = path
+    }
+  }
+
+  const handlePublishExam = async (examId) => {
+    if (confirm('Are you sure you want to publish this exam? Students will be able to take it once published.')) {
+      try {
+        const result = await publishExam(examId)
+        if (result) {
+          // Update exam status in local state
+          setExams(prev => prev.map(exam => 
+            exam.id === examId 
+              ? { ...exam, status: 'published', is_published: true }
+              : exam
+          ))
+          alert('Exam published successfully!')
+        }
+      } catch (error) {
+        console.error('Failed to publish exam:', error)
+        alert('Failed to publish exam')
+      }
+    }
+  }
 
   useEffect(() => {
     fetchExams()
@@ -18,11 +51,14 @@ export default function ExamsPage() {
   const fetchExams = async () => {
     try {
       setLoading(true)
+      console.log('Fetching exams...')
       const response = await getExams()
       console.log('Exams API Response:', response)
       if (response && response.exams) {
         setExams(response.exams)
+        console.log('Exams loaded successfully:', response.exams.length)
       } else {
+        console.log('No exams found in response')
         setExams([])
       }
     } catch (error) {
@@ -120,13 +156,24 @@ export default function ExamsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Exams Management</h1>
           <p className="text-gray-600">Create and manage your exams and assessments</p>
         </div>
-        <button 
-          onClick={() => window.location.href = '/instructor/exams/create'}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create Exam
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => console.log('Test button clicked')}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+          >
+            Test Click
+          </button>
+          <button 
+            onClick={() => {
+              console.log('Create Exam button clicked')
+              handleNavigation('/instructor/exams/create')
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Create Exam
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -265,19 +312,34 @@ export default function ExamsPage() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => window.location.href = `/instructor/exams/${exam.id}`}
+                            onClick={() => {
+                              console.log('View Exam clicked for exam:', exam.id)
+                              handleNavigation(`/instructor/exams/${exam.id}`)
+                            }}
                             className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                             title="View Exam"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button 
-                            onClick={() => window.location.href = `/instructor/exams/${exam.id}/edit`}
+                            onClick={() => {
+                              console.log('Edit Exam clicked for exam:', exam.id)
+                              handleNavigation(`/instructor/exams/${exam.id}/edit`)
+                            }}
                             className="p-1 text-gray-600 hover:bg-gray-50 rounded"
                             title="Edit Exam"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
+                          {exam.status === 'draft' && (
+                            <button
+                              onClick={() => handlePublishExam(exam.id)}
+                              className="p-1 text-green-600 hover:bg-green-50 rounded"
+                              title="Publish Exam"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -387,11 +387,19 @@ def exam_questions(request, exam_id):
     elif request.method == 'POST':
         data = request.data.copy()
         data['exam'] = exam.id
+        
+        # Debug logging
+        print(f"Creating question for exam {exam.id}")
+        print(f"Question data: {data}")
+        
         serializer = ExamQuestionSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            question = serializer.save()
+            print(f"Question created successfully: {question.id}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print(f"Serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([JWTAuthentication])
