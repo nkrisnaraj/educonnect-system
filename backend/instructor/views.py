@@ -79,7 +79,7 @@ def study_notes(request):
         notes = StudyNote.objects.select_related('related_class').filter(
             Q(title__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(related_class__topic__icontains=search_query),
+            Q(related_class__title__icontains=search_query),
         ).order_by('-upload_date')
 
         if related_class and related_class.lower() != 'all':
@@ -100,7 +100,7 @@ def study_notes(request):
                 Notification.objects.create(
                     student_id=student_profile,
                     title=note.title,
-                    message=f"A new note '{note.title}' was uploaded for {related_class.topic}.",
+                    message=f"A new note '{note.title}' was uploaded for {related_class.title}.",
                     type="notes"
                 )
 

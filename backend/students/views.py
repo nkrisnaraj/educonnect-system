@@ -764,35 +764,42 @@ def delete_notification(request, pk):
 
 from instructor.models import StudyNote,Class
 from instructor.serializers import StudyNoteSerializer
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_notes(request, classid):
     """
-    Get all StudyNotes for a class given its classid (e.g., CRS-475680)
+    Get all StudyNotes for a class given its classid (e.g., CRS-1B7F02)
     """
     print(f"🔍 Getting notes for classid: {classid}")
     
     try:
+        
         # Get class object by classid
         class_obj = Class.objects.get(classid=classid)
-        print(f"✅ Found class: {class_obj.title}")
+        print(f"✅ Found class: {class_obj.title} (ID: {class_obj.id})")
 
-        # Get all notes related to this class
-        notes = StudyNote.objects.filter(related_class=class_obj)
+        # Get all notes related to this class - use the class object, not the title
+        notes = StudyNote.objects.filter(related_class=class_obj)  # Use class_obj, not class title
         print(f"📚 Found {notes.count()} notes in database")
         
-        # Debug each note
+        # Debug each note's file
         for note in notes:
-            print(f"  - Note ID {note.id}: '{note.title}' - File: {note.file}")
+            print(f"  - Note ID {note.id}: '{note.title}'")
+            print(f"    File field: {note.file}")
+            if note.file:
+                print(f"    File name: {note.file.name}")
+                print(f"    File path: {note.file.path}")
+                print(f"    File URL: {note.file.url}")
+            else:
+                print(f"    No file attached")
         
         serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
         serialized_data = serializer.data
-        print(f"📝 Serialized {len(serialized_data)} notes")
         
-        # Debug serialized data
+        # Debug serialized file data
+        print(f"📝 Serializing {len(notes)} notes...")
         for note_data in serialized_data:
-            print(f"  - Serialized: {note_data}")
+            print(f"  - Serialized '{note_data['title']}': file={note_data.get('file', 'NO FILE FIELD')}")
 
         # Prepare class details
         class_details = {
@@ -811,19 +818,106 @@ def get_notes(request, classid):
         return Response(response_data, status=status.HTTP_200_OK)
 
     except Class.DoesNotExist:
-        print(f"❌ Class not found: {classid}")
+        print(f"❌ Class not found with classid: {classid}")
         return Response({
             'notes': [],
             'class_details': None,
-            'error': 'Class Not Found'
+            'error': f'Class with ID {classid} not found'
         }, status=status.HTTP_404_NOT_FOUND)
+        
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Unexpected error: {e}")
+        print(f"❌ Error type: {type(e)}")
         import traceback
         traceback.print_exc()
         return Response({
-            'error': str(e)
+            'error': str(e),
+            'notes': [],
+            'class_details': None
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def link_notes_to_webinar(request, classid):
+    """
+    Link existing StudyNote records to the webinar associated with a class
+    """
+    try:
+        # Get class object by classid
+        class_obj = Class.objects.get(classid=classid)
+        webinar = class_obj.webinar
+        
+        if not webinar:
+            return Response({'error': 'Class has no associated webinar'}, status=400)
+        
+        # Check if there are any StudyNote records
+        all_notes = StudyNote.objects.all()
+        
+        if not all_notes.exists():
+            # Create a test StudyNote record with the existing image
+            from django.core.files import File
+            import os
+            
+            # Get the existing image file
+            image_path = os.path.join(settings.MEDIA_ROOT, 'study_notes', 'Periodic_Table_ncEQrzK.jpg')
+            if os.path.exists(image_path):
+                with open(image_path, 'rb') as f:
+                    django_file = File(f)
+                    test_note = StudyNote.objects.create(
+                        title="Periodic Table of Elements",
+                        description="Complete periodic table with all elements and their properties",
+                        batch="Chemistry",
+                        file=django_file,
+                        related_class=webinar,
+                        uploaded_by=request.user
+                    )
+                    test_note.save()
+                
+                return Response({
+                    'message': f'Created and linked 1 test note to webinar {webinar.topic}',
+                    'webinar_id': webinar.id,
+                    'webinar_topic': webinar.topic,
+                    'note_created': True
+                })
+            else:
+                return Response({'error': 'No StudyNote records found and no test image available'}, status=404)
+        
+        # Get all StudyNotes that are not linked to any webinar
+        unlinked_notes = StudyNote.objects.filter(related_class__isnull=True)
+        
+        # If no unlinked notes, get all notes and link them to this webinar
+        if not unlinked_notes.exists():
+            updated_count = 0
+            
+            for note in all_notes:
+                note.related_class = webinar
+                note.save()
+                updated_count += 1
+            
+            return Response({
+                'message': f'Linked {updated_count} notes to webinar {webinar.topic}',
+                'webinar_id': webinar.id,
+                'webinar_topic': webinar.topic
+            })
+        else:
+            # Link unlinked notes to this webinar
+            updated_count = 0
+            for note in unlinked_notes:
+                note.related_class = webinar
+                note.save()
+                updated_count += 1
+            
+            return Response({
+                'message': f'Linked {updated_count} unlinked notes to webinar {webinar.topic}',
+                'webinar_id': webinar.id,
+                'webinar_topic': webinar.topic
+            })
+        
+    except Class.DoesNotExist:
+        return Response({'error': 'Class not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 
 from rest_framework.permissions import AllowAny

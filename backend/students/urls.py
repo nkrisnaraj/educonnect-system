@@ -32,6 +32,7 @@ urlpatterns = [
     path('notifications/<int:pk>/read/',views.mark_notification_read, name='mark-notification-read'),
     path('notifications/<int:pk>/delete/',views.delete_notification, name='delete-notification'),
     path('class/<str:classid>/notes/', views.get_notes, name='get_notes'),
+    path('class/<str:classid>/link-notes/', views.link_notes_to_webinar, name='link_notes_to_webinar'),
     path('getallclass/', views.getAllClass, name='get_all_classes'),
     path('chat/rooms/<int:room_id>/messages/', RoomMessagesView.as_view(), name='room-messages'),
 ]

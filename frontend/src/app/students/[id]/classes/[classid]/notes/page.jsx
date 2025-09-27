@@ -120,7 +120,7 @@ export default function ClassNotes() {
                   <h3 className="font-semibold text-gray-900 text-lg leading-tight">{note.title}</h3>
                   {note.file && (
                     <a
-                      href={`http://127.0.0.1:8000${note.file}`}
+                      href={`${note.file}`}
                       download
                       className="text-blue-600 hover:text-blue-800 p-1"
                       title="Download"
@@ -137,7 +137,7 @@ export default function ClassNotes() {
                 <div className="space-y-3">
                   {note.file ? (
                     <a
-                      href={`http://127.0.0.1:8000${note.file}`}
+                      href={`${note.file}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 rounded-lg px-4 py-4 transition-colors font-medium"

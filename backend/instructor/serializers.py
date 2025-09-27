@@ -55,10 +55,15 @@ class StudyNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudyNote
         fields = [
-            'id', 'title', 'description', 'file',
-            'upload_date', 'class_name'  # Changed from 'uploaded_at' to 'upload_date'
+            'id', 'title', 'description', 
+            'upload_date', 'class_name',
+            'related_class', 'file'
         ]
-        read_only_fields = ['upload_date']  # Changed from 'uploaded_at' to 'upload_date'
+        read_only_fields = ['upload_date']
+        extra_kwargs = {
+            
+            'related_class': {'write_only': True},
+        }
 
     
 class ClassScheduleSerializer(serializers.ModelSerializer):
