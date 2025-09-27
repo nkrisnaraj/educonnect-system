@@ -51,13 +51,12 @@ class ZoomWebinarSerializer(serializers.ModelSerializer):
 
 class StudyNoteSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='related_class.title', read_only=True)
-    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyNote
         fields = [
-            'id', 'title', 'description', 'batch',
-            'upload_date', 'file_url', 'class_name',
+            'id', 'title', 'description', 
+            'upload_date', 'class_name',
             'related_class', 'file'
         ]
         read_only_fields = ['upload_date']

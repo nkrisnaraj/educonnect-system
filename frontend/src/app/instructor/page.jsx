@@ -292,7 +292,7 @@ const handleSendMessage = async () => {
       <header className="mt-4 ml-6 mr-10 bg-white/80 backdrop-blur-sm border-b border-purple-200 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="relative text-lg">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
@@ -323,7 +323,7 @@ const handleSendMessage = async () => {
             </button>
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white text-lg font-medium">
+                <span className="text-white font-medium">
                   {instructorName ? instructorName.charAt(0).toUpperCase() : "I"}
                 </span>
               </div>
@@ -341,7 +341,7 @@ const handleSendMessage = async () => {
         {/* Welcome Banner */}
         <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
           <div className="relative z-10">
-            <p className="text-purple-200 text-lg mb-2">
+            <p className="text-purple-200 mb-2">
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 year: "numeric",
@@ -349,10 +349,10 @@ const handleSendMessage = async () => {
                 day: "numeric",
               })}
             </p>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl font-bold mb-2">
               Welcome back, {instructorName || "Instructor"}!
             </h1>
-            <p className="text-purple-100 text-lg">
+            <p className="text-purple-100">
               {(todayTomorrowWebinars || []).length > 0 
                 ? `You have ${(todayTomorrowWebinars || []).length} webinar${(todayTomorrowWebinars || []).length > 1 ? 's' : ''} today/tomorrow`
                 : "Ready to inspire and educate your A/L students today"
