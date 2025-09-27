@@ -748,6 +748,20 @@ def mark_notification_read(request, pk):
         return Response({'error': 'Notification not found'}, status=404)
 
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, pk):
+    try:
+        student_profile = request.user.student_profile  # get related StudentProfile
+        notif = Notification.objects.get(pk=pk, student_id=student_profile)
+        notif.delete()
+        return Response({'status': 'notification deleted successfully'}, status=status.HTTP_200_OK)
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
 from instructor.models import StudyNote
 from instructor.serializers import StudyNoteSerializer
 @api_view(['GET'])
@@ -757,16 +771,33 @@ def get_notes(request, classid):
     Get all StudyNotes for a class given its classid (e.g., CRS-475680)
     """
     try:
-        cls = Class.objects.get(classid=classid)
-    except Class.DoesNotExist:
-        return Response(
-            {"notes": [], "class_details": None, "error": "Class Not Found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        # Get class object by classid
+        class_obj = Class.objects.get(classid=classid)
 
-    notes = StudyNote.objects.filter(related_class=cls)
-    serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
-    return Response(serializer.data)
+        # Get all notes related to this class
+        notes = StudyNote.objects.filter(related_class=class_obj)
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+
+        # Prepare class details
+        class_details = {
+            'id': class_obj.id,
+            'title': class_obj.title,
+            'description': class_obj.description,
+            'instructor': class_obj.instructor.get_full_name() if class_obj.instructor else None,
+            'schedule': f"{class_obj.start_date} to {class_obj.end_date}",
+        }
+
+        return Response({
+            'notes': serializer.data,
+            'class_details': class_details
+        }, status=status.HTTP_200_OK)
+
+    except Class.DoesNotExist:
+        return Response({
+            'notes': [],
+            'class_details': None,
+            'error': 'Class Not Found'
+        }, status=status.HTTP_404_NOT_FOUND)
 
 
 from rest_framework.permissions import AllowAny

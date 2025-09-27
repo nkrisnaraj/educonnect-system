@@ -30,6 +30,7 @@ urlpatterns = [
     path('calendar-events/', views.calendarEvent, name="calendar-events"),
     path('notifications/',views.get_notifications,name='notifications'),
     path('notifications/<int:pk>/read/',views.mark_notification_read, name='mark-notification-read'),
+    path('notifications/<int:pk>/delete/',views.delete_notification, name='delete-notification'),
     path('class/<str:classid>/notes/', views.get_notes, name='get_notes'),
     path('getallclass/', views.getAllClass, name='get_all_classes'),
     path('chat/rooms/<int:room_id>/messages/', RoomMessagesView.as_view(), name='room-messages'),
