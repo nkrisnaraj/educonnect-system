@@ -17,6 +17,8 @@ from edu_admin.models import ZoomWebinar
 from django.db.models import Q, Avg, Max, Min
 from students.models import ChatRoom, Message, Notification
 from students.serializers import MessageSerializer
+from .models import InstructorNotification
+from .serializers import InstructorNotificationSerializer
 
 # Create your views here.
 @api_view(['GET'])
@@ -153,27 +155,80 @@ def instructor_classes(request):
     serializer = ClassSerializer(classes, many=True)
     return Response({"classes": serializer.data})
 
+@api_view(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_instructor_notifications(request):
+    notifications = InstructorNotification.objects.filter(
+        instructor=request.user
+    ).order_by("-created_at")
+    
+    serializer = InstructorNotificationSerializer(notifications, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def mark_notification_as_read(request, pk):
+    try:
+        notif = InstructorNotification.objects.get(id=pk, instructor=request.user)
+        notif.read = True
+        notif.save()
+        return Response({"message": "Notification marked as read"})
+    except InstructorNotification.DoesNotExist:
+        return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def instructor_list_students_with_chats(request):
     """
-    List all students who have chat rooms with instructor.
+    List all students who have chat rooms with instructor or are enrolled in instructor's classes.
     """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
-    chat_rooms = ChatRoom.objects.filter(name='instructor')
-    student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
-    students = User.objects.filter(id__in=student_ids)
-    data = [
-        {
-            'id': s.id,
-            'username': s.username,
-            'first_name': s.first_name,
-            'last_name': s.last_name,
-            'email': s.email,
-        } for s in students
-    ]
-    return Response({'students': data})
+    print(f"🔍 Request user: {request.user}")
+    print(f"🔍 Request user authenticated: {request.user.is_authenticated}")
+    print(f"🔍 Request user role: {getattr(request.user, 'role', 'No role')}")
+    
+    try:
+        # Check if user is instructor
+        if not hasattr(request.user, 'role') or request.user.role != 'instructor':
+            print(f"❌ User role check failed: {getattr(request.user, 'role', 'No role')}")
+            return Response({'error': 'Only instructors allowed'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all students enrolled in this instructor's classes
+        from students.models import Enrollment
+        instructor_classes = Class.objects.filter(instructor=request.user)
+        print(f"🔍 Instructor classes count: {instructor_classes.count()}")
+        
+        enrolled_students_ids = Enrollment.objects.filter(
+            classid__in=instructor_classes
+        ).values_list('stuid__user_id', flat=True).distinct()
+        print(f"🔍 Enrolled student IDs: {list(enrolled_students_ids)}")
+        
+        students = User.objects.filter(
+            id__in=enrolled_students_ids, 
+            role='student'
+        ).select_related('student_profile')
+        print(f"🔍 Students found: {students.count()}")
+        
+        data = []
+        for student in students:
+            data.append({
+                'id': student.id,
+                'username': student.username,
+                'first_name': student.first_name,
+                'last_name': student.last_name,
+                'email': student.email,
+            })
+        
+        print(f"✅ Returning {len(data)} students")
+        return Response({'students': data}, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in instructor_list_students_with_chats: {str(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])

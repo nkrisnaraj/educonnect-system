@@ -1,6 +1,6 @@
 "use client"
 import { useAuth } from "@/context/AuthContext"
-import { Bell, MessageSquare, ClipboardCheck, Calendar, Play, Video, BookOpen, FileText } from "lucide-react"
+import { Bell, MessageSquare, ClipboardCheck, Calendar, Play, Video, BookOpen, FileText, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
 export default function Notice() {
@@ -59,6 +59,19 @@ export default function Notice() {
     }
   };
 
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`students/notifications/${id}/delete/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      setNotifications((prev) => prev.filter((n) => n.note_id !== id));
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+    }
+  };
+
   const unreadCount = notifications.filter((n)=>!n.read_status).length;
   return (
     <div className="max-w-6xl shadow-lg bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -92,6 +105,18 @@ export default function Notice() {
             <div className="flex-1">
               <p className="text-lg font-medium text-gray-900 leading-tight">{note.title}</p>
               <p className="text-sm text-gray-500 mt-1">{note.message}</p>
+            </div>
+
+            {/* Delete Button */}
+            <div className="flex-shrink-0">
+              <Trash2 
+                className="text-gray-400 hover:text-red-500 cursor-pointer transition-colors mr-4" 
+                size={28}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(note.note_id);
+                }} 
+              />
             </div>
           </div>
         ))}

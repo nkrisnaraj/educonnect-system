@@ -748,25 +748,82 @@ def mark_notification_read(request, pk):
         return Response({'error': 'Notification not found'}, status=404)
 
 
-from instructor.models import StudyNote
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, pk):
+    try:
+        student_profile = request.user.student_profile  # get related StudentProfile
+        notif = Notification.objects.get(pk=pk, student_id=student_profile)
+        notif.delete()
+        return Response({'status': 'notification deleted successfully'}, status=status.HTTP_200_OK)
+    except StudentProfile.DoesNotExist:
+        return Response({'error': 'User Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+from instructor.models import StudyNote,Class
 from instructor.serializers import StudyNoteSerializer
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_notes(request, classid):
     """
     Get all StudyNotes for a class given its classid (e.g., CRS-475680)
     """
+    print(f"🔍 Getting notes for classid: {classid}")
+    
     try:
-        cls = Class.objects.get(classid=classid)
-    except Class.DoesNotExist:
-        return Response(
-            {"notes": [], "class_details": None, "error": "Class Not Found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        # Get class object by classid
+        class_obj = Class.objects.get(classid=classid)
+        print(f"✅ Found class: {class_obj.title}")
 
-    notes = StudyNote.objects.filter(related_class=cls)
-    serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
-    return Response(serializer.data)
+        # Get all notes related to this class
+        notes = StudyNote.objects.filter(related_class=class_obj)
+        print(f"📚 Found {notes.count()} notes in database")
+        
+        # Debug each note
+        for note in notes:
+            print(f"  - Note ID {note.id}: '{note.title}' - File: {note.file}")
+        
+        serializer = StudyNoteSerializer(notes, many=True, context={'request': request})
+        serialized_data = serializer.data
+        print(f"📝 Serialized {len(serialized_data)} notes")
+        
+        # Debug serialized data
+        for note_data in serialized_data:
+            print(f"  - Serialized: {note_data}")
+
+        # Prepare class details
+        class_details = {
+            'id': class_obj.id,
+            'title': class_obj.title,
+            'description': class_obj.description,
+            'instructor': class_obj.instructor.get_full_name() if class_obj.instructor else None,
+        }
+
+        response_data = {
+            'notes': serialized_data,
+            'class_details': class_details
+        }
+        
+        print(f"✅ Returning response with {len(serialized_data)} notes")
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    except Class.DoesNotExist:
+        print(f"❌ Class not found: {classid}")
+        return Response({
+            'notes': [],
+            'class_details': None,
+            'error': 'Class Not Found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 from rest_framework.permissions import AllowAny
