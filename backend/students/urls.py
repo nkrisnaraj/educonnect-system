@@ -35,6 +35,13 @@ urlpatterns = [
     path('class/<str:classid>/link-notes/', views.link_notes_to_webinar, name='link_notes_to_webinar'),
     path('getallclass/', views.getAllClass, name='get_all_classes'),
     path('chat/rooms/<int:room_id>/messages/', RoomMessagesView.as_view(), name='room-messages'),
+    
+    # Student Exam URLs
+    path('exams/', views.get_available_exams, name='get_available_exams'),
+    path('exams/<int:exam_id>/', views.get_exam_details, name='get_exam_details'),
+    path('exams/<int:exam_id>/start/', views.start_exam_attempt, name='start_exam_attempt'),
+    path('exams/<int:exam_id>/submit/', views.submit_exam_answers, name='submit_exam_answers'),
+    path('exams/<int:exam_id>/results/', views.get_exam_results, name='get_exam_results'),
 ]
 
 if settings.DEBUG:

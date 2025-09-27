@@ -10,7 +10,7 @@ import {
   Settings, 
   ArrowLeft, 
   CheckCircle, 
-  RadioButton,
+  Circle,
   Type,
   AlignLeft,
   List,
@@ -18,7 +18,8 @@ import {
   Calendar,
   Clock,
   Upload,
-  ToggleLeft
+  ToggleLeft,
+  FileText
 } from "lucide-react"
 import { useInstructorApi } from "@/hooks/useInstructorApi"
 import { useRouter } from "next/navigation"
@@ -27,7 +28,7 @@ const QUESTION_TYPES = [
   { 
     value: 'multiple_choice', 
     label: 'Multiple Choice', 
-    icon: RadioButton,
+    icon: Circle,
     description: 'Single answer from options'
   },
   { 
@@ -139,7 +140,7 @@ export default function CreateExamPage() {
 
   const addQuestion = (type) => {
     const newQuestion = {
-      id: Date.now(), // Temporary ID for frontend
+      id: `temp_${Date.now()}`, // Use a prefix to make it clear this is temporary
       question_text: 'Untitled Question',
       question_type: type,
       order: questions.length + 1,
@@ -254,28 +255,78 @@ export default function CreateExamPage() {
 
   const saveExam = async () => {
     try {
+      // Validate required fields
+      if (!examData.examname || !examData.classid || !examData.date) {
+        alert('Please fill in all required fields (Exam Name, Class, and Date)')
+        return
+      }
+
       // First create the exam
+      console.log('Creating exam with data:', examData)
       const examResponse = await createExam(examData)
       console.log('Exam created:', examResponse)
       
       if (examResponse && examResponse.id) {
+        console.log(`Created exam with ID: ${examResponse.id}`)
+        console.log(`Creating ${questions.length} questions...`)
+        
         // Then create all questions
-        for (const question of questions) {
-          const questionData = {
-            ...question,
-            exam: examResponse.id
+        let successCount = 0
+        let errorCount = 0
+        
+        for (let i = 0; i < questions.length; i++) {
+          const question = questions[i]
+          try {
+            // Prepare question data - remove temporary frontend ID
+            const questionData = {
+              question_text: question.question_text,
+              question_type: question.question_type,
+              order: question.order,
+              is_required: question.is_required,
+              marks: question.marks,
+              description: question.description || '',
+              scale_min: question.scale_min,
+              scale_max: question.scale_max,
+              scale_min_label: question.scale_min_label || '',
+              scale_max_label: question.scale_max_label || '',
+              allow_other_option: question.allow_other_option,
+              shuffle_options: question.shuffle_options,
+            }
+
+            // Add options if they exist and are needed for this question type
+            if (question.options && question.options.length > 0 && 
+                ['multiple_choice', 'multiple_select', 'dropdown', 'true_false'].includes(question.question_type)) {
+              questionData.options = question.options.map((opt, index) => ({
+                option_text: opt.option_text,
+                is_correct: opt.is_correct || false,
+                order: index + 1
+              }))
+            }
+
+            console.log(`Creating question ${i + 1}:`, questionData)
+            
+            const questionResponse = await createQuestion(examResponse.id, questionData)
+            console.log(`Question ${i + 1} created:`, questionResponse)
+            successCount++
+          } catch (questionError) {
+            console.error(`Failed to create question ${i + 1}:`, questionError)
+            errorCount++
           }
-          delete questionData.id // Remove temporary ID
-          
-          await createQuestion(examResponse.id, questionData)
         }
         
-        alert('Exam created successfully!')
+        if (errorCount === 0) {
+          alert(`Exam created successfully with ${successCount} questions!`)
+        } else {
+          alert(`Exam created with ${successCount} questions. ${errorCount} questions failed to save.`)
+        }
+        
         router.push('/instructor/exams')
+      } else {
+        throw new Error('Failed to create exam - no response ID')
       }
     } catch (error) {
       console.error('Failed to create exam:', error)
-      alert('Failed to create exam. Please try again.')
+      alert(`Failed to create exam: ${error.message || 'Please try again.'}`)
     }
   }
 

@@ -193,6 +193,8 @@ useEffect(() => {
       setTotalStudents(res.data.students?.length || 0);
     } catch (err) {
       console.error("Failed to fetch student count:", err);
+      // Set to 0 on error to prevent UI issues
+      setTotalStudents(0);
     }
   };
   fetchTotalStudents();
