@@ -358,7 +358,7 @@ export default function EditProfilePage() {
           </div>
 
           {/* Password */}
-          <div>
+          {/* <div>
             <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
               <Lock className="w-4 h-4 text-blue-500" />
               New Password
@@ -370,7 +370,7 @@ export default function EditProfilePage() {
               className="w-full h-12 border-2 border-gray-200 focus:border-blue-500 rounded-xl px-4"
               placeholder="Enter new password (optional)"
             />
-          </div>
+          </div> */}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 pt-6">

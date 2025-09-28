@@ -375,27 +375,45 @@ export default function CreateExamPage() {
           question.question_type === 'multiple_select' || 
           question.question_type === 'dropdown' ||
           question.question_type === 'true_false') && (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="text-sm font-medium text-gray-700">Answer Key:</div>
+              <div className="text-xs text-gray-500">
+                {question.question_type === 'multiple_choice' || question.question_type === 'true_false' 
+                  ? 'Select the correct answer' 
+                  : 'Select all correct answers'}
+              </div>
+            </div>
             {question.options.map((option, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <input
-                  type={question.question_type === 'multiple_choice' ? 'radio' : 'checkbox'}
-                  checked={option.is_correct}
-                  onChange={(e) => updateOption(question.id, index, 'is_correct', e.target.checked)}
-                  name={`question_${question.id}`}
-                  className="text-blue-600"
-                />
+              <div key={index} className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+                option.is_correct 
+                  ? 'border-green-300 bg-green-50' 
+                  : 'border-gray-200 bg-white'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={question.question_type === 'multiple_choice' || question.question_type === 'true_false' ? 'radio' : 'checkbox'}
+                    checked={option.is_correct}
+                    onChange={(e) => updateOption(question.id, index, 'is_correct', e.target.checked)}
+                    name={`question_${question.id}`}
+                    className="text-green-600 focus:ring-green-500"
+                  />
+                  {option.is_correct && (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  )}
+                </div>
                 <input
                   type="text"
                   value={option.option_text}
                   onChange={(e) => updateOption(question.id, index, 'option_text', e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 rounded"
+                  className="flex-1 p-2 border-0 bg-transparent focus:ring-0 focus:outline-none"
                   placeholder={`Option ${index + 1}`}
                 />
                 {question.question_type !== 'true_false' && question.options.length > 1 && (
                   <button
                     onClick={() => deleteOption(question.id, index)}
-                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                    className="p-1 text-red-500 hover:bg-red-100 rounded"
+                    title="Delete option"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -405,7 +423,7 @@ export default function CreateExamPage() {
             {question.question_type !== 'true_false' && (
               <button
                 onClick={() => addOption(question.id)}
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 mt-2"
               >
                 <Plus className="h-4 w-4" />
                 Add option
@@ -415,46 +433,85 @@ export default function CreateExamPage() {
         )}
 
         {question.question_type === 'linear_scale' && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Scale Min</label>
-              <input
-                type="number"
-                value={question.scale_min || 1}
-                onChange={(e) => updateQuestion(question.id, 'scale_min', parseInt(e.target.value))}
-                className="w-full p-2 border border-gray-300 rounded"
-                min="1"
-              />
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm font-medium text-blue-800 mb-1">Answer Key Information:</div>
+              <div className="text-xs text-blue-600">
+                Linear scale questions award full marks for any valid response within the range.
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Scale Max</label>
-              <input
-                type="number"
-                value={question.scale_max || 5}
-                onChange={(e) => updateQuestion(question.id, 'scale_max', parseInt(e.target.value))}
-                className="w-full p-2 border border-gray-300 rounded"
-                min="2"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scale Min</label>
+                <input
+                  type="number"
+                  value={question.scale_min || 1}
+                  onChange={(e) => updateQuestion(question.id, 'scale_min', parseInt(e.target.value))}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scale Max</label>
+                <input
+                  type="number"
+                  value={question.scale_max || 5}
+                  onChange={(e) => updateQuestion(question.id, 'scale_max', parseInt(e.target.value))}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  min="2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Min Label</label>
+                <input
+                  type="text"
+                  value={question.scale_min_label}
+                  onChange={(e) => updateQuestion(question.id, 'scale_min_label', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="e.g., Strongly Disagree"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Label</label>
+                <input
+                  type="text"
+                  value={question.scale_max_label}
+                  onChange={(e) => updateQuestion(question.id, 'scale_max_label', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="e.g., Strongly Agree"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Label</label>
-              <input
-                type="text"
-                value={question.scale_min_label}
-                onChange={(e) => updateQuestion(question.id, 'scale_min_label', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-                placeholder="e.g., Strongly Disagree"
-              />
+          </div>
+        )}
+
+        {/* Answer key information for text-based questions */}
+        {(question.question_type === 'short_answer' || question.question_type === 'paragraph') && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+            <div className="text-sm font-medium text-yellow-800 mb-1">Answer Key Information:</div>
+            <div className="text-xs text-yellow-700">
+              Text-based questions are automatically awarded full marks for any non-empty response. 
+              Instructors can manually adjust scores after review if needed.
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Label</label>
-              <input
-                type="text"
-                value={question.scale_max_label}
-                onChange={(e) => updateQuestion(question.id, 'scale_max_label', e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded"
-                placeholder="e.g., Strongly Agree"
-              />
+          </div>
+        )}
+
+        {/* Answer key information for file upload questions */}
+        {question.question_type === 'file_upload' && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-4">
+            <div className="text-sm font-medium text-purple-800 mb-1">Answer Key Information:</div>
+            <div className="text-xs text-purple-700">
+              File upload questions require manual grading by the instructor after submission.
+            </div>
+          </div>
+        )}
+
+        {/* Answer key information for date/time questions */}
+        {(question.question_type === 'date' || question.question_type === 'time') && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mt-4">
+            <div className="text-sm font-medium text-indigo-800 mb-1">Answer Key Information:</div>
+            <div className="text-xs text-indigo-700">
+              {question.question_type === 'date' ? 'Date' : 'Time'} questions are automatically awarded full marks for any valid {question.question_type} input.
             </div>
           </div>
         )}
