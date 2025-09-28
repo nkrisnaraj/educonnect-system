@@ -601,31 +601,45 @@ from collections import defaultdict
 @permission_classes([IsAuthenticated])
 def getStudentMarks(request):
     """
-    API view to get marks for a specific student
+    API view to get exam results for a specific student
     """
-   
-    student = request.user.student_profile
-    marks_qs = Marks.objects.filter(stuid=student).select_related('examid','examid__classid').order_by('examid__date')
-    result =defaultdict(list)
+    try:
+        student = request.user.student_profile
+        
+        # Get all completed exam submissions for the student
+        submissions = ExamSubmission.objects.filter(
+            student=student, 
+            is_completed=True
+        ).select_related('exam', 'exam__classid').order_by('exam__date')
+        
+        result = defaultdict(list)
 
-    for mark in marks_qs:
-        class_name = mark.examid.classid.title
-        exam_month = mark.examid.date.strftime('%Y-%m')
-        result[class_name].append({
-            "month":exam_month,
-            "marks": mark.marks,
-        })
-    response_data = []
+        for submission in submissions:
+            class_name = submission.exam.classid.title
+            result[class_name].append({
+                "exam_name": submission.exam.examname,
+                "exam_date": submission.exam.date.strftime('%Y-%m-%d'),
+                "marks_obtained": submission.total_marks_obtained,
+                "total_marks": submission.exam.total_marks,
+                "percentage": submission.percentage,
+                "submitted_at": submission.submitted_at.strftime('%Y-%m-%d %H:%M'),
+            })
+        
+        response_data = []
+        for class_name, data in result.items():
+            response_data.append({
+                "class_name": class_name,
+                "exams": data
+            })
 
-    for class_name,data in result.items():
-        response_data.append({
-            "class_name": class_name,
-            "marks": data
-        })
-
-    return Response({
-        "marks": response_data
-    },status=status.HTTP_200_OK)
+        return Response({
+            "results": response_data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            "error": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
        
 
 

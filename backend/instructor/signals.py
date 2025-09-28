@@ -152,6 +152,7 @@ def update_exam_status_notification(sender, instance, **kwargs):
     if not kwargs.get('created', False):  # Only for updates, not creation
         # Check if status changed to published
         if hasattr(instance, '_original_status') and instance._original_status != 'published' and instance.status == 'published':
+            # Create instructor notification
             InstructorNotification.objects.create(
                 instructor=instance.instructor,
                 title="Exam Published",
@@ -160,6 +161,37 @@ def update_exam_status_notification(sender, instance, **kwargs):
                 color="green"
             )
             logger.info(f"Created exam published notification for instructor {instance.instructor.username}")
+            
+            # Create student notifications for all enrolled students in the class
+            try:
+                if not instance.classid:
+                    logger.warning(f"Exam {instance.examname} has no associated class, skipping student notifications")
+                    return
+                    
+                enrolled_students = Enrollment.objects.filter(classid=instance.classid).select_related('stuid')
+                student_notifications_created = 0
+                
+                logger.info(f"Found {enrolled_students.count()} enrolled students for class {instance.classid.title}")
+                
+                for enrollment in enrolled_students:
+                    try:
+                        StudentNotification.objects.create(
+                            student_id=enrollment.stuid,
+                            title="New Exam Available",
+                            message=f"A new exam '{instance.examname}' has been published for class '{instance.classid.title}'. Duration: {instance.duration_minutes} minutes. Due date: {instance.date.strftime('%Y-%m-%d')} at {instance.start_time.strftime('%H:%M')}",
+                            type="exam"
+                        )
+                        student_notifications_created += 1
+                        logger.debug(f"Created notification for student {enrollment.stuid.user.username}")
+                    except Exception as e:
+                        logger.error(f"Failed to create notification for student {enrollment.stuid}: {e}")
+                        
+                logger.info(f"✅ Created {student_notifications_created} student notifications for published exam '{instance.examname}'")
+                print(f"✅ Created {student_notifications_created} student notifications for published exam '{instance.examname}'")
+                
+            except Exception as e:
+                logger.error(f"❌ Error creating student notifications for published exam '{instance.examname}': {e}")
+                print(f"❌ Error creating student notifications for published exam '{instance.examname}': {e}")
 
 def custom_exam_init(self, *args, **kwargs):
     super(Exam, self).__init__(*args, **kwargs)
