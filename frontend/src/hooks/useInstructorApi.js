@@ -256,6 +256,35 @@ export const useInstructorApi = () => {
     return await apiCall(`/exams/${examId}/analytics/`);
   }, [apiCall]);
 
+  // Notifications API methods
+  const getNotifications = useCallback(async () => {
+    return await apiCall('/notifications/');
+  }, [apiCall]);
+
+  const markNotificationAsRead = useCallback(async (notificationId) => {
+    return await apiCall(`/notifications/${notificationId}/mark-read/`, {
+      method: 'POST',
+    });
+  }, [apiCall]);
+
+  const markAllNotificationsAsRead = useCallback(async () => {
+    return await apiCall('/notifications/mark-all-read/', {
+      method: 'POST',
+    });
+  }, [apiCall]);
+
+  const deleteNotification = useCallback(async (notificationId) => {
+    return await apiCall(`/notifications/${notificationId}/delete/`, {
+      method: 'DELETE',
+    });
+  }, [apiCall]);
+
+  const deleteAllNotifications = useCallback(async () => {
+    return await apiCall('/notifications/delete-all/', {
+      method: 'DELETE',
+    });
+  }, [apiCall]);
+
   return {
     loading,
     error,
@@ -297,5 +326,11 @@ export const useInstructorApi = () => {
     publishExam,
     getExamSubmissions,
     getExamAnalytics,
+    // Notifications
+    getNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    deleteAllNotifications,
   };
 };
