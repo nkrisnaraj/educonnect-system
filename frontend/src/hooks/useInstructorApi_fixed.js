@@ -106,40 +106,18 @@ export const useInstructorApi = () => {
 
   // Get exam details with students
   const getExamDetails = useCallback(async (examId) => {
-    return await apiCall(`/instructor/exams/${examId}/details/`);
+    return await apiCall(`/instructor/exam-details/${examId}/`);
   }, [apiCall]);
 
   // Download CSV for specific exam
   const downloadExamResultsCSV = useCallback(async (examId) => {
     try {
-      let response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-csv/`, {
+      const response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-csv/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      
-      // Handle token refresh if unauthorized
-      if (response.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) {
-            response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-csv/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${newToken}`,
-              },
-            });
-          } else {
-            logout();
-            throw new Error('Authentication failed');
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          throw new Error('Authentication failed');
-        }
-      }
       
       if (!response.ok) {
         throw new Error('Failed to download CSV');
@@ -151,39 +129,17 @@ export const useInstructorApi = () => {
       console.error('Error downloading CSV:', error);
       throw error;
     }
-  }, [accessToken, refreshAccessToken, logout]);
+  }, [accessToken]);
 
   // Download all exam results as CSV
   const downloadAllResultsCSV = useCallback(async () => {
     try {
-      let response = await fetch(`${BASE_URL}/instructor/download-all-results-csv/`, {
+      const response = await fetch(`${BASE_URL}/instructor/download-all-results-csv/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      
-      // Handle token refresh if unauthorized
-      if (response.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) {
-            response = await fetch(`${BASE_URL}/instructor/download-all-results-csv/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${newToken}`,
-              },
-            });
-          } else {
-            logout();
-            throw new Error('Authentication failed');
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          throw new Error('Authentication failed');
-        }
-      }
       
       if (!response.ok) {
         throw new Error('Failed to download all results CSV');
@@ -195,39 +151,17 @@ export const useInstructorApi = () => {
       console.error('Error downloading all results CSV:', error);
       throw error;
     }
-  }, [accessToken, refreshAccessToken, logout]);
+  }, [accessToken]);
 
   // Download PDF for specific exam
   const downloadExamResultsPDF = useCallback(async (examId) => {
     try {
-      let response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-pdf/`, {
+      const response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-pdf/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      
-      // Handle token refresh if unauthorized
-      if (response.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) {
-            response = await fetch(`${BASE_URL}/instructor/exams/${examId}/download-pdf/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${newToken}`,
-              },
-            });
-          } else {
-            logout();
-            throw new Error('Authentication failed');
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          throw new Error('Authentication failed');
-        }
-      }
       
       if (!response.ok) {
         throw new Error('Failed to download PDF');
@@ -239,39 +173,17 @@ export const useInstructorApi = () => {
       console.error('Error downloading PDF:', error);
       throw error;
     }
-  }, [accessToken, refreshAccessToken, logout]);
+  }, [accessToken]);
 
   // Download all exam results as PDF
   const downloadAllResultsPDF = useCallback(async () => {
     try {
-      let response = await fetch(`${BASE_URL}/instructor/download-all-results-pdf/`, {
+      const response = await fetch(`${BASE_URL}/instructor/download-all-results-pdf/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      
-      // Handle token refresh if unauthorized
-      if (response.status === 401) {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) {
-            response = await fetch(`${BASE_URL}/instructor/download-all-results-pdf/`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${newToken}`,
-              },
-            });
-          } else {
-            logout();
-            throw new Error('Authentication failed');
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          throw new Error('Authentication failed');
-        }
-      }
       
       if (!response.ok) {
         throw new Error('Failed to download all results PDF');
@@ -283,7 +195,7 @@ export const useInstructorApi = () => {
       console.error('Error downloading all results PDF:', error);
       throw error;
     }
-  }, [accessToken, refreshAccessToken, logout]);
+  }, [accessToken]);
 
   // Get students
   const getStudents = useCallback(async () => {

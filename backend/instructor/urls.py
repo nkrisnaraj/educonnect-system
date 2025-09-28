@@ -2,7 +2,9 @@ from django.urls import path
 from .views import (instructor_list_students_with_chats,instructor_get_chat_with_student,instructor_send_message_to_student,mark_messages_read)
 from .views import get_all_students, instructor_profile, study_notes, study_note_detail, webinar_classes, instructor_classes, get_instructor_notifications, mark_notification_as_read
 from .views import (exam_list_create, exam_detail, exam_questions, question_detail, 
-                   duplicate_exam, publish_exam, exam_submissions, exam_analytics)
+                   duplicate_exam, publish_exam, exam_submissions, exam_analytics, exam_results,
+                   exam_details_with_students, download_exam_results_csv, download_all_exam_results_csv,
+                   download_exam_results_pdf, download_all_exam_results_pdf)
 
 urlpatterns = [
     path('students/', get_all_students, name='get_all_students'),
@@ -26,4 +28,10 @@ urlpatterns = [
     path('exams/<int:exam_id>/publish/', publish_exam, name='publish-exam'),
     path('exams/<int:exam_id>/submissions/', exam_submissions, name='exam-submissions'),
     path('exams/<int:exam_id>/analytics/', exam_analytics, name='exam-analytics'),
+    path('exam-results/', exam_results, name='exam-results'),
+    path('exams/<int:exam_id>/details/', exam_details_with_students, name='exam-details-with-students'),
+    path('exams/<int:exam_id>/download-csv/', download_exam_results_csv, name='download-exam-results-csv'),
+    path('exams/<int:exam_id>/download-pdf/', download_exam_results_pdf, name='download-exam-results-pdf'),
+    path('download-all-results-csv/', download_all_exam_results_csv, name='download-all-exam-results-csv'),
+    path('download-all-results-pdf/', download_all_exam_results_pdf, name='download-all-exam-results-pdf'),
 ]
