@@ -378,9 +378,33 @@ export default function Classes() {
             <p className="text-md text-center text-gray-600"style={{ whiteSpace: "pre-line" }}>{selectedClass.schedule}</p>
             <p className="text-center text-gray-600">{selectedClass.description}</p>
             <p className="text-center text-gray-600">LKR {selectedClass.fee}</p>
-            <div className="text-center mt-4">
-              <button onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} className="bg-primary text-white px-4 py-2 rounded">Notes</button>
-              {/* <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button> */}
+            <div className="text-center mt-4 space-y-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <button 
+                  onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} 
+                  className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors"
+                >
+                  📚 Notes
+                </button>
+                <button 
+                  onClick={() => {
+                    if (selectedClass.webinar_id) {
+                      window.open(`https://zoom.us/j/${selectedClass.webinar_id}`, '_blank');
+                    } else {
+                      alert('No webinar link available for this class');
+                    }
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                >
+                  🎥 Join Webinar
+                </button>
+                <button 
+                  onClick={()=>{router.push(`/students/${id}/exams`)}} 
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+                >
+                  📝 Exams
+                </button>
+              </div>
             </div>
           </Modal>
         )}
