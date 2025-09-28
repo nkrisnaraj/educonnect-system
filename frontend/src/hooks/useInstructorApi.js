@@ -109,6 +109,11 @@ export const useInstructorApi = () => {
     return await apiCall(`/instructor/exams/${examId}/details/`);
   }, [apiCall]);
 
+  // Get classes
+  const getClasses = useCallback(async () => {
+    return await apiCall('/instructor/instructor-classes/');
+  }, [apiCall]);
+
   // Download CSV for specific exam
   const downloadExamResultsCSV = useCallback(async (examId) => {
     try {
@@ -366,6 +371,8 @@ export const useInstructorApi = () => {
     deleteExam,
     getExamResults,
     getExamDetails,
+    // Classes methods
+    getClasses,
     // Download methods
     downloadExamResultsCSV,
     downloadAllResultsCSV,
