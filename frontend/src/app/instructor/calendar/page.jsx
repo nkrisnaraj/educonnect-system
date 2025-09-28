@@ -185,7 +185,7 @@ export default function CalendarPage() {
               <CalendarIcon className="h-4 w-4 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Total Events</p>
+              <p className="text-base text-gray-600">Total Events</p>
               <p className="text-lg font-bold">{totalEvents}</p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function CalendarPage() {
               <Clock className="h-4 w-4 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Today</p>
+              <p className="text-base text-gray-600">Today</p>
               <p className="text-lg font-bold">{todayEvents}</p>
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function CalendarPage() {
               <CalendarIcon className="h-4 w-4 text-purple-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Upcoming</p>
+              <p className="text-base text-gray-600">Upcoming</p>
               <p className="text-lg font-bold">{upcomingEvents}</p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function CalendarPage() {
               <Video className="h-4 w-4 text-red-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Webinars</p>
+              <p className="text-base text-gray-600">Webinars</p>
               <p className="text-lg font-bold">{webinarsCount}</p>
             </div>
           </div>
