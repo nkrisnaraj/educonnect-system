@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (instructor_list_students_with_chats,instructor_get_chat_with_student,instructor_send_message_to_student,mark_messages_read)
-from .views import get_all_students, instructor_profile, study_notes, study_note_detail, webinar_classes, instructor_classes, get_instructor_notifications, mark_notification_as_read
+from .views import get_all_students, instructor_profile, study_notes, study_note_detail, webinar_classes, instructor_classes, get_instructor_notifications, mark_notification_as_read, mark_all_notifications_as_read, delete_notification, delete_all_notifications
 from .views import (exam_list_create, exam_detail, exam_questions, question_detail, 
                    duplicate_exam, publish_exam, exam_submissions, exam_analytics, exam_results,
                    exam_details_with_students, download_exam_results_csv, download_all_exam_results_csv,
@@ -14,6 +14,10 @@ urlpatterns = [
     path('classes/', webinar_classes, name='webinar-classes'),    
     path('instructor-classes/', instructor_classes, name='instructor-classes'),
     path('notifications/', get_instructor_notifications, name="instructor_notifications"),
+    path('notifications/mark-all-read/', mark_all_notifications_as_read, name="mark_all_notifications_as_read"),
+    path('notifications/<int:pk>/mark-read/', mark_notification_as_read, name="mark_notification_as_read"),
+    path('notifications/<int:pk>/delete/', delete_notification, name="delete_notification"),
+    path('notifications/delete-all/', delete_all_notifications, name="delete_all_notifications"),
     path('chat/instructor/students/', instructor_list_students_with_chats, name='instructor-students-with-chats'),
     path('chat/instructor/<int:student_id>/', instructor_get_chat_with_student, name='instructor-get-chat-with-student'),
     path('chat/instructor/<int:student_id>/send/', instructor_send_message_to_student, name='instructor-send-message-to-student'),

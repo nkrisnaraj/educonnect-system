@@ -179,6 +179,54 @@ def mark_notification_as_read(request, pk):
     except InstructorNotification.DoesNotExist:
         return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
 
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def mark_all_notifications_as_read(request):
+    """Mark all notifications as read for the current instructor"""
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    
+    updated_count = InstructorNotification.objects.filter(
+        instructor=request.user,
+        read=False
+    ).update(read=True)
+    
+    return Response({
+        "message": f"{updated_count} notifications marked as read"
+    })
+
+@api_view(["DELETE"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_notification(request, pk):
+    """Delete a specific notification"""
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    
+    try:
+        notif = InstructorNotification.objects.get(id=pk, instructor=request.user)
+        notif.delete()
+        return Response({"message": "Notification deleted successfully"})
+    except InstructorNotification.DoesNotExist:
+        return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(["DELETE"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_all_notifications(request):
+    """Delete all notifications for the current instructor"""
+    if request.user.role != 'instructor':
+        return Response({'error': 'Only instructors allowed'}, status=403)
+    
+    deleted_count, _ = InstructorNotification.objects.filter(
+        instructor=request.user
+    ).delete()
+    
+    return Response({
+        "message": f"{deleted_count} notifications deleted successfully"
+    })
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def instructor_list_students_with_chats(request):
@@ -554,6 +602,7 @@ def exam_results(request):
         for exam in exams:
             # Get submissions for this exam
             submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+            
             completed_submissions = submissions.filter(is_completed=True)
             
             # Calculate analytics
