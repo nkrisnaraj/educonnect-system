@@ -79,7 +79,7 @@ def study_notes(request):
         notes = StudyNote.objects.select_related('related_class').filter(
             Q(title__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(related_class__topic__icontains=search_query),
+            Q(related_class__title__icontains=search_query),
         ).order_by('-upload_date')
 
         if related_class and related_class.lower() != 'all':
@@ -100,7 +100,7 @@ def study_notes(request):
                 Notification.objects.create(
                     student_id=student_profile,
                     title=note.title,
-                    message=f"A new note '{note.title}' was uploaded for {related_class.topic}.",
+                    message=f"A new note '{note.title}' was uploaded for {related_class.title}.",
                     type="notes"
                 )
 
@@ -157,23 +157,52 @@ def instructor_classes(request):
 @permission_classes([IsAuthenticated])
 def instructor_list_students_with_chats(request):
     """
-    List all students who have chat rooms with instructor.
+    List all students who have chat rooms with instructor or are enrolled in instructor's classes.
     """
-    if request.user.role != 'instructor':
-        return Response({'error': 'Only instructors allowed'}, status=403)
-    chat_rooms = ChatRoom.objects.filter(name='instructor')
-    student_ids = chat_rooms.values_list('created_by', flat=True).distinct()
-    students = User.objects.filter(id__in=student_ids)
-    data = [
-        {
-            'id': s.id,
-            'username': s.username,
-            'first_name': s.first_name,
-            'last_name': s.last_name,
-            'email': s.email,
-        } for s in students
-    ]
-    return Response({'students': data})
+    print(f"🔍 Request user: {request.user}")
+    print(f"🔍 Request user authenticated: {request.user.is_authenticated}")
+    print(f"🔍 Request user role: {getattr(request.user, 'role', 'No role')}")
+    
+    try:
+        # Check if user is instructor
+        if not hasattr(request.user, 'role') or request.user.role != 'instructor':
+            print(f"❌ User role check failed: {getattr(request.user, 'role', 'No role')}")
+            return Response({'error': 'Only instructors allowed'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all students enrolled in this instructor's classes
+        from students.models import Enrollment
+        instructor_classes = Class.objects.filter(instructor=request.user)
+        print(f"🔍 Instructor classes count: {instructor_classes.count()}")
+        
+        enrolled_students_ids = Enrollment.objects.filter(
+            classid__in=instructor_classes
+        ).values_list('stuid__user_id', flat=True).distinct()
+        print(f"🔍 Enrolled student IDs: {list(enrolled_students_ids)}")
+        
+        students = User.objects.filter(
+            id__in=enrolled_students_ids, 
+            role='student'
+        ).select_related('student_profile')
+        print(f"🔍 Students found: {students.count()}")
+        
+        data = []
+        for student in students:
+            data.append({
+                'id': student.id,
+                'username': student.username,
+                'first_name': student.first_name,
+                'last_name': student.last_name,
+                'email': student.email,
+            })
+        
+        print(f"✅ Returning {len(data)} students")
+        return Response({'students': data}, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"❌ Error in instructor_list_students_with_chats: {str(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -332,11 +361,19 @@ def exam_questions(request, exam_id):
     elif request.method == 'POST':
         data = request.data.copy()
         data['exam'] = exam.id
+        
+        # Debug logging
+        print(f"Creating question for exam {exam.id}")
+        print(f"Question data: {data}")
+        
         serializer = ExamQuestionSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            question = serializer.save()
+            print(f"Question created successfully: {question.id}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print(f"Serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @authentication_classes([JWTAuthentication])

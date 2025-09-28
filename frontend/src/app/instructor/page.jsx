@@ -5,11 +5,11 @@ import {Search,Bell,BookOpen,Clock,MessageCircle,Send,} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation"
-import { Check } from "lucide-react";
 import { useApiCall } from "@/hooks/useApiCall";
 import { useSearch } from "@/hooks/useSearch";
 import { ClassCardSkeleton, WebinarCardSkeleton, ChatSkeleton } from "@/components/ui/SkeletonLoader";
 import { ErrorMessage, EmptyState } from "@/components/ui/ErrorMessage";
+import InstructorChatBox from "@/components/instructor/InstructorChatBox";
 
 
 
@@ -22,19 +22,15 @@ export default function InstructorDashboard() {
   const [instructorName, setInstructorName] = useState("");
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingWebinars, setLoadingWebinars] = useState(true);
-  const { accessToken, user, refreshAccessToken, logout } = useAuth();
+  const { accessToken, user, refreshAccessToken, logout, api } = useAuth();
   const router = useRouter();
-  const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [lastMessages, setLastMessages] = useState({});
+  // Removed student, selectedStudent, chatMessages, messageRefreshInterval, lastMessages state variables
   
   // New state for error handling
   const [classesError, setClassesError] = useState(null);
   const [webinarsError, setWebinarsError] = useState(null);
   const [chatError, setChatError] = useState(null);
+  const [totalStudents, setTotalStudents] = useState(0);
   
   // Enhanced search with debouncing - with safety checks
   const filteredClasses = useSearch(classes || [], ['title', 'description'], searchQuery);
@@ -189,102 +185,20 @@ useEffect(() => {
     }
 }, [user, router]);
 
-const renderTick = (msg) => {
-    if (msg.is_seen) return <DoubleTick color="blue" />;
-    if (msg.is_delivered) return <DoubleTick color="gray" />;
-    return <SingleTick />;
-  };
-// Fetch students on mount and get last message for each
 useEffect(() => {
-  const fetchStudents = async () => {
-    const token = sessionStorage.getItem("accessToken");
+  const fetchTotalStudents = async () => {
+    if (!accessToken) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/instructor/chat/instructor/students/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setStudents(data.students || []);
-      // For each student, fetch their last message
-      const lastMsgObj = {};
-      await Promise.all(
-        (data.students || []).map(async (student) => {
-          try {
-            const resMsg = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${student.id}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const messages = await resMsg.json();
-            if (messages && Array.isArray(messages) && messages.length > 0) {
-              lastMsgObj[student.id] = messages[messages.length - 1];
-            }
-          } catch (err) {
-            // ignore error for individual student
-          }
-        })
-      );
-      setLastMessages(lastMsgObj);
+      const res = await api.get("instructor/chat/instructor/students/");
+      setTotalStudents(res.data.students?.length || 0);
     } catch (err) {
-      console.error("Error fetching students", err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch student count:", err);
+      // Set to 0 on error to prevent UI issues
+      setTotalStudents(0);
     }
   };
-  fetchStudents();
-}, []);
-
-// Fetch messages when a student is selected
-useEffect(() => {
-  if (!selectedStudent) return;
-  const markMessagesReadStudent = async (token) => {
-    await axios.post(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/mark_messages_read/`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  };
-  const fetchMessages = async () => {
-    const token = sessionStorage.getItem("accessToken");
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      console.log(res);
-      setChatMessages(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching chat messages", err);
-    }
-  };
-  const token = accessToken;
-
-  const run = async () => {
-      await markMessagesReadStudent(token);
-      await fetchMessages();
-    };
-
-    run();
-}, [selectedStudent]);
-
-
-const handleSendMessage = async () => {
-  if (!newMessage.trim() || !selectedStudent) return;
-  const token = sessionStorage.getItem("accessToken");
-  try {
-    const res = await fetch(
-      `http://127.0.0.1:8000/instructor/chat/instructor/${selectedStudent}/send/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message: newMessage }),
-      }
-    );
-    const data = await res.json();
-    setChatMessages((prev) => [...(prev || []), data]);
-    setNewMessage("");
-  } catch (err) {
-    console.error("Error sending message", err);
-  }
-};
+  fetchTotalStudents();
+}, [accessToken, api]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -292,7 +206,7 @@ const handleSendMessage = async () => {
       <header className="mt-4 ml-6 mr-10 bg-white/80 backdrop-blur-sm border-b border-purple-200 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="relative text-lg">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
@@ -323,7 +237,7 @@ const handleSendMessage = async () => {
             </button>
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white text-lg font-medium">
+                <span className="text-white font-medium">
                   {instructorName ? instructorName.charAt(0).toUpperCase() : "I"}
                 </span>
               </div>
@@ -341,7 +255,7 @@ const handleSendMessage = async () => {
         {/* Welcome Banner */}
         <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
           <div className="relative z-10">
-            <p className="text-purple-200 text-lg mb-2">
+            <p className="text-purple-200 mb-2">
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 year: "numeric",
@@ -349,10 +263,10 @@ const handleSendMessage = async () => {
                 day: "numeric",
               })}
             </p>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-2xl font-bold mb-2">
               Welcome back, {instructorName || "Instructor"}!
             </h1>
-            <p className="text-purple-100 text-lg">
+            <p className="text-purple-100">
               {(todayTomorrowWebinars || []).length > 0 
                 ? `You have ${(todayTomorrowWebinars || []).length} webinar${(todayTomorrowWebinars || []).length > 1 ? 's' : ''} today/tomorrow`
                 : "Ready to inspire and educate your A/L students today"
@@ -360,7 +274,7 @@ const handleSendMessage = async () => {
             </p>
             {(classes || []).length > 0 && (
               <p className="text-purple-200 text-sm mt-2">
-                Managing {(classes || []).length} class{(classes || []).length > 1 ? 'es' : ''} • {(students || []).length} student{(students || []).length > 1 ? 's' : ''}
+                Managing {(classes || []).length} class{(classes || []).length > 1 ? 'es' : ''}
               </p>
             )}
           </div>
@@ -469,144 +383,11 @@ const handleSendMessage = async () => {
           
               
             {/* Chat Box */}
-            <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
-              <div className="p-6 border-b border-purple-200">
-                <h3 className="text-lg font-semibold text-gray-900 flex  gap-2 mb-2">
-                  <MessageCircle className="h-5 w-5 text-purple-600" />
-                  Student Messages
-                </h3>
-                {/* Student name tabs with last message preview */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-200">
-                  {loading ? (
-                    <div className="flex gap-2">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="h-16 w-32 bg-gray-200 rounded-lg"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (students || []).length > 0 ? (
-                    (students || []).map((student) => {
-                      const lastMsg = lastMessages[student.id];
-                      return (
-                        <button
-                          key={student.id}
-                          className={`px-4 py-2 rounded-lg w-full font-medium  items-start border border-purple-200 focus:outline-none  flex flex-col transition-all duration-200
-                            ${selectedStudent === student.id ? 'bg-primary text-white border-purple-500 shadow-md' : 'bg-white hover:bg-purple-50'}`}
-                          onClick={() => setSelectedStudent(student.id)}
-                          title={student.first_name + ' ' + student.last_name}
-                        >
-                          <span className="font-bold truncate w-full">{student.first_name} {student.last_name}</span>
-                          <span className="text-xs text-gray-300 truncate w-full mt-1">
-                            {lastMsg ? (lastMsg.message && lastMsg.message.length > 30 ? lastMsg.message.slice(0, 30) + '…' : lastMsg.message || 'No message content') : 'No messages yet.'}
-                          </span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="text-gray-500 text-sm p-4 text-center w-full">
-                      No students found. Students will appear here when they join your classes.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col h-96">
-                <div className="flex-1 p-4 space-y-3 overflow-y-auto bg-gradient-to-b from-purple-50 to-white rounded-b-xl">
-                  {loading && selectedStudent ? (
-                    <ChatSkeleton />
-                  ) : chatError ? (
-                    <ErrorMessage 
-                      error={chatError} 
-                      onRetry={() => {
-                        setChatError(null);
-                        // Refetch selected student messages
-                      }}
-                    />
-                  ) : selectedStudent && (chatMessages || []).length > 0 ? (
-                    (chatMessages || []).map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-md mb-2 flex flex-col
-                          ${msg.sender && msg.sender.id === user?.id ? 'ml-auto bg-white text-right border border-purple-200' : 'mr-auto bg-white border border-gray-200'}`}
-                      >
-                        <div className="text-xs font-semibold text-purple-600 mb-1">
-                          {msg.sender?.username || 'Unknown'}
-                        </div>
-                        <div className="text-base text-gray-900">{msg.message || ''}</div>
-                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1 justify-end">
-                          {msg.created_at && new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {msg.sender && msg.sender.id === user?.id && renderTick(msg)}
-                        </div>
-                      </div>
-                    ))
-                  ) : selectedStudent ? (
-                    <EmptyState
-                      icon={MessageCircle}
-                      title="No messages yet"
-                      description="Start a conversation with this student."
-                    />
-                  ) : (
-                    <EmptyState
-                      icon={MessageCircle}
-                      title="Select a student"
-                      description="Choose a student from the list to view messages."
-                    />
-                  )}
-                </div>
-                {selectedStudent && (
-                  <div className="p-4 border-t border-purple-100 bg-white rounded-b-xl">
-                    <form
-                      className="flex gap-2"
-                      onSubmit={e => {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }}
-                    >
-                      <input
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Type a message..."
-                        className="flex-1 px-4 py-2 border border-purple-200 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-400 bg-purple-50 text-gray-900"
-                        autoComplete="off"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!newMessage.trim()}
-                        className="px-5 py-2 bg-gradient-to-r from-purple-500 to-indigo-400 text-white rounded-full font-semibold shadow-md hover:from-purple-600 hover:to-indigo-500 transition-all duration-150 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Send className="h-5 w-5" />
-                      </button>
-                    </form>
-                  </div>
-                )}
-              </div>
-            </div>
+            <InstructorChatBox />
+            
           </div>
         </div>
       </div>
     
-  );
-}
-
-
-function SingleTick() {
-  return <Check className="w-4 h-4 text-gray-400" />;
-}
-
-function DoubleTick({ color }) {
-  const colorClass = {
-    blue: "text-blue-400",
-    gray: "text-gray-400",
-  }[color] || "text-gray-400";
-
-  return (
-    <div className="flex">
-      <Check className={`w-4 h-4 ${colorClass}`} />
-      <Check className={`w-4 h-4 ${colorClass} -ml-2`} />
-    </div>
   );
 }

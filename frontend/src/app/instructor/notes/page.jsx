@@ -1,5 +1,5 @@
 "use client";
-
+import axios from 'axios';
 import { useState, useEffect } from "react";
 import { useInstructorApi } from "@/hooks/useInstructorApi";
 import {
@@ -33,25 +33,31 @@ export default function NotesPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [notesData, classesData] = await Promise.all([
-        instructorApi.getNotes(searchQuery || '', selectedClass !== "all" ? selectedClass : ''),
-        instructorApi.getClasses()
+        instructorApi.getNotes(
+          searchQuery || "",
+          selectedClass !== "all" ? selectedClass : ""
+        ),
+        instructorApi.getClasses(),
       ]);
-      
-      if (notesData) {
-        setNotes(notesData || []);
+
+      if (Array.isArray(notesData)) {
+        setNotes(notesData);
       } else {
-        throw new Error("Failed to fetch notes");
+        setNotes([]);
       }
-      
-      if (classesData) {
-        setClasses([
-          { id: "all", topic: "All Classes" }, 
-          ...(classesData || [])
-        ]);
+
+      let normalizedClasses = [];
+      if (Array.isArray(classesData)) {
+        normalizedClasses = classesData;
+      } else if (classesData?.results && Array.isArray(classesData.results)) {
+        normalizedClasses = classesData.results;
+      } else if (classesData?.classes && Array.isArray(classesData.classes)) {
+        normalizedClasses = classesData.classes;
       }
-      
+
+      setClasses([{ id: "all", title: "All Classes" }, ...normalizedClasses]);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err.message || "Failed to load data");
@@ -96,14 +102,23 @@ export default function NotesPage() {
   const handleSubmitNote = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    const tokenToUse = accessToken;
+    const tokenToUse = sessionStorage.getItem("accessToken");
     const file = uploadedFiles[0]?.file;
 
     formData.append("title", e.target.title.value);
     formData.append("description", e.target.description.value);
-    formData.append("batch", e.target.batch.value);
-    formData.append("related_class", e.target.related_class.value);
+    if (
+      e.target.related_class.value &&
+      e.target.related_class.value !== "all"
+    ) {
+      formData.append("related_class", e.target.related_class.value);
+    }
+
     if (file) formData.append("file", file);
+
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value);
+    }
 
     try {
       if (noteBeingEdited) {
@@ -131,27 +146,36 @@ export default function NotesPage() {
       setIsUploadModalOpen(false);
       setUploadedFiles([]);
       setNoteBeingEdited(null);
-      fetchNotes();
+      fetchData();
     } catch (err) {
-      console.error(err);
+      console.error("Upload failed:", err.response?.data || err.message);
       alert("Failed to submit note.");
     }
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!window.confirm("Are you sure you want to delete this note?")) return;
+  if (!window.confirm("Are you sure you want to delete this note?")) return;
 
-    try {
-      await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      fetchNotes();
-      alert("Note deleted.");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete note.");
+  try {
+    const accessToken = sessionStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      alert("No access token found. Please log in again.");
+      return;
     }
-  };
+
+    await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    fetchData();
+    alert("Note deleted.");
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Failed to delete note.");
+  }
+};
+
 
   const getFileIcon = (type) => {
     switch (type) {
@@ -206,7 +230,7 @@ export default function NotesPage() {
             >
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
-                  {cls.topic || cls.name}
+                  {cls.title || cls.name}
                 </option>
               ))}
             </select>
@@ -218,7 +242,9 @@ export default function NotesPage() {
       {notes.length > 0 ? (
         <div className="bg-white/60 border border-purple-200 rounded-xl">
           <div className="p-6 border-b border-purple-200">
-            <h3 className="text-xl font-semibold">A/L Study Materials Library</h3>
+            <h3 className="text-xl font-semibold">
+              A/L Study Materials Library
+            </h3>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
@@ -230,11 +256,15 @@ export default function NotesPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">
-                        {getFileIcon(note.file_url?.split('.').pop())}
+                        {getFileIcon(note.file_url?.split(".").pop())}
                       </span>
                       <div>
-                        <h4 className="font-semibold text-gray-900 text-xl">{note.title}</h4>
-                        <p className="text-lg text-gray-500">{note.class_name}</p>
+                        <h4 className="font-semibold text-gray-900 text-xl">
+                          {note.title}
+                        </h4>
+                        <p className="text-lg text-gray-500">
+                          {note.class_name}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -247,19 +277,9 @@ export default function NotesPage() {
                     </div>
                   </div>
 
-                  <p className="text-lg text-gray-600 mb-3">{note.description}</p>
-
-                  <div className="flex justify-between text-lg text-gray-500">
-                    <span>{note.upload_date}</span>
-                    <a
-                      href={note.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Download
-                    </a>
-                  </div>
+                  <p className="text-lg text-gray-600 mb-3">
+                    {note.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -268,8 +288,12 @@ export default function NotesPage() {
       ) : (
         <div className="text-center py-12">
           <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No notes found</h3>
-          <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No notes found
+          </h3>
+          <p className="text-gray-500 mb-4">
+            Try adjusting your search or filters
+          </p>
           <button
             onClick={() => openUploadModal()}
             className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"
@@ -307,16 +331,6 @@ export default function NotesPage() {
                 className="w-full px-3 py-2 border rounded-xl"
               />
               <select
-                name="batch"
-                defaultValue={noteBeingEdited?.batch || ""}
-                required
-                className="w-full px-3 py-2 border rounded-xl"
-              >
-                <option value="">Select Batch</option>
-                <option value="2025 A/L">2025 A/L</option>
-                <option value="2026 A/L">2026 A/L</option>
-              </select>
-              <select
                 name="related_class"
                 defaultValue={noteBeingEdited?.related_class || ""}
                 required
@@ -327,12 +341,14 @@ export default function NotesPage() {
                   .filter((cls) => cls.id !== "all")
                   .map((cls) => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.topic}
+                      {cls.title}
                     </option>
                   ))}
               </select>
               <div>
-                <label className="block mb-2 text-gray-700 font-medium">Upload File</label>
+                <label className="block mb-2 text-gray-700 font-medium">
+                  Upload File
+                </label>
                 <input type="file" onChange={handleFileUpload} />
               </div>
               <div className="flex justify-end gap-3">

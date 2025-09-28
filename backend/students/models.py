@@ -178,7 +178,7 @@ class Message(models.Model):
     edited_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"From {self.sender} in {self.chat_room}: {self.message[:30]}"
+        return f"From {self.sender} in {self.chat_room}: {self.content[:30]}"
 
 
 class Notification(models.Model):

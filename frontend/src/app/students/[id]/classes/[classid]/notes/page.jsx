@@ -1,14 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, FileText, Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { FileText } from "lucide-react";
+
 
 export default function ClassNotes() {
   const { classid } = useParams();
   const router = useRouter();
-  const { accessToken, api, loading } = useAuth();
+  const { accessToken, api } = useAuth();
+
   const [notes, setNotes] = useState([]);
+  const [classDetails, setClassDetails] = useState({});
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,20 +22,31 @@ export default function ClassNotes() {
         setLoadingNotes(true);
         setError(null);
 
-        const response = await api.get(`/students/class/${classid}/notes/`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+        console.log("🔍 Fetching notes for classid:", classid);
+
+        const response = await api.get(`students/class/${classid}/notes/`,{
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        
+        console.log("✅ Full API response:", response.data);
+        console.log("📚 Notes array:", response.data.notes);
+        console.log("🏫 Class details:", response.data.class_details);
+
+        const allNotes = response.data.notes || [];
+        console.log(`📋 Total notes received: ${allNotes.length}`);
+        
+        // Log each note for debugging
+        allNotes.forEach((note, index) => {
+          console.log(`📝 Note ${index + 1}:`, note);
         });
 
-        // Filter notes to only PDFs or images
-        const filteredNotes = (response.data.notes || []).filter(note => {
-          return note.file_url && (note.file_url.endsWith(".pdf") || /\.(jpg|jpeg|png|gif)$/i.test(note.file_url));
-        });
-
-        setNotes(filteredNotes);
+        // Don't filter - show ALL notes
+        setNotes(allNotes);
+        setClassDetails(response.data.class_details || {});
+        
       } catch (error) {
-        console.error("Error fetching notes:", error);
+        console.error("❌ Error fetching notes:", error);
+        console.error("❌ Error response:", error.response?.data);
         setError("Failed to load notes. Please try again.");
       } finally {
         setLoadingNotes(false);
@@ -43,30 +58,12 @@ export default function ClassNotes() {
     }
   }, [accessToken, classid, api]);
 
-  if (loading || loadingNotes) {
+  if (loadingNotes) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading notes...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Error Loading Notes</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => router.back()}
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-          >
-            Go Back
-          </button>
+        <div className="animate-pulse text-center">
+          <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading notes...</p>
         </div>
       </div>
     );
@@ -74,7 +71,41 @@ export default function ClassNotes() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {classDetails.title || "Class Notes"}
+              </h1>
+              <p className="text-gray-600">{classDetails.instructor}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Debug Info */}
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Debug:</strong> Found {notes.length} notes for class "{classDetails.title}"
+          </p>
+        </div>
+
         {notes.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -83,24 +114,51 @@ export default function ClassNotes() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {notes.map((note, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
-                {note.file_url.endsWith(".pdf") ? (
-                  <a
-                    href={note.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center text-white bg-red-600 hover:bg-red-700 rounded-lg px-4 py-6"
-                  >
-                    📄 {note.title || `PDF Note ${index + 1}`}
-                  </a>
-                ) : (
-                  <img
-                    src={note.file_url}
-                    alt={note.title || `Image Note ${index + 1}`}
-                    className="rounded-lg object-cover w-full h-48"
-                  />
+            {notes.map((note) => (
+              <div key={note.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-semibold text-gray-900 text-lg leading-tight">{note.title}</h3>
+                  {note.file && (
+                    <a
+                      href={`${note.file}`}
+                      download
+                      className="text-blue-600 hover:text-blue-800 p-1"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+                
+                {note.description && (
+                  <p className="text-gray-600 text-sm mb-4 leading-relaxed">{note.description}</p>
                 )}
+                
+                <div className="space-y-3">
+                  {note.file ? (
+                    <a
+                      href={`${note.file}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 rounded-lg px-4 py-4 transition-colors font-medium"
+                    >
+                      <FileText className="w-5 h-5 mr-2" />
+                      View File
+                    </a>
+                  ) : (
+                    <div className="flex items-center justify-center text-gray-600 bg-gray-100 rounded-lg px-4 py-4 font-medium">
+                      <FileText className="w-5 h-5 mr-2" />
+                      Text Note Only
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center text-xs text-gray-500">
+                    <span>Class: {note.class_name}</span>
+                    <span>
+                      Uploaded: {new Date(note.upload_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

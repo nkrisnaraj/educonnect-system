@@ -92,15 +92,25 @@ class ChatRoomSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
-
+    message = serializers.SerializerMethodField()
+    
     class Meta:
         model = Message
-        fields = ['id', 'chat_room', 'sender', 'content', 'created_at', 'is_delivered', 'is_seen']
-        read_only_fields = ['created_at']
-
+        fields = ['id', 'chat_room', 'sender', 'message', 'content', 'created_at', 'is_delivered', 'is_seen']  # Include both message and content
+    
     def get_sender(self, obj):
-        from accounts.serializers import UserSerializer  
-        return UserSerializer(obj.sender).data
+        if obj.sender:
+            return {
+                'id': obj.sender.id,
+                'username': obj.sender.username,
+                'first_name': obj.sender.first_name,
+                'last_name': obj.sender.last_name,
+            }
+        return None
+    
+    def get_message(self, obj):
+        # Return the actual content from the model
+        return getattr(obj, 'content', '') or getattr(obj, 'message', '') or ''
 
 
 

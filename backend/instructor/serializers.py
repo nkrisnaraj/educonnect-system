@@ -51,18 +51,17 @@ class ZoomWebinarSerializer(serializers.ModelSerializer):
 
 class StudyNoteSerializer(serializers.ModelSerializer):
     class_name = serializers.CharField(source='related_class.title', read_only=True)
-    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = StudyNote
         fields = [
-            'id', 'title', 'description', 'batch',
-            'upload_date', 'file_url', 'class_name',
+            'id', 'title', 'description', 
+            'upload_date', 'class_name',
             'related_class', 'file'
         ]
         read_only_fields = ['upload_date']
         extra_kwargs = {
-            'file': {'write_only': True},
+            
             'related_class': {'write_only': True},
         }
 
@@ -176,7 +175,7 @@ class ExamQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamQuestion
         fields = [
-            'id', 'question_text', 'question_type', 'order', 'is_required', 
+            'id', 'exam', 'question_text', 'question_type', 'order', 'is_required', 
             'marks', 'description', 'scale_min', 'scale_max', 'scale_min_label', 
             'scale_max_label', 'allow_other_option', 'shuffle_options', 'options'
         ]
@@ -185,6 +184,7 @@ class ExamQuestionSerializer(serializers.ModelSerializer):
         options_data = validated_data.pop('options', [])
         question = ExamQuestion.objects.create(**validated_data)
         
+        # Create options if provided
         for option_data in options_data:
             QuestionOption.objects.create(question=question, **option_data)
         
