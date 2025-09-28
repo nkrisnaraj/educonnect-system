@@ -1,17 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {Search,Bell,BookOpen,Clock,MessageCircle,Send,} from "lucide-react";
+import {
+  Search,
+  Bell,
+  BookOpen,
+  Clock,
+  MessageCircle,
+  Send,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation";
 import { useApiCall } from "@/hooks/useApiCall";
 import { useSearch } from "@/hooks/useSearch";
-import { ClassCardSkeleton, WebinarCardSkeleton, ChatSkeleton } from "@/components/ui/SkeletonLoader";
+import {
+  ClassCardSkeleton,
+  WebinarCardSkeleton,
+  ChatSkeleton,
+} from "@/components/ui/SkeletonLoader";
 import { ErrorMessage, EmptyState } from "@/components/ui/ErrorMessage";
 import InstructorChatBox from "@/components/instructor/InstructorChatBox";
-
-
 
 export default function InstructorDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,21 +29,26 @@ export default function InstructorDashboard() {
   const [todayTomorrowWebinars, setTodayTomorrowWebinars] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [instructorName, setInstructorName] = useState("");
+  const [profileImage, setProfileImage] = useState(null);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingWebinars, setLoadingWebinars] = useState(true);
   const { accessToken, user, refreshAccessToken, logout, api } = useAuth();
   const router = useRouter();
   // Removed student, selectedStudent, chatMessages, messageRefreshInterval, lastMessages state variables
-  
+
   // New state for error handling
   const [classesError, setClassesError] = useState(null);
   const [webinarsError, setWebinarsError] = useState(null);
   const [chatError, setChatError] = useState(null);
   const [totalStudents, setTotalStudents] = useState(0);
-  
+
   // Enhanced search with debouncing - with safety checks
-  const filteredClasses = useSearch(classes || [], ['title', 'description'], searchQuery);
-  
+  const filteredClasses = useSearch(
+    classes || [],
+    ["title", "description"],
+    searchQuery
+  );
+
   // Retry functions
   const retryAllData = () => {
     if (accessToken) {
@@ -43,7 +57,7 @@ export default function InstructorDashboard() {
       fetchInstructorName(accessToken);
     }
   };
-  
+
   const params = useParams();
   const studentId = params.student_id;
 
@@ -88,13 +102,18 @@ export default function InstructorDashboard() {
     try {
       setLoadingWebinars(true);
       setWebinarsError(null);
-      const res = await axios.get("http://127.0.0.1:8000/edu_admin/webinars-list/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        "http://127.0.0.1:8000/edu_admin/webinars-list/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       const data = res.data;
       const todayStr = new Date().toISOString().split("T")[0];
-      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const tomorrowStr = new Date(Date.now() + 86400000)
+        .toISOString()
+        .split("T")[0];
 
       const filteredOccurrences = [];
 
@@ -103,12 +122,16 @@ export default function InstructorDashboard() {
         (webinar.occurrences || []).forEach((occ, index) => {
           if (!occ?.start_time) return;
 
-          const occDateStr = new Date(occ.start_time).toISOString().split("T")[0];
+          const occDateStr = new Date(occ.start_time)
+            .toISOString()
+            .split("T")[0];
           if (occDateStr === todayStr || occDateStr === tomorrowStr) {
             const occDateTime = new Date(occ.start_time);
 
             filteredOccurrences.push({
-              key: `webinar-${wId}-${occ.occurrence_id || index}-${occDateTime.getTime()}`,
+              key: `webinar-${wId}-${
+                occ.occurrence_id || index
+              }-${occDateTime.getTime()}`,
               webinarId: wId,
               topic: webinar.topic || "Untitled",
               date: occDateTime.toLocaleDateString(undefined, {
@@ -143,6 +166,7 @@ export default function InstructorDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setInstructorName(res.data.last_name);
+      setProfileImage(res.data.profile_image || null);
     } catch (err) {
       if (err.response?.status === 401) {
         try {
@@ -179,26 +203,26 @@ export default function InstructorDashboard() {
   //   return null;
   // }
 
-useEffect(() => {
+  useEffect(() => {
     if (!user || user.role !== "instructor") {
       router.replace("/login");
     }
-}, [user, router]);
+  }, [user, router]);
 
-useEffect(() => {
-  const fetchTotalStudents = async () => {
-    if (!accessToken) return;
-    try {
-      const res = await api.get("instructor/chat/instructor/students/");
-      setTotalStudents(res.data.students?.length || 0);
-    } catch (err) {
-      console.error("Failed to fetch student count:", err);
-      // Set to 0 on error to prevent UI issues
-      setTotalStudents(0);
-    }
-  };
-  fetchTotalStudents();
-}, [accessToken, api]);
+  useEffect(() => {
+    const fetchTotalStudents = async () => {
+      if (!accessToken) return;
+      try {
+        const res = await api.get("instructor/chat/instructor/students/");
+        setTotalStudents(res.data.students?.length || 0);
+      } catch (err) {
+        console.error("Failed to fetch student count:", err);
+        // Set to 0 on error to prevent UI issues
+        setTotalStudents(0);
+      }
+    };
+    fetchTotalStudents();
+  }, [accessToken, api]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -236,13 +260,25 @@ useEffect(() => {
               </span>
             </button>
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white font-medium">
-                  {instructorName ? instructorName.charAt(0).toUpperCase() : "I"}
-                </span>
-              </div>
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  className="w-9 h-9 rounded-full object-cover border border-gray-300"
+                />
+              ) : (
+                <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-white font-medium">
+                    {instructorName
+                      ? instructorName.charAt(0).toUpperCase()
+                      : "I"}
+                  </span>
+                </div>
+              )}
               <div className="text-right">
-                <p className="text-lg font-medium">{instructorName || "Instructor"}</p>
+                <p className="text-lg font-medium">
+                  {instructorName || "Instructor"}
+                </p>
                 <p className="text-base text-gray-500">Instructor</p>
               </div>
             </div>
@@ -267,14 +303,16 @@ useEffect(() => {
               Welcome back, {instructorName || "Instructor"}!
             </h1>
             <p className="text-purple-100">
-              {(todayTomorrowWebinars || []).length > 0 
-                ? `You have ${(todayTomorrowWebinars || []).length} webinar${(todayTomorrowWebinars || []).length > 1 ? 's' : ''} today/tomorrow`
-                : "Ready to inspire and educate your A/L students today"
-              }
+              {(todayTomorrowWebinars || []).length > 0
+                ? `You have ${(todayTomorrowWebinars || []).length} webinar${
+                    (todayTomorrowWebinars || []).length > 1 ? "s" : ""
+                  } today/tomorrow`
+                : "Ready to inspire and educate your A/L students today"}
             </p>
             {(classes || []).length > 0 && (
               <p className="text-purple-200 text-sm mt-2">
-                Managing {(classes || []).length} class{(classes || []).length > 1 ? 'es' : ''}
+                Managing {(classes || []).length} class
+                {(classes || []).length > 1 ? "es" : ""}
               </p>
             )}
           </div>
@@ -282,7 +320,6 @@ useEffect(() => {
             <BookOpen className="h-24 w-24" />
           </div>
         </div>
-      
 
         {/* Classes */}
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
@@ -301,14 +338,17 @@ useEffect(() => {
                   ))}
                 </div>
               ) : classesError ? (
-                <ErrorMessage 
-                  error={classesError} 
+                <ErrorMessage
+                  error={classesError}
                   onRetry={() => fetchClasses(accessToken)}
                 />
               ) : (filteredClasses || []).length > 0 ? (
                 <div className="h-64 overflow-y-auto space-y-4">
                   {(filteredClasses || []).map((cls) => (
-                    <div key={cls.id} className="p-4 bg-white/50 rounded-xl shadow-md">
+                    <div
+                      key={cls.id}
+                      className="p-4 bg-white/50 rounded-xl shadow-md"
+                    >
                       <div className="flex flex-col">
                         <span className="font-semibold text-xl text-gray-800">
                           {cls.title}
@@ -322,7 +362,11 @@ useEffect(() => {
                 <EmptyState
                   icon={BookOpen}
                   title="No classes found"
-                  description={searchQuery ? "No classes match your search." : "You haven't created any classes yet."}
+                  description={
+                    searchQuery
+                      ? "No classes match your search."
+                      : "You haven't created any classes yet."
+                  }
                 />
               )}
             </div>
@@ -346,8 +390,8 @@ useEffect(() => {
                   ))}
                 </div>
               ) : webinarsError ? (
-                <ErrorMessage 
-                  error={webinarsError} 
+                <ErrorMessage
+                  error={webinarsError}
                   onRetry={() => fetchWebinars(accessToken)}
                 />
               ) : (todayTomorrowWebinars || []).length > 0 ? (
@@ -376,18 +420,11 @@ useEffect(() => {
               )}
             </div>
           </div>
-              
-        
-          
 
-          
-              
-            {/* Chat Box */}
-            <InstructorChatBox />
-            
-          </div>
+          {/* Chat Box */}
+          <InstructorChatBox />
         </div>
       </div>
-    
+    </div>
   );
 }
