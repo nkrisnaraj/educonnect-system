@@ -189,7 +189,11 @@ useEffect(() => {
   const fetchTotalStudents = async () => {
     if (!accessToken) return;
     try {
-      const res = await api.get("instructor/chat/instructor/students/");
+      const res = await api.get("instructor/chat/instructor/students/",{
+        headers:{
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       setTotalStudents(res.data.students?.length || 0);
     } catch (err) {
       console.error("Failed to fetch student count:", err);
