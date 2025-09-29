@@ -29,6 +29,18 @@ export default function Classes() {
   const [isLoading, setIsLoading] = useState(true);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+  // Debug logging
+  useEffect(() => {
+    console.log('📊 Classes page auth state:', {
+      hasUser: !!user,
+      username: user?.username,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      authLoading: loading,
+      pageLoading: isLoading
+    });
+  }, [user, accessToken, refreshToken, loading, isLoading]);
+
   // Helper function to categorize classes based on dates
   const categorizeClass = (classItem) => {
     const currentDate = new Date();
@@ -64,53 +76,13 @@ export default function Classes() {
     }
   }, [status]);
 
-  useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem("user");
-      const storedToken = sessionStorage.getItem("accessToken");
-      console.log("Stored User:", storedUser);
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-        setAccessToken(storedToken);
-      }
-    } catch (e) {
-      sessionStorage.clear();
-    }
-  }, []);
+  // Token handling is now managed by AuthContext - removed deprecated code
 
-  const isTokenExpired = (token) => {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp < Math.floor(Date.now() / 1000);
-    } catch {
-      return true;
-    }
-  };
+  // Token expiration checking is now handled by AuthContext
 
-  // const refreshAccessToken = async () => {
-  //   try {
-  //     const refreshToken = sessionStorage.getItem("refreshToken");
-  //     const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
-  //       refresh: refreshToken,
-  //     });
-  //     const newAccessToken = response.data.access;
-  //     sessionStorage.setItem("accessToken", newAccessToken);
-  //     return newAccessToken;
-  //   } catch {
-  //     sessionStorage.clear();
-  //     alert("Session expired. Please log in again.");
-  //     return null;
-  //   }
-  // };
+  // Token validation is now handled by AuthContext and api interceptors
 
-  const getValidToken = async () => {
-    let token = accessToken;
-    if (!token || isTokenExpired(token)) {
-      token = await refreshAccessToken();
-      setAccessToken(token);
-    }
-    return token;
-  };
+  // Token validation is now handled by AuthContext and api interceptors
 
   const toggleClassSelection = (classId) => {
     setSelectedClasses((prev) =>
@@ -122,17 +94,30 @@ export default function Classes() {
 
   useEffect(() => {
       const fetchAllClasses = async () => {
+        // Don't start loading if auth context is still loading
+        if (loading) {
+          console.log("Auth context still loading, waiting...");
+          return;
+        }
+        
+        // Check if we have tokens but no user data - this might be a refresh scenario
+        if (!user && (accessToken || refreshToken)) {
+          console.log("Tokens exist but user not loaded yet, waiting...");
+          return;
+        }
+        
+        // If no tokens at all, stop loading but don't fetch
+        if (!accessToken || !refreshToken) {
+          console.log("No tokens available, stopping fetch");
+          setIsLoading(false);
+          return;
+        }
+        
         setIsLoading(true);
         try {
-          if (!accessToken || !refreshToken) {
-            console.log("Tokens not ready yet");
-            setIsLoading(false);
-            return;
-          }
-          const token = accessToken;
           const response = await api.get("/students/classes/", {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${accessToken}`,
             },
           });
           console.log("Fetched Classes:", response.data);
@@ -140,14 +125,28 @@ export default function Classes() {
           setEnrolledClasses(response.data.enrolled);
         } catch (error) {
           console.error("Error fetching classes:", error);
-          alert("Failed to fetch classes. Please try again later.");
+          if (error.response?.status === 401) {
+            console.log("Token expired, attempting refresh...");
+            try {
+              await refreshAccessToken();
+              // Retry the request after token refresh
+              const retryResponse = await api.get("/students/classes/");
+              setClasses(retryResponse.data.others);
+              setEnrolledClasses(retryResponse.data.enrolled);
+            } catch (refreshError) {
+              console.error("Token refresh failed:", refreshError);
+              alert("Session expired. Please login again.");
+            }
+          } else {
+            alert("Failed to fetch classes. Please try again later.");
+          }
         } finally {
           setIsLoading(false);
         }
       };
 
       fetchAllClasses();
-    }, [accessToken]);
+    }, [accessToken, refreshToken, loading, user, api, refreshAccessToken]);
 
 
   const handlePaidClass = (Class) => {
@@ -172,12 +171,11 @@ export default function Classes() {
     }
     setIsProcessing(true);
     try {
-      const token = await getValidToken();
-      const selectedClassDetails = allClasses.filter((Class) =>
-        selectedClasses.includes(Class.id)
+      const selectedClassDetails = classes.filter((Class) =>
+        selectedClasses.includes(Class.classid)
       );
       const totalAmount = selectedClassDetails.reduce(
-        (sum, Class) => sum + Class.amount,
+        (sum, Class) => sum + parseFloat(Class.fee),
         0
       );
       const formData = new FormData();
@@ -185,15 +183,13 @@ export default function Classes() {
       formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of course IDs
       formData.append("amount", totalAmount);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/students/payments/upload-receipt/`,
+      const response = await api.post(
+        "/students/payments/upload-receipt/",
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
-
         }
       );
       alert(response.data.message || "Receipt uploaded successfully!");

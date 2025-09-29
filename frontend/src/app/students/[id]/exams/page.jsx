@@ -17,6 +17,7 @@ import {
   Unlock
 } from "lucide-react"
 import { useStudentExamApi } from "@/hooks/useStudentExamApi"
+import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
 
@@ -26,14 +27,24 @@ export default function StudentExamsPage() {
   const [exams, setExams] = useState([])
   const [selectedTab, setSelectedTab] = useState("upcoming")
   const [searchQuery, setSearchQuery] = useState("")
+  const { loading: authLoading, accessToken } = useAuth()
   const { getAvailableExams, loading, error } = useStudentExamApi()
 
   useEffect(() => {
-    fetchExams()
-  }, [])
+    // Only fetch exams when auth is ready
+    if (!authLoading && accessToken) {
+      fetchExams()
+    }
+  }, [authLoading, accessToken]) // Add dependencies
 
   const fetchExams = async (retryCount = 0) => {
     try {
+      console.log('Fetching exams with auth state:', {
+        authLoading,
+        hasToken: !!accessToken,
+        retryCount
+      });
+      
       const response = await getAvailableExams()
       console.log('Student Exams:', response)
       if (response && response.exams) {
@@ -45,7 +56,14 @@ export default function StudentExamsPage() {
     } catch (error) {
       console.error('Failed to fetch exams:', error)
       
-      // Retry logic for network issues
+      // Handle authentication errors
+      if (error.message.includes('Authentication') || error.message.includes('token')) {
+        console.log('Authentication issue, waiting for auth context...')
+        // Don't retry authentication errors immediately
+        return
+      }
+      
+      // Retry logic for network issues only
       if (retryCount < 3 && (!error.response || error.response.status >= 500)) {
         console.log(`Retrying exams fetch (attempt ${retryCount + 1})`)
         setTimeout(() => {
@@ -153,6 +171,18 @@ export default function StudentExamsPage() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state while auth is loading
+  if (authLoading || (loading && exams.length === 0)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading exams...</p>
         </div>
       </div>
     )

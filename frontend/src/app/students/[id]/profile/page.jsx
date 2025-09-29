@@ -7,13 +7,15 @@ import axios from "axios";
 import {useAuth} from "@/context/AuthContext";
 import { ref } from "process";
 
+
 export default function EditProfilePage() {
-  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [image, setImage] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const {user,accessToken,refreshToken,refreshAccessToken} = useAuth()
+  const {user, accessToken, refreshToken, refreshAccessToken, api, loading: authLoading} = useAuth();
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -34,26 +36,38 @@ export default function EditProfilePage() {
   console.log(accessToken);
  
 
-  useEffect(()=>{
+  useEffect(() => {
     const fetchProfile = async () => {
-      setLoading(true);
-      if (!accessToken || !refreshToken) {
-        console.log("Tokens not ready yet");
-        return;
-      }
-      const token = accessToken;
       try {
-        const response = await axios.get("http://127.0.0.1:8000/students/profile/",{
+        setPageLoading(true);
+        setError(null);
+        
+        // Wait for auth context to load
+        if (authLoading) {
+          console.log("Auth context still loading, waiting...");
+          return;
+        }
+        
+        if (!accessToken) {
+          console.log("No access token available");
+          setPageLoading(false);
+          return;
+        }
+        
+        console.log("Fetching profile with token:", accessToken ? 'Token exists' : 'No token');
+        const response = await api.get("/students/profile/",{
           headers:{
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${accessToken}`
           }
-        })
-        const user =response.data;
-        const profile = user.student_profile;
+        });
+        
+        const userData = response.data;
+        const profile = userData.student_profile;
+        
         setFormData({
-          firstName: user.first_name || '',
-          lastName: user.last_name || '',
-          email: user.email || '',
+          firstName: userData.first_name || '',
+          lastName: userData.last_name || '',
+          email: userData.email || '',
           address: profile?.address || '',
           city: profile?.city || '',
           district: profile?.district || '',
@@ -63,16 +77,36 @@ export default function EditProfilePage() {
           yearAL: profile?.year_of_al || '',
           password: '',
           profile_image: profile?.profile_image || ''
-      });
-        console.log(response.data);
+        });
+        
+        console.log("Profile fetched successfully:", userData);
       } catch (error) {
         console.error('Error fetching profile:', error);
+        
+        // Handle 401 errors with token refresh
+        if (error.response?.status === 401) {
+          console.log("Got 401, attempting token refresh");
+          try {
+            const newToken = await refreshAccessToken();
+            if (newToken) {
+              console.log("Token refreshed, retrying profile fetch...");
+              setTimeout(() => fetchProfile(), 1000);
+              return;
+            }
+          } catch (refreshError) {
+            console.error("Failed to refresh token:", refreshError);
+            setError("Session expired. Please login again.");
+          }
+        } else {
+          setError("Failed to load profile. Please try again.");
+        }
       } finally {
-        setLoading(false);
+        setPageLoading(false);
       }
-    }
+    };
+    
     fetchProfile();
-  },[accessToken,refreshAccessToken]);
+  }, [authLoading, accessToken]); // Add authLoading dependency
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -80,46 +114,64 @@ export default function EditProfilePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    
     try {
       let token = accessToken;
-        if (!token) {
-          token = await refreshAccessToken();
-        }
-        if (!token) {
-          console.error('No access token available after refresh. Please login again.');
-          return;
-        }
-        const data = new FormData();
-        data.append("first_name", formData.firstName);
-        data.append("last_name", formData.lastName);
-        data.append("email", formData.email);
-        data.append("address", formData.address);
-        data.append("city", formData.city);
-        data.append("district", formData.district);
-        data.append("mobile", formData.mobile);
-        data.append("school_name", formData.school);
-        data.append("nic_no", formData.nic);
-        data.append("year_of_al", formData.yearAL);
-        if (formData.password) data.append("password", formData.password);
-        if (selectedImage) data.append("profile_image", selectedImage);
+      if (!token) {
+        token = await refreshAccessToken();
+      }
+      if (!token) {
+        setError('No access token available. Please login again.');
+        setSaving(false);
+        return;
+      }
+      
+      const data = new FormData();
+      data.append("first_name", formData.firstName);
+      data.append("last_name", formData.lastName);
+      data.append("email", formData.email);
+      data.append("address", formData.address);
+      data.append("city", formData.city);
+      data.append("district", formData.district);
+      data.append("mobile", formData.mobile);
+      data.append("school_name", formData.school);
+      data.append("nic_no", formData.nic);
+      data.append("year_of_al", formData.yearAL);
+      if (formData.password) data.append("password", formData.password);
+      if (selectedImage) data.append("profile_image", selectedImage);
 
-      const res = await axios.put('http://127.0.0.1:8000/students/profile/',data,{
-        headers:{
+      const res = await axios.put('http://127.0.0.1:8000/students/profile/', data, {
+        headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
         }
       });
       
-      if(res.status === 200){
-        alert('Profile updated successfully!');
+      if (res.status === 200) {
+        setSuccess('Profile updated successfully!');
+        // Clear the selected image after successful update
+        setSelectedImage(null);
+        
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
       }
       
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError('Failed to update profile. Please try again.');
-      
+      if (error.response?.status === 401) {
+        setError('Session expired. Please login again.');
+      } else if (error.response?.status === 400) {
+        setError('Invalid data. Please check your inputs.');
+      } else {
+        setError('Failed to update profile. Please try again.');
+      }
+    } finally {
+      setSaving(false);
     }
-  }
+  };
 
   const handleCancel = () => {
     setFormData({
@@ -140,9 +192,17 @@ export default function EditProfilePage() {
     setSelectedImage(null);
   };
 
-  // if (loading) {
-  //   return <div className="text-center py-10">Loading profile...</div>;
-  // }
+  // Show loading state while auth is loading or profile is fetching
+  if (authLoading || pageLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto p-4">
@@ -165,6 +225,21 @@ export default function EditProfilePage() {
           </div>
           <p className="text-gray-600 text-lg">Update your personal information and preferences</p>
         </div>
+
+        {/* Success/Error Messages */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+            <p className="font-medium">Error</p>
+            <p>{error}</p>
+          </div>
+        )}
+        
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl">
+            <p className="font-medium">Success</p>
+            <p>{success}</p>
+          </div>
+        )}
 
         {/* Profile Image */}
         <div className="flex justify-center mb-8">

@@ -21,25 +21,72 @@ export const AuthProvider = ({ children }) => {
   
 
   useEffect(() => {
-    // Load tokens & user from sessionStorage on mount
+    // Load tokens & user from sessionStorage on mount, fallback to cookies
+    console.log('🔄 AuthContext initializing...');
+    
     const userJson = sessionStorage.getItem("user");
-    const token = sessionStorage.getItem("accessToken");
-    const refresh = sessionStorage.getItem("refreshToken")
+    const token = sessionStorage.getItem("accessToken") || Cookies.get("accessToken");
+    const refresh = sessionStorage.getItem("refreshToken");
     const richUserJson = sessionStorage.getItem("richUser");
-    if (userJson) setUser(JSON.parse(userJson));
-    if (richUserJson) setRichUser(JSON.parse(richUserJson));
-    if (token) setAccessToken(token);
-    if (refresh) setRefreshToken(refresh);
+    
+    console.log('📊 Auth initialization data:', {
+      hasUserJson: !!userJson,
+      hasToken: !!token,
+      hasRefresh: !!refresh,
+      hasRichUser: !!richUserJson,
+      tokenSource: sessionStorage.getItem("accessToken") ? 'sessionStorage' : 'cookie'
+    });
+    
+    // Set user data first
+    if (userJson) {
+      const userData = JSON.parse(userJson);
+      setUser(userData);
+      console.log('✅ User loaded from sessionStorage:', userData.username);
+    }
+    
+    if (richUserJson) {
+      const richUserData = JSON.parse(richUserJson);
+      setRichUser(richUserData);
+      console.log('✅ Rich user loaded from sessionStorage');
+    }
+    
+    if (token) {
+      setAccessToken(token);
+      // Sync sessionStorage with cookie if sessionStorage was empty
+      if (!sessionStorage.getItem("accessToken") && Cookies.get("accessToken")) {
+        sessionStorage.setItem("accessToken", token);
+        console.log('🔄 Synced cookie token to sessionStorage');
+      }
+    }
+    
+    if (refresh) {
+      setRefreshToken(refresh);
+    }
+    
+    // Only set loading to false after we've attempted to load all data
+    console.log('✅ AuthContext initialization complete');
     setLoading(false);
   }, []);
 
 
 // Login saves tokens and user info
 const login = async (userData) => {
+  console.log('🚀 Login process starting...');
+  setLoading(true); // Set loading true during login process
+  
   sessionStorage.setItem("user", JSON.stringify(userData.user));
   sessionStorage.setItem("userRole", userData.user.role);
   sessionStorage.setItem("accessToken", userData.access);
   sessionStorage.setItem("refreshToken", userData.refresh);
+  
+  // Also set the cookie to ensure middleware access
+  Cookies.set("accessToken", userData.access, { 
+    path: "/",
+    expires: 1, // 1 day
+    secure: false, // Allow HTTP for development
+    sameSite: 'lax'
+  });
+  
   setUser(userData.user);
   setAccessToken(userData.access);
   setRefreshToken(userData.refresh);
@@ -47,6 +94,7 @@ const login = async (userData) => {
   // Only fetch student profile if role is student
   if (userData.user.role === "student") {
     try {
+      console.log('📋 Fetching student profile...');
       const res = await axios.get("http://127.0.0.1:8000/students/profile/", {
         headers: { Authorization: `Bearer ${userData.access}` }
       });
@@ -62,10 +110,15 @@ const login = async (userData) => {
 
       sessionStorage.setItem("richUser", JSON.stringify(enrichedUser));
       setRichUser(enrichedUser);
+      console.log('✅ Student profile loaded successfully');
     } catch (err) {
       console.error("Error fetching student profile:", err);
+      // Continue with login even if profile fetch fails
     }
   }
+  
+  console.log('✅ Login process complete');
+  setLoading(false); // Set loading false after everything is done
 };
 
 
@@ -94,6 +147,15 @@ const login = async (userData) => {
 
       const newAccessToken = res.data.access;
       sessionStorage.setItem("accessToken",newAccessToken);
+      
+      // Also update cookie
+      Cookies.set("accessToken", newAccessToken, { 
+        path: "/",
+        expires: 1, 
+        secure: false,
+        sameSite: 'lax'
+      });
+      
       setAccessToken(newAccessToken);
       return newAccessToken;
     }catch(err){
@@ -108,36 +170,44 @@ const login = async (userData) => {
     api.interceptors.request.handlers = [];
     api.interceptors.response.handlers = [];
 
-    if (!accessToken) return;
-
+    // Always add request interceptor, even without token
     api.interceptors.request.use(
       (config) => {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+        if (accessToken) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        }
         return config;
       },
       (error) => Promise.reject(error)
     );
 
+    // Always add response interceptor for error handling
     api.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && refreshToken) {
           originalRequest._retry = true;
 
-          const newToken = await refreshAccessToken();
+          try {
+            const newToken = await refreshAccessToken();
 
-          if (newToken) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return api(originalRequest);
+            if (newToken) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return api(originalRequest);
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed in interceptor:', refreshError);
+            // Don't logout here to prevent infinite loops
+            return Promise.reject(refreshError);
           }
         }
 
         return Promise.reject(error);
       }
     );
-  }, [accessToken, refreshToken]);
+  }, [accessToken, refreshToken]); // Keep dependencies
 
 
   return (

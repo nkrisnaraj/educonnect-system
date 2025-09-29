@@ -25,19 +25,55 @@ export default function Topbar({ toggleSidebar }) {
   useEffect(() => {
     const fetchNotice = async () => {
       try {
-        const response = await api.get("students/notifications/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+        // Don't fetch if auth is still loading or tokens not available
+        if (loading || !accessToken || !user) {
+          console.log("Auth not ready for notifications fetch - loading:", loading, "hasToken:", !!accessToken, "hasUser:", !!user);
+          return;
+        }
+        
+        // Add a small delay to ensure auth is fully ready after login
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log("🔔 Fetching notifications for user:", user.username);
+        console.log("🔔 Using token:", accessToken ? `${accessToken.substring(0, 20)}...` : 'none');
+        
+        // Don't add manual headers - api interceptor handles authentication automatically
+        const response = await api.get("students/notifications/",{
+          headers:{
+            Authorization: `Bearer ${accessToken}`
+          }
         });
-        console.log("Fetched notifications:", response.data);
-        setNotifications(response.data.notifications);
+        console.log("✅ Fetched notifications successfully:", response.data);
+        setNotifications(response.data.notifications || []);
       } catch (error) {
-        console.error("Failed to fetch notifications:", error);
+        console.error("❌ Failed to fetch notifications:", error);
+        console.error("❌ Error details:", {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: error.config
+        });
+        
+        // Handle 401 errors but don't cause redirects
+        if (error.response?.status === 401) {
+          console.log("🔄 Token expired in notifications fetch, attempting refresh...");
+          try {
+            const newToken = await refreshAccessToken();
+            console.log("✅ Token refreshed successfully, new token:", newToken ? `${newToken.substring(0, 20)}...` : 'none');
+            // Let the next useEffect cycle handle retry when accessToken updates
+          } catch (refreshError) {
+            console.error("❌ Failed to refresh token:", refreshError);
+            // Don't do anything here that could cause a redirect
+            // Let the main auth flow handle session expiry
+          }
+        } else {
+          console.error("Non-401 error fetching notifications:", error.message);
+        }
       }
     };
+    
     fetchNotice();
-  }, [api],loading);
+  }, [loading, accessToken, user, api, refreshAccessToken]); // Add user to dependencies
 
   const unreadCount = notifications.filter((n)=>!n.read_status).length;
 

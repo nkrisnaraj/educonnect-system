@@ -102,28 +102,30 @@ export default function Login() {
             
             console.log('🍪 Cookie set:', Cookies.get("accessToken") ? 'Success' : 'Failed');
 
-            login(data); // this replace all loalstorage
-            
+            console.log('🔄 Starting login process...');
+            await login(data); // Wait for login process to complete
+            console.log('✅ Login process completed');
+
             //sessionStorage.setItem("user", JSON.stringify(userObject));
             //sessionStorage.setItem("userRole",data.user.role);
             //sessionStorage.setItem("accessToken", response.data.access);
             //sessionStorage.setItem("refreshToken", response.data.refresh);
 
             //const userrole = sessionStorage.getItem("userRole");
-            console.log(data.user.id);
-            setTimeout(() => {
-              try {
-                if (data.user.role === 'admin') {
-                  router.push("/admin");
-                } else if (data.user.role === 'instructor') {
-                  router.push("/instructor");
-                } else if (data.user.role === 'student') {
-                  router.push(`/students/${data.user.id}`);
-                }
-              } catch (err) {
-                console.error("Router push error:", err);
+            console.log('🧭 Navigating to:', data.user.role, 'dashboard for user ID:', data.user.id);
+            
+            // Navigate immediately after login completes - no setTimeout needed
+            try {
+              if (data.user.role === 'admin') {
+                router.push("/admin");
+              } else if (data.user.role === 'instructor') {
+                router.push("/instructor");
+              } else if (data.user.role === 'student') {
+                router.push(`/students/${data.user.id}`);
               }
-            }, 1000);
+            } catch (err) {
+              console.error("Router push error:", err);
+            }
           }else{
             setMessage("Login Failed")
             setIsSuccess(false);

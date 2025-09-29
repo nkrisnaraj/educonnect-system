@@ -11,6 +11,8 @@ import StudentChatBox from "@/components/student/StudentChatBox";
 import { AnimatePresence, motion } from "framer-motion";
 
 
+
+
 export default function StudentPage() {
   const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
   const router = useRouter();
@@ -30,19 +32,26 @@ export default function StudentPage() {
 useEffect(() => {
       const fetchAllClasses = async () => {
         try {
-          if (!accessToken || !refreshToken) {
-            console.log("Tokens not ready yet");
+          // Wait for AuthContext to finish loading
+          if (loading) {
+            console.log("Auth context still loading, waiting...");
             return;
           }
-          const token = accessToken;
-          const response = await api.get("/students/classes/", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+          
+          if (!accessToken) {
+            console.log("No access token available");
+            return;
+          }
+          
+          console.log("Making API call with token:", accessToken ? 'Token exists' : 'No token');
+          const response = await api.get("/students/classes/",{
+            headers:{
+              Authorization: `Bearer ${accessToken}`
+            }
           });
           console.log("Fetched Classes:", response.data);
-          setClasses(response.data.others);
-          setEnrolledClasses(response.data.enrolled);
+          setClasses(response.data.others || []);
+          setEnrolledClasses(response.data.enrolled || []);
           
           // Filter for active enrolled classes only
           const currentDate = new Date();
@@ -54,12 +63,24 @@ useEffect(() => {
           setActiveEnrolledClasses(activeClasses);
         } catch (error) {
           console.error("Error fetching classes:", error);
-          alert("Failed to fetch classes. Please try again later.");
+          // If it's a 401 error, try to refresh token manually
+          if (error.response?.status === 401) {
+            console.log("Got 401, attempting manual token refresh");
+            try {
+              const newToken = await refreshAccessToken();
+              if (newToken) {
+                console.log("Token refreshed, retrying in 2 seconds...");
+                setTimeout(() => fetchAllClasses(), 2000);
+              }
+            } catch (refreshError) {
+              console.error("Failed to refresh token:", refreshError);
+            }
+          }
         }
       };
 
       fetchAllClasses();
-    }, [accessToken]);
+    }, [accessToken, loading]); // Add loading dependency
 
   useEffect(() => {
     if (classes.length === 0) return;
@@ -73,26 +94,48 @@ useEffect(() => {
 
   const fetchEnrolledClass = async () => {
     try {
-      const enrollClass = await api.get("/students/enroll-class/" ,{
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
+      if (loading) {
+        console.log("Auth not ready for enrolled classes fetch");
+        return;
+      }
+      
+      if (!accessToken) {
+        console.log("No access token for enrolled classes");
+        return;
+      }
+      
+      console.log("Fetching enrolled classes with token:", accessToken ? 'Token exists' : 'No token');
+      const enrollClass = await api.get("/students/enroll-class/",{
+        headers:{
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       console.log("Enrolled Classes:", enrollClass.data);
-      //const result = enrollClass.data?.enrolled_classes || [];
-      setEnrollClasses(enrollClass.data || []);
+      setEnrolledClasses(enrollClass.data || []);
 
     } catch (error) {
       console.error("Failed to fetch enrolled classes", error);
-      
+      // Handle 401 errors with manual refresh
+      if (error.response?.status === 401) {
+        console.log("Got 401 for enrolled classes, attempting manual refresh");
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            console.log("Token refreshed for enrolled classes, retrying in 2 seconds...");
+            setTimeout(() => fetchEnrolledClass(), 2000);
+          }
+        } catch (refreshError) {
+          console.error("Failed to refresh token for enrolled classes:", refreshError);
+        }
+      }
     }
   }
 
   useEffect(() => {
-  if (!loading && accessToken) {
-    fetchEnrolledClass();
-  }
-}, [loading, accessToken]);
+    if (!loading && accessToken) {
+      fetchEnrolledClass();
+    }
+  }, [loading, accessToken]); // Add loading dependency
 
   const markMessagesReadStudent = async (token) => {
     await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {

@@ -178,47 +178,60 @@ class PaymentInfoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        payments = Payment.objects.filter(stuid=user)
+        try:
+            user = request.user
+            payments = Payment.objects.filter(stuid=user)
 
-        payment_list = []
+            payment_list = []
 
-        for payment in payments:
-            # Try to get Enrollment related to this payment
-            enrollment = Enrollment.objects.filter(payid=payment).first()
-            classname = enrollment.classid.title if enrollment else None
-            print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
-
-            invoice_no = None
-            record_no = None
-
-            if payment.method == 'online' :
+            for payment in payments:
                 try:
-                    online_payment = OnlinePayment.objects.get(payid=payment)
-                    invoice_no = online_payment.invoice_no
-                except OnlinePayment.DoesNotExist:
+                    # Try to get Enrollment related to this payment
+                    enrollment = Enrollment.objects.filter(payid=payment).first()
+                    classname = None
+                    if enrollment and hasattr(enrollment, 'classid') and enrollment.classid:
+                        classname = enrollment.classid.title
+                    
+                    print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
+
                     invoice_no = None
+                    record_no = None
 
-            elif payment.method == 'receipt':
-                try:
-                    receipt_payment = ReceiptPayment.objects.get(payid=payment)
-                    record_no = receipt_payment.record_no
-                except ReceiptPayment.DoesNotExist:
-                     record_no = None
+                    if payment.method == 'online':
+                        try:
+                            online_payment = OnlinePayment.objects.get(payid=payment)
+                            invoice_no = online_payment.invoice_no
+                        except OnlinePayment.DoesNotExist:
+                            invoice_no = None
 
-            # Append payment details to list
-            payment_list.append({
-                    "payid": payment.payid,
-                    "date": payment.date.strftime('%Y-%m-%d'),
-                    "amount": float(payment.amount),
-                    "status": payment.status,
-                    "method": payment.method,
-                    "class": classname,
-                    "Invoice_No" : invoice_no,
-                    "Record_No" : record_no
-            })
+                    elif payment.method == 'receipt':
+                        try:
+                            receipt_payment = ReceiptPayment.objects.get(payid=payment)
+                            record_no = receipt_payment.record_no
+                        except ReceiptPayment.DoesNotExist:
+                            record_no = None
 
-        return Response({"payments": payment_list})
+                    # Append payment details to list
+                    payment_list.append({
+                        "payid": payment.payid,
+                        "date": payment.date.strftime('%Y-%m-%d') if payment.date else "N/A",
+                        "amount": float(payment.amount) if payment.amount else 0.0,
+                        "status": payment.status or "pending",
+                        "method": payment.method or "unknown",
+                        "class": classname or "N/A",
+                        "Invoice_No": invoice_no,
+                        "Record_No": record_no
+                    })
+                    
+                except Exception as payment_error:
+                    print(f"Error processing payment {payment.payid}: {payment_error}")
+                    continue
+
+            return Response({"payments": payment_list})
+            
+        except Exception as e:
+            print(f"Error in PaymentInfoView: {e}")
+            return Response({"error": "Failed to fetch payment information", "detail": str(e)}, status=500)
 
 
 class StudentProfileView(APIView):
