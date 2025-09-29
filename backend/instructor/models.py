@@ -129,8 +129,16 @@ class Exam(models.Model):
     )
     
     def save(self, *args, **kwargs):
-        if not self.examid:
-            self.examid = f"EXM-{uuid.uuid4().hex[:6].upper()}"
+        # Generate examid if it's None, empty string, or whitespace
+        if not self.examid or self.examid.strip() == '':
+            # Generate a unique examid
+            import random
+            while True:
+                new_examid = f"EXM-{uuid.uuid4().hex[:6].upper()}"
+                # Check if this examid already exists
+                if not Exam.objects.filter(examid=new_examid).exists():
+                    self.examid = new_examid
+                    break
         
         # Calculate end time if not provided
         if not self.end_time and self.start_time and self.duration_minutes:
