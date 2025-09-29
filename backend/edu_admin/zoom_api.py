@@ -172,3 +172,129 @@ class ZoomAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"Error fetching webinar {webinar_id} occurrences:", e)
             raise
+
+    def register_for_webinar(self, webinar_id: str, email: str, first_name: str, last_name: str, custom_questions: list = None, username: str = None, payment_id: str = None) -> dict:
+        """Register a user for a webinar with support for custom questions"""
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name
+        }
+        
+        # Add custom questions if provided
+        if custom_questions:
+            payload["custom_questions"] = custom_questions
+        
+        url = f"https://api.zoom.us/v2/webinars/{webinar_id}/registrants"
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            
+            # If we get a 400 error about custom questions, try to get webinar details and auto-fill required fields
+            if response.status_code == 400 and "custom_questions" in response.text:
+                print(f"⚠️ Custom questions required for webinar {webinar_id}, attempting to auto-fill...")
+                
+                try:
+                    # Get webinar details to see what questions are required
+                    webinar_detail = self.get_webinar_detail(webinar_id)
+                    print(f"📋 Webinar settings: {webinar_detail.get('settings', {})}")
+                    
+                    # Create meaningful default answers using student info
+                    serial_number = username or email.split('@')[0]
+                    secret_number = payment_id or f"PAY-{webinar_id[-8:]}"
+                    
+                    # Create default answers for ALL common required questions
+                    default_custom_questions = [
+                        {"title": "Serial number", "value": serial_number},
+                        {"title": "Secret number ", "value": secret_number},  # Note the space
+                        {"title": "Secret number", "value": secret_number},   # Without space
+                        {"title": "Student ID", "value": serial_number},
+                        {"title": "Student Number", "value": serial_number},
+                        {"title": "Username", "value": serial_number},
+                        {"title": "Payment ID", "value": secret_number},
+                        {"title": "Registration ID", "value": secret_number},
+                        {"title": "Company", "value": "Educational Institution"},
+                        {"title": "Organization", "value": "Educational Institution"},
+                        {"title": "Job Title", "value": "Student"},
+                        {"title": "Industry", "value": "Education"},
+                        {"title": "Phone", "value": "+1234567890"},
+                        {"title": "Mobile", "value": "+1234567890"},
+                        {"title": "Address", "value": "Student Address"},
+                        {"title": "City", "value": "Student City"},
+                        {"title": "State", "value": "Student State"},
+                        {"title": "Country", "value": "US"},
+                        {"title": "Zip", "value": "12345"},
+                        {"title": "Postal Code", "value": "12345"},
+                        {"title": "Department", "value": "Student Affairs"},
+                        {"title": "Employee ID", "value": serial_number},
+                        {"title": "Registration Code", "value": secret_number},
+                        {"title": "Access Code", "value": f"ACC-{serial_number}"},
+                        {"title": "Verification Code", "value": f"VER-{secret_number[-8:]}"}
+                    ]
+                    
+                    if default_custom_questions:
+                        payload["custom_questions"] = default_custom_questions
+                        print(f"🔄 Retrying with meaningful custom questions:")
+                        print(f"   📝 Serial number (username): {serial_number}")
+                        print(f"   🔑 Secret number (payment ID): {secret_number}")
+                        print(f"   📋 Total fields: {len(default_custom_questions)}")
+                        
+                        # Retry the registration
+                        response = requests.post(url, headers=headers, json=payload)
+                    
+                except Exception as retry_error:
+                    print(f"❌ Failed to auto-fill custom questions: {retry_error}")
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Error registering for webinar {webinar_id}: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"📄 Response status: {e.response.status_code}")
+                print(f"📄 Response body: {e.response.text}")
+            raise
+
+    def get_webinar_registrants(self, webinar_id: str, status: str = "pending") -> dict:
+        """Get registrants for a webinar with specific status (pending, approved, denied)"""
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        
+        url = f"https://api.zoom.us/v2/webinars/{webinar_id}/registrants?status={status}"
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching webinar {webinar_id} registrants:", e)
+            raise
+
+    def update_registrant_status(self, webinar_id: str, registrant_id: str, action: str) -> dict:
+        """Update registrant status (approve, deny, cancel)"""
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "action": action,
+            "registrants": [{"id": registrant_id}]
+        }
+        
+        url = f"https://api.zoom.us/v2/webinars/{webinar_id}/registrants/status"
+        try:
+            response = requests.patch(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error updating registrant status for webinar {webinar_id}:", e)
+            print(f"Response: {response.text if 'response' in locals() else 'No response'}")
+            raise

@@ -274,6 +274,30 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminRole]
     lookup_field = "receiptid"
 
+    def dispatch(self, request, *args, **kwargs):
+        print(f"🔑 ReceiptPaymentAdminViewSet dispatch - Method: {request.method}")
+        print(f"🔑 User: {request.user}")
+        print(f"🔑 Is authenticated: {request.user.is_authenticated}")
+        print(f"🔑 Authorization header: {request.headers.get('Authorization', 'No auth header')}")
+        
+        # Try to manually process JWT token for debugging
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            print(f"🔑 Token found: {token[:30]}...")
+            
+            try:
+                from rest_framework_simplejwt.authentication import JWTAuthentication
+                jwt_auth = JWTAuthentication()
+                validated_token = jwt_auth.get_validated_token(token)
+                user = jwt_auth.get_user(validated_token)
+                print(f"🔑 JWT validated user: {user}")
+                print(f"🔑 JWT user role: {getattr(user, 'role', 'No role')}")
+            except Exception as e:
+                print(f"❌ JWT validation failed: {e}")
+        
+        return super().dispatch(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"])
     def verify(self, request, receiptid=None):
         # 🔄 Force fresh DB fetch (not cached)
@@ -362,8 +386,45 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
                                     )
                                     enrollments_created.append(f"{class_obj.title} ({class_obj.classid})")
                                     print(f"✅ Created enrollment for {student_profile.user.username} in {class_obj.title}")
+                                    
+                                    # ✅ Auto-register student for class webinar
+                                    try:
+                                        from .services import register_student_for_class_webinar
+                                        webinar_result = register_student_for_class_webinar(
+                                            student_profile, 
+                                            class_obj, 
+                                            payment_id=payment.payid  # Pass payment ID for meaningful tracking
+                                        )
+                                        
+                                        if webinar_result['success']:
+                                            print(f"🎥 {webinar_result['message']}")
+                                        else:
+                                            print(f"⚠️ Webinar registration: {webinar_result['message']}")
+                                            
+                                    except Exception as webinar_error:
+                                        print(f"❌ Error with webinar registration: {webinar_error}")
+                                        # Don't fail the whole process if webinar registration fails
+                                        
                                 else:
                                     print(f"⚠️ Enrollment already exists for {student_profile.user.username} in {class_obj.title}")
+                                    
+                                    # Still try to register for webinar if not already registered
+                                    try:
+                                        from .services import register_student_for_class_webinar
+                                        webinar_result = register_student_for_class_webinar(
+                                            student_profile, 
+                                            class_obj, 
+                                            payment_id=payment.payid  # Pass payment ID for meaningful tracking
+                                        )
+                                        
+                                        if webinar_result['success']:
+                                            print(f"🎥 {webinar_result['message']}")
+                                        else:
+                                            print(f"⚠️ Webinar registration: {webinar_result['message']}")
+                                            
+                                    except Exception as webinar_error:
+                                        print(f"❌ Error with webinar registration: {webinar_error}")
+                                        # Don't fail the whole process if webinar registration fails
                             else:
                                 print(f"❌ Class not found for name: {class_name}")
                                 
@@ -383,6 +444,40 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
         return Response({
             "detail": f"Receipt verified, amount synced, and payment marked as completed.{enrollment_message}"
         })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def approve_paid_webinar_registrations(request):
+    """
+    Admin endpoint to check and approve pending webinar registrations for paid students
+    """
+    try:
+        webinar_id = request.data.get('webinar_id')  # Optional: approve for specific webinar
+        
+        print(f"🎯 Starting approval process for webinar: {webinar_id or 'ALL'}")
+        
+        from .services import check_and_approve_paid_registrations
+        result = check_and_approve_paid_registrations(webinar_id)
+        
+        if result['success']:
+            return Response({
+                "success": True,
+                "message": f"Approval process completed. {result['total_approved']} registrations approved.",
+                "total_approved": result['total_approved'],
+                "details": result['results']
+            })
+        else:
+            return Response({
+                "success": False,
+                "error": result['error']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response({
+            "success": False,
+            "error": f"Error in approval process: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

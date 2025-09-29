@@ -63,7 +63,7 @@ api.interceptors.response.use(
 );
 
 // Create a separate instance for long-running operations
-export const apiLongTimeout = axios.create({
+const apiLongTimeout = axios.create({
   baseURL: BASE_URL,
   timeout: 300000, // 5 minutes for long operations like Zoom sync
   headers: {
@@ -75,10 +75,21 @@ export const apiLongTimeout = axios.create({
 apiLongTimeout.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
-      if (token) {
+      const sessionToken = sessionStorage.getItem('accessToken');
+      const localToken = localStorage.getItem('accessToken');
+      const token = sessionToken || localToken;
+      
+      console.log('🔍 Token debug:', {
+        sessionToken: sessionToken ? `${sessionToken.substring(0, 20)}...` : 'null',
+        localToken: localToken ? `${localToken.substring(0, 20)}...` : 'null',
+        finalToken: token ? `${token.substring(0, 20)}...` : 'undefined'
+      });
+      
+      if (token && token !== 'undefined' && token !== 'null') {
         config.headers.Authorization = `Bearer ${token}`;
         console.log('🔑 API Request (Long Timeout) with token:', `${token.substring(0, 20)}...`);
+      } else {
+        console.log('⚠️ No valid token found - user may need to login again');
       }
     }
     return config;
@@ -110,3 +121,63 @@ apiLongTimeout.interceptors.response.use(
 );
 
 export default api;
+export { apiLongTimeout };
+
+// Helper function to check current authentication status
+export const checkAuthStatus = () => {
+  const sessionToken = sessionStorage.getItem('accessToken');
+  const localToken = localStorage.getItem('accessToken');
+  const user = sessionStorage.getItem('user');
+  const userRole = sessionStorage.getItem('userRole');
+  
+  console.log('🔍 Current auth status:', {
+    hasSessionToken: !!sessionToken,
+    hasLocalToken: !!localToken,
+    hasUser: !!user,
+    userRole: userRole,
+    tokenPreview: sessionToken ? `${sessionToken.substring(0, 30)}...` : 'No token'
+  });
+  
+  return {
+    isAuthenticated: !!(sessionToken || localToken),
+    hasUser: !!user,
+    userRole: userRole,
+    token: sessionToken || localToken
+  };
+};
+
+// Function to validate token with backend
+export const validateToken = async () => {
+  const { token } = checkAuthStatus();
+  
+  if (!token || token === 'undefined' || token === 'null') {
+    console.log('❌ No valid token to validate');
+    return { valid: false, error: 'No token found' };
+  }
+  
+  try {
+    const response = await fetch('http://localhost:8000/edu_admin/validate-token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token })
+    });
+    
+    const result = await response.json();
+    console.log('🔍 Token validation result:', result);
+    
+    if (!result.valid) {
+      // Clear invalid tokens
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('refreshToken');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Token validation error:', error);
+    return { valid: false, error: error.message };
+  }
+};

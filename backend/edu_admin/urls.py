@@ -6,8 +6,9 @@ from .views import (
     ReceiptPaymentAdminViewSet, admin_get_chat_with_student, admin_list_students_with_chats, admin_send_message_to_student, mark_messages_read,
     ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
     UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test,
-    admin_get_notifications, admin_create_notification, admin_delete_notification
+    admin_get_notifications, admin_create_notification, admin_delete_notification, approve_paid_webinar_registrations
 )
+from .token_validation import TokenValidationView
 
 
 router = DefaultRouter()
@@ -39,6 +40,12 @@ urlpatterns = [
     path('notifications/', admin_get_notifications, name='admin-get-notifications'),
     path('notifications/create/', admin_create_notification, name='admin-create-notification'),
     path('notifications/<int:notification_id>/delete/', admin_delete_notification, name='admin-delete-notification'),
+
+    # Webinar registration management
+    path('approve-webinar-registrations/', approve_paid_webinar_registrations, name='approve-paid-webinar-registrations'),
+    
+    # Token validation endpoint
+    path('validate-token/', TokenValidationView.as_view(), name='validate-token'),
 
     path("", include(router.urls)),  # <-- include router URLs here
 ]

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 class ZoomWebinar(models.Model):
@@ -24,3 +25,27 @@ class ZoomOccurrence(models.Model):
 
     class Meta:
         unique_together = ('webinar', 'occurrence_id')
+
+
+class ZoomWebinarRegistration(models.Model):
+    """Track student registrations for Zoom webinars"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    webinar = models.ForeignKey(ZoomWebinar, on_delete=models.CASCADE)
+    zoom_registrant_id = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    registered_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('student', 'webinar')
+    
+    def __str__(self):
+        return f"{self.student.username} - {self.webinar.topic} ({self.status})"

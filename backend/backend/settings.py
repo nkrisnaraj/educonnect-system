@@ -79,7 +79,7 @@ INSTALLED_APPS = [
     # 'accounts',
     'accounts.apps.AccountsConfig',
     'multiselectfield',
-    'channels'
+    # 'channels'  # Temporarily disabled due to missing dependency
 ]
 
 # print("ZOOM JSON (raw):", os.getenv("ZOOM_ACCOUNTS_JSON"))
@@ -138,6 +138,7 @@ MEDIA_URL = "/media/"     #http://localhost:8000/media/receipts/receipt1.jpg
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
+    # 'backend.jwt_debug.JWTDebugMiddleware',  # Temporarily disabled due to channels dependency
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -9,9 +9,11 @@ import {
   XCircle,
   Eye,
   RefreshCw,
+  ShieldCheck,
 } from "lucide-react"
 import { useAdminData } from "@/context/AdminDataContext"
 import { adminApi } from "@/services/adminApi"
+import { validateToken } from "@/services/api"
 import ReceiptModal from "./ReceiptModal"
 
 function getStatusIcon(status) {
@@ -44,6 +46,7 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPayment, setSelectedPayment] = useState(null)
   const [payments, setPayments] = useState([])
+  const [tokenStatus, setTokenStatus] = useState(null)
   
   // Use AdminDataContext for loading and error states
   const { loading, error, clearError } = useAdminData()
@@ -135,6 +138,28 @@ export default function PaymentsPage() {
     fetchPayments()
   }, [])
 
+  // Token validation function
+  const handleTokenValidation = async () => {
+    console.log('🔍 Checking token status...')
+    setTokenStatus('checking')
+    
+    try {
+      const result = await validateToken()
+      setTokenStatus(result.valid ? 'valid' : 'invalid')
+      
+      if (result.valid) {
+        alert(`✅ Token is valid!\nUser: ${result.user.username}\nRole: ${result.user.role}`)
+      } else {
+        alert(`❌ Token is invalid!\nError: ${result.error}\n\nPlease log in again.`)
+        // Redirect to login
+        window.location.href = '/login'
+      }
+    } catch (error) {
+      setTokenStatus('error')
+      alert(`❌ Error checking token: ${error.message}`)
+    }
+  }
+
 
   const filteredPayments = payments.filter((payment) => {
     return (
@@ -168,6 +193,26 @@ export default function PaymentsPage() {
           <p className="text-gray-600">Track and manage student payments</p>
         </div>
         <div className="flex space-x-2">
+          <button
+            onClick={handleTokenValidation}
+            className={`flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors ${
+              tokenStatus === 'valid' 
+                ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100' 
+                : tokenStatus === 'invalid' 
+                ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                : tokenStatus === 'checking'
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-gray-300 bg-white hover:bg-gray-50'
+            }`}
+            disabled={tokenStatus === 'checking'}
+          >
+            <ShieldCheck className={`h-4 w-4 ${tokenStatus === 'checking' ? 'animate-spin' : ''}`} />
+            <span>
+              {tokenStatus === 'checking' ? 'Checking...' : 
+               tokenStatus === 'valid' ? 'Token Valid' :
+               tokenStatus === 'invalid' ? 'Token Invalid' : 'Check Token'}
+            </span>
+          </button>
           <button
             onClick={() => window.location.reload()}
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -270,6 +315,7 @@ export default function PaymentsPage() {
           onUpdate={(updated) =>
             setPayments(payments.map((p) => (p.id === updated.id ? updated : p)))
           }
+          token={sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken')}
         />
       )}
 

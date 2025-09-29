@@ -398,3 +398,217 @@ class ZoomWebinarService:
             duration_minutes=webinar.duration
         )
 
+
+def register_student_for_class_webinar(student, class_obj, payment_id=None):
+    """
+    Register a student for the webinar associated with a class.
+    This function is called after successful enrollment.
+    
+    Args:
+        student: StudentProfile instance
+        class_obj: Class instance
+        payment_id: Payment ID for meaningful registration tracking
+    """
+    try:
+        # Check if class has an associated webinar
+        if not class_obj.webinar:
+            print(f"ℹ️  Class {class_obj.title} has no associated webinar")
+            return {"success": False, "message": "No webinar associated with this class"}
+        
+        webinar = class_obj.webinar
+        student_email = student.user.email
+        
+        if not student_email:
+            print(f"❌ Student {student.user.username} has no email address")
+            return {"success": False, "message": "Student has no email address"}
+        
+        # Import here to avoid circular imports
+        from .models import ZoomWebinarRegistration
+        
+        # Check if student is already registered for this webinar
+        existing_registration = ZoomWebinarRegistration.objects.filter(
+            student=student.user,
+            webinar=webinar
+        ).first()
+        
+        if existing_registration:
+            print(f"ℹ️  Student {student.user.username} already registered for webinar {webinar.topic}")
+            return {
+                "success": True, 
+                "message": f"Student already registered for webinar (Status: {existing_registration.status})",
+                "registration_id": existing_registration.id
+            }
+        
+        # Register student with Zoom
+        zoom_client = ZoomAPIClient(webinar.account_key)
+        
+        first_name = student.user.first_name or student.user.username
+        last_name = student.user.last_name or "Student"
+        
+        zoom_response = zoom_client.register_for_webinar(
+            webinar_id=webinar.webinar_id,
+            email=student_email,
+            first_name=first_name,
+            last_name=last_name,
+            username=student.user.username,  # Pass username for Serial number
+            payment_id=payment_id            # Pass payment ID for Secret number
+        )
+        
+        # Save registration in our database
+        registration = ZoomWebinarRegistration.objects.create(
+            student=student.user,
+            webinar=webinar,
+            zoom_registrant_id=zoom_response.get('registrant_id'),
+            email=student_email,
+            status='pending'  # Zoom typically starts with pending approval
+        )
+        
+        print(f"✅ Successfully registered {student.user.username} for webinar {webinar.topic}")
+        print(f"   📝 Serial number: {student.user.username}")
+        print(f"   🔑 Secret number: {payment_id or 'Generated'}")
+        return {
+            "success": True,
+            "message": f"Successfully registered for webinar: {webinar.topic}",
+            "registration_id": registration.id,
+            "zoom_registrant_id": zoom_response.get('registrant_id'),
+            "join_url": zoom_response.get('join_url')
+        }
+        
+    except Exception as e:
+        print(f"❌ Error registering student {student.user.username} for webinar: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to register for webinar: {str(e)}"
+        }
+
+
+def check_and_approve_paid_registrations(webinar_id=None):
+    """
+    Check pending webinar registrations and auto-approve students who have paid for the class.
+    If webinar_id is provided, check only that webinar. Otherwise, check all webinars.
+    """
+    try:
+        from .models import ZoomWebinar, ZoomWebinarRegistration
+        from students.models import Enrollment, Payment
+        from instructor.models import Class
+        
+        # Get webinars to check
+        if webinar_id:
+            webinars = ZoomWebinar.objects.filter(webinar_id=webinar_id)
+        else:
+            webinars = ZoomWebinar.objects.all()
+        
+        total_approved = 0
+        results = []
+        
+        for webinar in webinars:
+            print(f"\n🔍 Checking webinar: {webinar.topic} (ID: {webinar.webinar_id})")
+            
+            try:
+                # Get Zoom client for this webinar
+                zoom_client = ZoomAPIClient(webinar.account_key)
+                
+                # Get pending registrants from Zoom
+                zoom_pending = zoom_client.get_webinar_registrants(webinar.webinar_id, status="pending")
+                pending_registrants = zoom_pending.get('registrants', [])
+                
+                print(f"   📋 Found {len(pending_registrants)} pending registrants in Zoom")
+                
+                approved_count = 0
+                
+                for registrant in pending_registrants:
+                    registrant_email = registrant.get('email', '').lower()
+                    registrant_id = registrant.get('id')
+                    
+                    print(f"   🔍 Checking: {registrant_email}")
+                    
+                    # Find the student by email
+                    try:
+                        from accounts.models import User
+                        student_user = User.objects.filter(email__iexact=registrant_email, role='student').first()
+                        
+                        if not student_user:
+                            print(f"      ❌ No student found with email: {registrant_email}")
+                            continue
+                        
+                        # Check if student has paid for a class that uses this webinar
+                        classes_with_webinar = Class.objects.filter(webinar=webinar)
+                        
+                        has_paid = False
+                        for class_obj in classes_with_webinar:
+                            # Check if student is enrolled in this class with successful payment
+                            enrollment = Enrollment.objects.filter(
+                                stuid__user=student_user,
+                                classid=class_obj,
+                                payid__status__in=['success', 'completed']
+                            ).first()
+                            
+                            if enrollment:
+                                print(f"      ✅ Student has paid for class: {class_obj.title}")
+                                has_paid = True
+                                break
+                        
+                        if has_paid:
+                            # Approve the registrant in Zoom
+                            try:
+                                approve_result = zoom_client.update_registrant_status(
+                                    webinar_id=webinar.webinar_id,
+                                    registrant_id=registrant_id,
+                                    action="approve"
+                                )
+                                
+                                # Update our database record
+                                registration = ZoomWebinarRegistration.objects.filter(
+                                    student=student_user,
+                                    webinar=webinar,
+                                    email__iexact=registrant_email
+                                ).first()
+                                
+                                if registration:
+                                    registration.status = 'approved'
+                                    registration.zoom_registrant_id = registrant_id
+                                    registration.save()
+                                
+                                print(f"      ✅ APPROVED: {registrant_email} for {webinar.topic}")
+                                approved_count += 1
+                                total_approved += 1
+                                
+                            except Exception as approve_error:
+                                print(f"      ❌ Error approving {registrant_email}: {approve_error}")
+                        else:
+                            print(f"      ⚠️  Student has not paid for any class using this webinar")
+                    
+                    except Exception as student_error:
+                        print(f"      ❌ Error processing student {registrant_email}: {student_error}")
+                
+                results.append({
+                    "webinar_id": webinar.webinar_id,
+                    "webinar_topic": webinar.topic,
+                    "pending_count": len(pending_registrants),
+                    "approved_count": approved_count
+                })
+                
+                print(f"   📊 Webinar summary: {approved_count}/{len(pending_registrants)} approved")
+                
+            except Exception as webinar_error:
+                print(f"   ❌ Error processing webinar {webinar.topic}: {webinar_error}")
+                results.append({
+                    "webinar_id": webinar.webinar_id,
+                    "webinar_topic": webinar.topic,
+                    "error": str(webinar_error)
+                })
+        
+        print(f"\n🎉 Total registrations approved: {total_approved}")
+        return {
+            "success": True,
+            "total_approved": total_approved,
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in approval process: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
