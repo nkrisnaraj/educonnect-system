@@ -33,24 +33,41 @@ export default function StudentExamsPage() {
   useEffect(() => {
     // Only fetch exams when auth is ready
     if (!authLoading && accessToken) {
+      console.log('✅ Auth ready, fetching exams...');
       fetchExams()
+    } else {
+      console.log('⏳ Waiting for auth:', { authLoading, hasToken: !!accessToken });
     }
   }, [authLoading, accessToken]) // Add dependencies
 
   const fetchExams = async (retryCount = 0) => {
+    const fetchStartTime = Date.now();
+    
     try {
-      console.log('Fetching exams with auth state:', {
+      console.log('🚀 Fetching exams with auth state:', {
         authLoading,
         hasToken: !!accessToken,
-        retryCount
+        retryCount,
+        timestamp: new Date().toISOString()
       });
       
-      const response = await getAvailableExams()
-      console.log('Student Exams:', response)
+      // Set a timeout for the request
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+      });
+      
+      const response = await Promise.race([
+        getAvailableExams(),
+        timeoutPromise
+      ]);
+      
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.log(`✅ Exams fetched successfully in ${fetchDuration}ms:`, response);
+      
       if (response && response.exams) {
         setExams(response.exams)
       } else {
-        // Handle case where response doesn't have expected structure
+        console.warn('⚠️ Unexpected response structure:', response);
         setExams([])
       }
     } catch (error) {
@@ -183,6 +200,28 @@ export default function StudentExamsPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading exams...</p>
+          {authLoading && <p className="text-sm text-gray-500 mt-2">Authenticating...</p>}
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-red-100 rounded-full p-3 mx-auto mb-4 w-fit">
+            <XCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to Load Exams</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => fetchExams()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     )
@@ -192,9 +231,19 @@ export default function StudentExamsPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Exams</h1>
-          <p className="text-gray-600">Track your exam schedule and results</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Exams</h1>
+            <p className="text-gray-600">Track your exam schedule and results</p>
+          </div>
+          {/* <button
+            onClick={() => fetchExams()}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Timer className="h-4 w-4" />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button> */}
         </div>
 
         {/* Stats Cards */}
@@ -301,14 +350,59 @@ export default function StudentExamsPage() {
         {/* Exams Grid */}
         {filteredExams.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-            <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No exams found</h3>
-            <p className="text-gray-500">
-              {selectedTab === "upcoming" && "You don't have any upcoming exams."}
-              {selectedTab === "completed" && "You haven't completed any exams yet."}
-              {selectedTab === "expired" && "No expired exams found."}
-              {selectedTab === "all" && "No exams available at the moment."}
-            </p>
+            <div className="relative mb-6">
+              <BookOpen className="h-16 w-16 text-gray-400 mx-auto" />
+              {exams.length === 0 && <AlertCircle className="h-6 w-6 text-orange-500 absolute -top-1 -right-1" />}
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-gray-500" />
+              <h3 className="text-lg font-medium text-gray-900">
+                {exams.length === 0 ? "No exams available" : "No exams found"}
+              </h3>
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <p className="text-gray-600">
+                {exams.length === 0 
+                  ? "You don't have any exams assigned yet."
+                  : searchQuery
+                  ? `No exams match "${searchQuery}" in the ${selectedTab} category.`
+                  : selectedTab === "upcoming" 
+                  ? "You don't have any upcoming exams."
+                  : selectedTab === "completed" 
+                  ? "You haven't completed any exams yet."
+                  : selectedTab === "expired" 
+                  ? "No expired exams found."
+                  : "No exams available at the moment."
+                }
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Clear Search
+                </button>
+              )}
+              <button
+                onClick={() => fetchExams()}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? (
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <Timer className="h-4 w-4" />
+                )}
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -409,37 +503,6 @@ export default function StudentExamsPage() {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {!loading && filteredExams.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-            <div className="relative mb-6">
-              <BookOpen className="h-16 w-16 text-gray-400 mx-auto" />
-              <AlertCircle className="h-6 w-6 text-orange-500 absolute -top-1 -right-1" />
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <FileText className="h-5 w-5 text-gray-500" />
-              <h3 className="text-lg font-medium text-gray-900">No exams found</h3>
-            </div>
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <Clock className="h-4 w-4 text-gray-500" />
-              <p className="text-gray-600">
-                {selectedTab === "all" 
-                  ? "You don't have any exams assigned yet." 
-                  : `No ${selectedTab} exams found.`}
-              </p>
-            </div>
-            <button
-              onClick={() => fetchExams()}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Refresh
-            </button>
           </div>
         )}
 

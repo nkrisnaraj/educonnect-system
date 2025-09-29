@@ -16,19 +16,61 @@ from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from .serializers import ReceiptPaymentSerializer
 from accounts.serializers import StudentProfileSerializer, UserSerializer
-# from google.cloud import vision  # Temporarily commented to fix import error
 import hashlib
 from django.conf import settings
 from django.db import IntegrityError
-# from .utils.google_creds import setup_google_credentials  # Temporarily commented
+import json
+import os
 from datetime import datetime, timedelta
 from django.utils import timezone
+import time
+
+# OCR Libraries with fallback support
+try:
+    from google.cloud import vision
+    VISION_AVAILABLE = True
+except ImportError:
+    VISION_AVAILABLE = False
+    print("📋 Google Vision API not available, will use Tesseract fallback")
+
+try:
+    import pytesseract
+    from PIL import Image
+    TESSERACT_AVAILABLE = True
+except ImportError:
+    TESSERACT_AVAILABLE = False
+    print("📋 Tesseract not available, install with: pip install pytesseract pillow")
 from instructor.models import Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer
 from instructor.serializers import ExamListSerializer, ExamQuestionSerializer
 # Initialize Google Cloud credentials once when module loads
 # setup_google_credentials()  # Temporarily commented
 
 User = get_user_model()  # Get the User model used by Django project
+
+def extract_text_with_tesseract(image_path):
+    """
+    Extract text from image using Tesseract OCR as fallback
+    """
+    try:
+        if not TESSERACT_AVAILABLE:
+            return None
+        
+        # Open and process image
+        image = Image.open(image_path)
+        
+        # Convert to RGB if needed
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Extract text using Tesseract
+        extracted_text = pytesseract.image_to_string(image, lang='eng')
+        print(f"🔍 Tesseract extracted text:\n{extracted_text}")
+        
+        return extracted_text.strip()
+        
+    except Exception as e:
+        print(f"❌ Tesseract OCR error: {str(e)}")
+        return None
 
 merchant_id = settings.PAYHERE_MERCHANT_ID
 merchant_secret = settings.PAYHERE_MERCHANT_SECRET
@@ -112,54 +154,186 @@ class ReceiptUploadView(APIView):
             class_names=class_names if class_names else None  # Store class names (can be null)
         )
 
-        # Initialize Google Vision API client - TEMPORARILY DISABLED
-        # client = vision.ImageAnnotatorClient()
+        # OCR Processing with fallback system
+        full_text = None
+        ocr_method = "none"
+        vision_error_message = None
         
+        # Try Google Vision API first (if available and billing enabled)
+        if VISION_AVAILABLE:
+            try:
+                # Set up Google Vision API credentials from environment
+                vision_credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+                if vision_credentials:
+                    # Parse the JSON credentials
+                    credentials_dict = json.loads(vision_credentials)
+                    
+                    # Create a temporary credentials file
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                        json.dump(credentials_dict, temp_file)
+                        temp_credentials_path = temp_file.name
+                    
+                    # Set the environment variable for Google Cloud
+                    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_credentials_path
+                    
+                    print("🔧 Google Vision API credentials set up successfully")
+                
+                # Initialize Google Vision API client
+                client = vision.ImageAnnotatorClient()
+                
+                # Read image content from uploaded file
+                image_content = image.read()
+                vision_image = vision.Image(content=image_content)
 
-        # Read image content from uploaded file
-        image_content = image.read()
-        # vision_image = vision.Image(content=image_content)
+                print("📷 Processing image with Google Vision API...")
+                
+                # Use Google Vision API to detect text in image
+                response = client.text_detection(image=vision_image)
+                
+                # Clean up temporary credentials file
+                if vision_credentials and 'temp_credentials_path' in locals():
+                    try:
+                        os.unlink(temp_credentials_path)
+                    except:
+                        pass
 
-        # Use Google Vision API to detect text in image - TEMPORARILY DISABLED
-        # response = client.text_detection(image=vision_image)
+                # Check for Vision API errors (including billing issues)
+                if response.error.message:
+                    vision_error_message = response.error.message
+                    print(f"❌ Vision API error: {vision_error_message}")
+                    
+                    # Check if it's a billing issue
+                    if "billing" in vision_error_message.lower() or "403" in vision_error_message:
+                        print("💳 Billing issue detected, falling back to Tesseract...")
+                    
+                    raise Exception(f"Vision API error: {vision_error_message}")
 
-        # If no text detected, return a message to re-upload - TEMPORARILY DISABLED
-        # if not response.text_annotations:
-        #     return Response({'message': "Image not clear. Please re-upload a clearer receipt."}, status=200)
+                # Check if text was detected
+                if response.text_annotations:
+                    full_text = response.text_annotations[0].description
+                    ocr_method = "google_vision"
+                    print(f"✅ Google Vision API extracted text successfully")
+                else:
+                    print("⚠️ No text detected by Vision API, trying Tesseract...")
+                    raise Exception("No text detected by Vision API")
+
+            except Exception as vision_error:
+                vision_error_message = str(vision_error)
+                print(f"💥 Vision API error: {vision_error_message}")
+                
+                # Reset image file pointer for Tesseract
+                image.seek(0)
         
-        # Temporary fallback - just return success for testing
-        return Response({'message': "Receipt uploaded successfully (Vision API temporarily disabled for testing)"}, status=200)
-
-        # Extract full text from first annotation
-        full_text = response.text_annotations[0].description
-
-        # Extract amount (e.g., Rs. 1250.00 or 1,250.00)
-        record_no_match = re.search(r'Record No\s*(\d+)', full_text,re.IGNORECASE)
-        location_match = re.search(r'Location\s*(.*)', full_text, re.IGNORECASE)
-        paid_amount_match = re.search(r'RS\.?\s*([\d,\.]+)', full_text, re.IGNORECASE)
-        account_no_match = re.search(r'TO\s*(\d+)', full_text, re.IGNORECASE)
-        account_name_match = re.search(r'TO\s*\d+\s*(.+)', full_text, re.IGNORECASE)
-        date_match = re.search(r'(\d{2}/\d{2}/\d{2})\s+(\d{2}:\d{2})', full_text)
+        # Fallback to Tesseract if Vision API failed or unavailable
+        if not full_text and TESSERACT_AVAILABLE:
+            try:
+                print("🔄 Falling back to Tesseract OCR...")
+                
+                # Save uploaded image temporarily for Tesseract
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_image:
+                    image.seek(0)
+                    temp_image.write(image.read())
+                    temp_image_path = temp_image.name
+                
+                # Extract text using Tesseract
+                full_text = extract_text_with_tesseract(temp_image_path)
+                
+                # Clean up temporary image
+                try:
+                    os.unlink(temp_image_path)
+                except:
+                    pass
+                
+                if full_text:
+                    ocr_method = "tesseract"
+                    print("✅ Tesseract OCR extracted text successfully")
+                else:
+                    print("❌ Tesseract OCR failed to extract text")
+                    
+            except Exception as tesseract_error:
+                print(f"💥 Tesseract OCR error: {str(tesseract_error)}")
         
+        # If no OCR method worked, save receipt without extracted data
+        if not full_text:
+            print("🔒 All OCR methods failed, saving receipt for manual verification")
+            receipt_payment = ReceiptPayment.objects.create(
+                payid=payment,
+                image_url=image,
+                verified=False
+            )
+            serializer = ReceiptPaymentSerializer(receipt_payment)
+            
+            response_data = {
+                "message": "Receipt uploaded successfully. OCR processing failed, manual verification required.",
+                "data": serializer.data,
+                "ocr_status": "failed",
+                "available_ocr": f"Vision: {'✅' if VISION_AVAILABLE else '❌'}, Tesseract: {'✅' if TESSERACT_AVAILABLE else '❌'}"
+            }
+            
+            if vision_error_message:
+                response_data["vision_error"] = vision_error_message
+                
+                # Add billing instructions if it's a billing error
+                if "billing" in vision_error_message.lower() or "403" in vision_error_message:
+                    response_data["billing_help"] = "Please enable billing in your Google Cloud project: https://console.developers.google.com/billing/enable?project=249055087183"
+                
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        # Process extracted text (from either Vision API or Tesseract)
+        print(f"📝 Extracted text from receipt using {ocr_method}:\n{full_text}")
+
+        # Enhanced regex patterns for better text extraction
+        record_no_match = re.search(r'(?:Record No|Receipt No|Transaction ID|Ref No)[:\s]*(\d+)', full_text, re.IGNORECASE)
+        location_match = re.search(r'(?:Location|Branch)[:\s]*(.+?)(?:\n|$)', full_text, re.IGNORECASE)
+        
+        # Multiple patterns for amount detection
+        paid_amount_match = re.search(r'(?:RS\.?|LKR\.?|Amount)[:\s]*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
+        if not paid_amount_match:
+            paid_amount_match = re.search(r'([\d,]+\.?\d*)\s*(?:RS|LKR)', full_text, re.IGNORECASE)
+        if not paid_amount_match:
+            paid_amount_match = re.search(r'Total[:\s]*([\d,]+\.?\d*)', full_text, re.IGNORECASE)
+        
+        account_no_match = re.search(r'(?:TO|Account)[:\s]*(\d+)', full_text, re.IGNORECASE)
+        account_name_match = re.search(r'(?:TO|Account)\s*\d+[:\s]*(.+?)(?:\n|$)', full_text, re.IGNORECASE)
+        
+        # Enhanced date patterns
+        date_match = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s*(\d{1,2}:\d{2})', full_text)
+        if not date_match:
+            date_match = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})', full_text)
+        
+        # Update payment amount if extracted
         if paid_amount_match:
-            amount_str = paid_amount_match.group(1).replace(',', '')
-            payment.amount = float(amount_str)
-        else:
-            payment.amount = 0.0
-
+            try:
+                amount_str = paid_amount_match.group(1).replace(',', '')
+                extracted_amount = float(amount_str)
+                payment.amount = extracted_amount
+                print(f"💰 Extracted amount: {extracted_amount}")
+            except ValueError as e:
+                print(f"⚠️ Could not parse amount: {amount_str}")
+        
         payment.save()
 
-        # Parse date and time
+        # Parse date and time with multiple formats
         paid_date_time = None
         if date_match:
             date_str = date_match.group(1)
-            time_str = date_match.group(2)
-            try:
-                paid_date_time = datetime.strptime(f"{date_str} {time_str}", "%d/%m/%y %H:%M")
-            except ValueError as e:
-                print(f"Date parsing error: {e}")
+            time_str = date_match.group(2) if date_match.lastindex >= 2 else "00:00"
+            
+            # Try multiple date formats
+            for date_format in ['%d/%m/%Y', '%d-%m-%Y', '%d/%m/%y', '%d-%m-%y', '%Y/%m/%d', '%Y-%m-%d']:
+                try:
+                    paid_date_time = datetime.strptime(f"{date_str} {time_str}", f"{date_format} %H:%M")
+                    print(f"📅 Parsed date: {paid_date_time}")
+                    break
+                except ValueError:
+                    continue
+            
+            if not paid_date_time:
+                print(f"⚠️ Could not parse date: {date_str}")
 
-        # Step 5: Save receipt image + extracted info
+        # Save receipt image + extracted info
         try:
             receipt_payment = ReceiptPayment.objects.create(
                 payid=payment,
@@ -172,14 +346,40 @@ class ReceiptUploadView(APIView):
                 paid_date_time=paid_date_time,
                 verified=False
             )
+            
+            # Log extracted information
+            extraction_log = {
+                "record_no": record_no_match.group(1) if record_no_match else "Not found",
+                "location": location_match.group(1).strip() if location_match else "Not found",
+                "amount": paid_amount_match.group(1) if paid_amount_match else "Not found",
+                "account_no": account_no_match.group(1) if account_no_match else "Not found",
+                "date": date_str if date_match else "Not found"
+            }
+            print(f"📊 Extraction results: {extraction_log}")
+            
         except IntegrityError as e:
-            return Response({'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'}, status=400)
+            print(f"💥 Database integrity error: {str(e)}")
+            return Response({
+                'error': 'Duplicate or invalid transaction ID. Please upload a different receipt.'
+            }, status=400)
 
         # Serialize and return saved receipt payment details
         serializer = ReceiptPaymentSerializer(receipt_payment)
+        
+        # Create success message based on OCR method used
+        if ocr_method == "google_vision":
+            success_message = "✅ Receipt processed successfully with Google Vision OCR!"
+        elif ocr_method == "tesseract":
+            success_message = "✅ Receipt processed successfully with Tesseract OCR!"
+        else:
+            success_message = "✅ Receipt processed successfully!"
+        
         return Response({
-            "message": "Successfully saved details. After verification, you can enroll in class.",
-            "data": serializer.data
+            "message": success_message,
+            "data": serializer.data,
+            "extracted_info": extraction_log,
+            "ocr_method": ocr_method,
+            "ocr_status": "success"
         }, status=status.HTTP_201_CREATED)
 
 
@@ -808,26 +1008,41 @@ def calendarEvent(request):
 def get_available_exams(request):
     """Get all available exams for the student based on enrolled classes"""
     try:
+        print(f"📚 Fetching available exams for user: {request.user.id}")
+        start_time = time.time()
+        
         student = StudentProfile.objects.get(user=request.user)
         
-        # Get enrolled classes
+        # Get enrolled classes (optimized query)
         enrolled_classes = Enrollment.objects.filter(stuid=student)
-        class_ids = enrolled_classes.values_list("classid__id", flat=True)
+        class_ids = list(enrolled_classes.values_list("classid__id", flat=True))
         
-        # Get published exams for those classes
+        print(f"🎓 Found {len(class_ids)} enrolled classes")
+        
+        # Optimized query with prefetch_related to avoid N+1 queries
         exams = Exam.objects.filter(
             classid__in=class_ids,
             is_published=True
-        ).select_related('classid').order_by('-created_at')
+        ).select_related('classid').prefetch_related('questions').order_by('-created_at')
+        
+        print(f"📝 Found {exams.count()} published exams")
+        
+        # Batch fetch all submissions to avoid N+1 queries
+        exam_ids = [exam.id for exam in exams]
+        submissions_dict = {}
+        if exam_ids:
+            submissions = ExamSubmission.objects.filter(
+                exam_id__in=exam_ids, 
+                student=student
+            ).select_related('exam')
+            submissions_dict = {sub.exam_id: sub for sub in submissions}
         
         exam_data = []
         current_datetime = timezone.now()
-        current_date = current_datetime.date()
-        current_time = current_datetime.time()
         
         for exam in exams:
-            # Check if student has already attempted
-            submission = ExamSubmission.objects.filter(exam=exam, student=student).first()
+            # Get submission from pre-fetched dict
+            submission = submissions_dict.get(exam.id)
             
             # Calculate exam time window
             exam_start_datetime = datetime.combine(exam.date, exam.start_time)
@@ -870,7 +1085,7 @@ def get_available_exams(request):
                 "end_time": exam_end_datetime.strftime('%H:%M'),
                 "duration_minutes": exam.duration_minutes,
                 "total_marks": exam.total_marks,
-                "questions_count": exam.questions.count(),
+                "questions_count": len(exam.questions.all()),  # Use prefetched data
                 "attempted": submission is not None,
                 "submission_id": submission.id if submission else None,
                 "score": submission.percentage if submission else None,
@@ -880,6 +1095,9 @@ def get_available_exams(request):
                 "availability_message": availability_message
             }
             exam_data.append(exam_info)
+        
+        end_time = time.time()
+        print(f"⏱️ Exams fetched in {end_time - start_time:.2f} seconds")
         
         return Response({"exams": exam_data}, status=status.HTTP_200_OK)
     

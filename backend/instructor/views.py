@@ -231,7 +231,8 @@ def delete_all_notifications(request):
 @permission_classes([IsAuthenticated])
 def instructor_list_students_with_chats(request):
     """
-    List all students who have chat rooms with instructor or are enrolled in instructor's classes.
+    List only students who have actually chatted with instructor, ordered by last message time.
+    Students with most recent messages appear first.
     """
     print(f"🔍 Request user: {request.user}")
     print(f"🔍 Request user authenticated: {request.user.is_authenticated}")
@@ -243,34 +244,91 @@ def instructor_list_students_with_chats(request):
             print(f"❌ User role check failed: {getattr(request.user, 'role', 'No role')}")
             return Response({'error': 'Only instructors allowed'}, status=status.HTTP_403_FORBIDDEN)
         
-        # Get all students enrolled in this instructor's classes
-        from students.models import Enrollment
-        instructor_classes = Class.objects.filter(instructor=request.user)
-        print(f"🔍 Instructor classes count: {instructor_classes.count()}")
+        # Get chat rooms where instructor has participated
+        from django.db.models import Max, Q
         
-        enrolled_students_ids = Enrollment.objects.filter(
-            classid__in=instructor_classes
-        ).values_list('stuid__user_id', flat=True).distinct()
-        print(f"🔍 Enrolled student IDs: {list(enrolled_students_ids)}")
+        # Find all chat rooms that have messages involving the instructor
+        chat_rooms_with_instructor = ChatRoom.objects.filter(
+            Q(messages__sender=request.user) |  # Instructor sent messages
+            Q(messages__chat_room__messages__sender=request.user)  # Or instructor received messages
+        ).distinct()
         
-        students = User.objects.filter(
-            id__in=enrolled_students_ids, 
-            role='student'
-        ).select_related('student_profile')
-        print(f"🔍 Students found: {students.count()}")
+        print(f"🔍 Chat rooms with instructor involvement: {chat_rooms_with_instructor.count()}")
         
-        data = []
-        for student in students:
-            data.append({
-                'id': student.id,
-                'username': student.username,
-                'first_name': student.first_name,
-                'last_name': student.last_name,
-                'email': student.email,
-            })
+        # Get students from these chat rooms with their last message time
+        students_with_chat_data = []
         
-        print(f"✅ Returning {len(data)} students")
-        return Response({'students': data}, status=status.HTTP_200_OK)
+        for chat_room in chat_rooms_with_instructor:
+            # Get the student who created this chat room
+            if chat_room.created_by and chat_room.created_by.role == 'student':
+                student = chat_room.created_by
+                
+                # Get the last message timestamp in this chat room
+                last_message = Message.objects.filter(
+                    chat_room=chat_room
+                ).order_by('-created_at').first()
+                
+                if last_message:
+                    try:
+                        profile = getattr(student, 'student_profile', None)
+                        
+                        # Get message count for this conversation
+                        total_messages = Message.objects.filter(chat_room=chat_room).count()
+                        unread_messages = Message.objects.filter(
+                            chat_room=chat_room,
+                            sender=student,
+                            is_seen=False
+                        ).count()
+                        
+                        student_data = {
+                            'id': student.id,
+                            'username': student.username,
+                            'first_name': student.first_name,
+                            'last_name': student.last_name,
+                            'email': student.email,
+                            'has_profile': profile is not None,
+                            'profile_school': profile.school_name if profile else None,
+                            'last_message_time': last_message.created_at,
+                            'last_message_preview': last_message.content[:50] + ('...' if len(last_message.content) > 50 else ''),
+                            'last_message_sender': last_message.sender.first_name or last_message.sender.username,
+                            'total_messages': total_messages,
+                            'unread_messages': unread_messages,
+                            'chat_room_id': chat_room.id
+                        }
+                        
+                        students_with_chat_data.append(student_data)
+                        print(f"📝 Added student: {student.username}, Last message: {last_message.created_at}")
+                        
+                    except Exception as profile_error:
+                        print(f"⚠️ Profile issue for student {student.username}: {profile_error}")
+                        # Still include student even if profile has issues
+                        student_data = {
+                            'id': student.id,
+                            'username': student.username,
+                            'first_name': student.first_name,
+                            'last_name': student.last_name,
+                            'email': student.email,
+                            'has_profile': False,
+                            'profile_school': None,
+                            'last_message_time': last_message.created_at,
+                            'last_message_preview': last_message.content[:50] + ('...' if len(last_message.content) > 50 else ''),
+                            'last_message_sender': last_message.sender.first_name or last_message.sender.username,
+                            'total_messages': total_messages,
+                            'unread_messages': unread_messages,
+                            'chat_room_id': chat_room.id
+                        }
+                        students_with_chat_data.append(student_data)
+        
+        # Sort by last message time (most recent first)
+        students_with_chat_data.sort(key=lambda x: x['last_message_time'], reverse=True)
+        
+        # Convert datetime objects to strings for JSON serialization
+        for student in students_with_chat_data:
+            student['last_message_time'] = student['last_message_time'].isoformat()
+        
+        print(f"✅ Returning {len(students_with_chat_data)} students with chat history (ordered by last message)")
+        
+        return Response({'students': students_with_chat_data}, status=status.HTTP_200_OK)
         
     except Exception as e:
         print(f"❌ Error in instructor_list_students_with_chats: {str(e)}")
