@@ -155,7 +155,6 @@ export default function NotesPage() {
         alert("No access token found. Please log in again.");
         return;
       }
-
       await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });

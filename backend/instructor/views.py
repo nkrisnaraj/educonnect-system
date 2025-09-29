@@ -588,3 +588,597 @@ def exam_analytics(request, exam_id):
     }
     
     return Response(analytics)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_results(request):
+    """Get comprehensive exam results with analytics and submissions for all instructor's exams"""
+    try:
+        # Get all exams for this instructor
+        exams = Exam.objects.filter(instructor=request.user).order_by('-created_at')
+        
+        results = []
+        for exam in exams:
+            # Get submissions for this exam
+            submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+            
+            completed_submissions = submissions.filter(is_completed=True)
+            
+            # Calculate analytics
+            analytics = {
+                'total_submissions': completed_submissions.count(),
+                'total_attempted': submissions.count(),
+                'average_score': completed_submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0,
+                'highest_score': completed_submissions.aggregate(Max('percentage'))['percentage__max'] or 0,
+                'lowest_score': completed_submissions.aggregate(Min('percentage'))['percentage__min'] or 0,
+                'pass_rate': completed_submissions.filter(percentage__gte=exam.passing_marks).count() / completed_submissions.count() * 100 if completed_submissions.count() > 0 else 0,
+            }
+            
+            # Serialize submissions with student details
+            submission_data = []
+            for submission in submissions:
+                student_user = submission.student.user  # Get User from StudentProfile
+                student_name = f"{student_user.first_name} {student_user.last_name}".strip()
+                if not student_name:
+                    student_name = student_user.email
+                    
+                submission_data.append({
+                    'id': submission.id,
+                    'student_id': student_user.id,
+                    'student_name': student_name,
+                    'student_email': student_user.email,
+                    'percentage': submission.percentage,
+                    'score': submission.total_marks_obtained,  # Use total_marks_obtained
+                    'total_marks': exam.total_marks,
+                    'is_completed': submission.is_completed,
+                    'submitted_at': submission.submitted_at,
+                    'started_at': submission.started_at,  # Use started_at for time tracking
+                })
+            
+            # Get class info
+            exam_class = exam.classid  # This is the ForeignKey to Class
+            batch_name = exam_class.title if exam_class else 'No Batch'
+            subject = exam_class.title if exam_class else 'General'  # Using title as subject since there's no separate subject field
+            
+            exam_result = {
+                'examId': exam.id,
+                'examTitle': exam.examname,  # Using examname instead of title
+                'subject': subject,
+                'batch': batch_name,
+                'date': exam.created_at.strftime('%Y-%m-%d'),
+                'status': exam.status,
+                'is_published': exam.is_published,
+                'passing_marks': exam.passing_marks,
+                'total_marks': exam.total_marks,
+                'duration': exam.duration_minutes,  # Using duration_minutes
+                'analytics': analytics,
+                'submissions': submission_data
+            }
+            results.append(exam_result)
+        
+        return Response({'results': results})
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def exam_details_with_students(request, exam_id):
+    """Get detailed exam information with all student participants and their scores"""
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+        
+        # Get all submissions for this exam
+        submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+        
+        # Process student data
+        student_data = []
+        for submission in submissions:
+            student_user = submission.student.user
+            student_name = f"{student_user.first_name} {student_user.last_name}".strip()
+            if not student_name:
+                student_name = student_user.email
+                
+            student_data.append({
+                'id': submission.id,
+                'student_id': student_user.id,
+                'student_name': student_name,
+                'student_email': student_user.email,
+                'percentage': submission.percentage,
+                'score': submission.total_marks_obtained,
+                'total_marks': exam.total_marks,
+                'is_completed': submission.is_completed,
+                'submitted_at': submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if submission.submitted_at else None,
+                'started_at': submission.started_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'status': 'Completed' if submission.is_completed else 'In Progress'
+            })
+        
+        # Calculate analytics
+        completed_submissions = submissions.filter(is_completed=True)
+        analytics = {
+            'total_participants': submissions.count(),
+            'completed_count': completed_submissions.count(),
+            'average_score': completed_submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0,
+            'highest_score': completed_submissions.aggregate(Max('percentage'))['percentage__max'] or 0,
+            'lowest_score': completed_submissions.aggregate(Min('percentage'))['percentage__min'] or 0,
+            'pass_rate': completed_submissions.filter(percentage__gte=exam.passing_marks).count() / completed_submissions.count() * 100 if completed_submissions.count() > 0 else 0,
+        }
+        
+        # Get class info
+        exam_class = exam.classid
+        
+        exam_details = {
+            'examId': exam.id,
+            'examTitle': exam.examname,
+            'description': exam.description,
+            'subject': exam_class.title if exam_class else 'General',
+            'class_name': exam_class.title if exam_class else 'No Class',
+            'date': exam.date.strftime('%Y-%m-%d'),
+            'start_time': exam.start_time.strftime('%H:%M'),
+            'duration': exam.duration_minutes,
+            'total_marks': exam.total_marks,
+            'passing_marks': exam.passing_marks,
+            'status': exam.status,
+            'is_published': exam.is_published,
+            'created_at': exam.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'analytics': analytics,
+            'students': student_data
+        }
+        
+        return Response(exam_details)
+        
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_exam_results_csv(request, exam_id):
+    """Download exam results as CSV file"""
+    import csv
+    from django.http import HttpResponse
+    
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+        
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{exam.examname}_results.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Student Name', 'Email', 'Score', 'Percentage', 'Total Marks', 'Status', 'Submitted At'])
+        
+        # Get submissions
+        submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+        
+        for submission in submissions:
+            student_user = submission.student.user
+            student_name = f"{student_user.first_name} {student_user.last_name}".strip()
+            if not student_name:
+                student_name = student_user.email
+            
+            writer.writerow([
+                student_name,
+                student_user.email,
+                submission.total_marks_obtained,
+                f"{submission.percentage:.2f}%",
+                exam.total_marks,
+                'Completed' if submission.is_completed else 'In Progress',
+                submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if submission.submitted_at else 'Not submitted'
+            ])
+        
+        return response
+        
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_all_exam_results_csv(request):
+    """Download all exam results as CSV file"""
+    import csv
+    from django.http import HttpResponse
+    
+    try:
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="all_exam_results.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Exam Title', 'Subject', 'Date', 'Total Participants', 'Completed', 'Average Score', 'Highest Score', 'Lowest Score', 'Pass Rate'])
+        
+        # Get all exams for this instructor
+        exams = Exam.objects.filter(instructor=request.user).order_by('-created_at')
+        
+        for exam in exams:
+            submissions = ExamSubmission.objects.filter(exam=exam)
+            completed_submissions = submissions.filter(is_completed=True)
+            
+            # Calculate analytics
+            analytics = {
+                'total_participants': submissions.count(),
+                'completed_count': completed_submissions.count(),
+                'average_score': completed_submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0,
+                'highest_score': completed_submissions.aggregate(Max('percentage'))['percentage__max'] or 0,
+                'lowest_score': completed_submissions.aggregate(Min('percentage'))['percentage__min'] or 0,
+                'pass_rate': completed_submissions.filter(percentage__gte=exam.passing_marks).count() / completed_submissions.count() * 100 if completed_submissions.count() > 0 else 0,
+            }
+            
+            exam_class = exam.classid
+            
+            writer.writerow([
+                exam.examname,
+                exam_class.title if exam_class else 'General',
+                exam.date.strftime('%Y-%m-%d'),
+                analytics['total_participants'],
+                analytics['completed_count'],
+                f"{analytics['average_score']:.2f}%",
+                f"{analytics['highest_score']:.2f}%",
+                f"{analytics['lowest_score']:.2f}%",
+                f"{analytics['pass_rate']:.2f}%"
+            ])
+        
+        return response
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_exam_results_pdf(request, exam_id):
+    """Download exam results as PDF file"""
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from django.http import HttpResponse
+    from io import BytesIO
+    
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+        
+        # Create the HttpResponse object with PDF header
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{exam.examname}_results.pdf"'
+        
+        # Create PDF document
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
+        
+        # Add title
+        title = Paragraph(f"Exam Results: {exam.examname}", title_style)
+        elements.append(title)
+        
+        # Add exam details
+        exam_class = exam.classid
+        exam_info = [
+            ['Subject:', exam_class.title if exam_class else 'General'],
+            ['Date:', exam.date.strftime('%Y-%m-%d')],
+            ['Duration:', f"{exam.duration_minutes} minutes"],
+            ['Total Marks:', str(exam.total_marks)],
+            ['Passing Marks:', str(exam.passing_marks)]
+        ]
+        
+        exam_table = Table(exam_info, colWidths=[2*inch, 3*inch])
+        exam_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.grey),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.beige),
+        ]))
+        
+        elements.append(exam_table)
+        elements.append(Spacer(1, 20))
+        
+        # Get submissions
+        submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+        
+        # Create student results table
+        data = [['Student Name', 'Email', 'Score', 'Percentage', 'Status']]
+        
+        for submission in submissions:
+            student_user = submission.student.user
+            student_name = f"{student_user.first_name} {student_user.last_name}".strip()
+            if not student_name:
+                student_name = student_user.email
+            
+            data.append([
+                student_name,
+                student_user.email,
+                f"{submission.total_marks_obtained}/{exam.total_marks}",
+                f"{submission.percentage:.1f}%",
+                'Completed' if submission.is_completed else 'In Progress'
+            ])
+        
+        # Create table
+        table = Table(data)
+        table.setStyle(TableStyle([
+            # Header row
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            
+            # Data rows
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.lightgrey, colors.white]),
+        ]))
+        
+        elements.append(table)
+        
+        # Calculate summary statistics
+        completed_submissions = submissions.filter(is_completed=True)
+        if completed_submissions.exists():
+            avg_score = completed_submissions.aggregate(Avg('percentage'))['percentage__avg']
+            highest_score = completed_submissions.aggregate(Max('percentage'))['percentage__max']
+            lowest_score = completed_submissions.aggregate(Min('percentage'))['percentage__min']
+            pass_count = completed_submissions.filter(percentage__gte=exam.passing_marks).count()
+            pass_rate = (pass_count / completed_submissions.count()) * 100
+            
+            elements.append(Spacer(1, 20))
+            
+            # Add summary
+            summary_style = ParagraphStyle(
+                'Summary',
+                parent=styles['Heading2'],
+                fontSize=12,
+                spaceAfter=10
+            )
+            
+            elements.append(Paragraph("Summary Statistics", summary_style))
+            
+            summary_data = [
+                ['Total Participants:', str(submissions.count())],
+                ['Completed:', str(completed_submissions.count())],
+                ['Average Score:', f"{avg_score:.1f}%"],
+                ['Highest Score:', f"{highest_score:.1f}%"],
+                ['Lowest Score:', f"{lowest_score:.1f}%"],
+                ['Pass Rate:', f"{pass_rate:.1f}%"]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[2*inch, 1.5*inch])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            
+            elements.append(summary_table)
+        
+        # Build PDF
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        
+        return response
+        
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_all_exam_results_pdf(request):
+    """Download all exam results as PDF file"""
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from django.http import HttpResponse
+    from io import BytesIO
+    
+    try:
+        # Create the HttpResponse object with PDF header
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="all_exam_results.pdf"'
+        
+        # Create PDF document
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
+        
+        # Add title
+        title = Paragraph("All Exam Results Summary", title_style)
+        elements.append(title)
+        elements.append(Spacer(1, 20))
+        
+        # Get all exams for this instructor
+        exams = Exam.objects.filter(instructor=request.user).order_by('-created_at')
+        
+        # Create summary table
+        data = [['Exam Title', 'Subject', 'Date', 'Participants', 'Completed', 'Avg Score', 'Pass Rate']]
+        
+        for exam in exams:
+            submissions = ExamSubmission.objects.filter(exam=exam)
+            completed_submissions = submissions.filter(is_completed=True)
+            
+            # Calculate analytics
+            total_participants = submissions.count()
+            completed_count = completed_submissions.count()
+            avg_score = completed_submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0
+            pass_count = completed_submissions.filter(percentage__gte=exam.passing_marks).count()
+            pass_rate = (pass_count / completed_count * 100) if completed_count > 0 else 0
+            
+            exam_class = exam.classid
+            
+            data.append([
+                exam.examname,
+                exam_class.title if exam_class else 'General',
+                exam.date.strftime('%Y-%m-%d'),
+                str(total_participants),
+                str(completed_count),
+                f"{avg_score:.1f}%",
+                f"{pass_rate:.1f}%"
+            ])
+        
+        # Create table
+        table = Table(data)
+        table.setStyle(TableStyle([
+            # Header row
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            
+            # Data rows
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.lightgrey, colors.white]),
+        ]))
+        
+        elements.append(table)
+        
+        # Build PDF
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+        response.write(pdf)
+        
+        return response
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+    """Download exam results as CSV file"""
+    import csv
+    from django.http import HttpResponse
+    
+    try:
+        exam = Exam.objects.get(id=exam_id, instructor=request.user)
+        
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{exam.examname}_results.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Student Name', 'Email', 'Score', 'Percentage', 'Total Marks', 'Status', 'Submitted At'])
+        
+        # Get submissions
+        submissions = ExamSubmission.objects.filter(exam=exam).select_related('student__user').order_by('-submitted_at')
+        
+        for submission in submissions:
+            student_user = submission.student.user
+            student_name = f"{student_user.first_name} {student_user.last_name}".strip()
+            if not student_name:
+                student_name = student_user.email
+            
+            writer.writerow([
+                student_name,
+                student_user.email,
+                submission.total_marks_obtained,
+                f"{submission.percentage:.2f}%",
+                exam.total_marks,
+                'Completed' if submission.is_completed else 'In Progress',
+                submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if submission.submitted_at else 'Not submitted'
+            ])
+        
+        return response
+        
+    except Exam.DoesNotExist:
+        return Response({'error': 'Exam not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def download_all_exam_results_csv(request):
+    """Download all exam results as CSV file"""
+    import csv
+    from django.http import HttpResponse
+    
+    try:
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="all_exam_results.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Exam Title', 'Subject', 'Date', 'Total Participants', 'Completed', 'Average Score', 'Highest Score', 'Lowest Score', 'Pass Rate'])
+        
+        # Get all exams for this instructor
+        exams = Exam.objects.filter(instructor=request.user).order_by('-created_at')
+        
+        for exam in exams:
+            submissions = ExamSubmission.objects.filter(exam=exam)
+            completed_submissions = submissions.filter(is_completed=True)
+            
+            # Calculate analytics
+            analytics = {
+                'total_participants': submissions.count(),
+                'completed_count': completed_submissions.count(),
+                'average_score': completed_submissions.aggregate(Avg('percentage'))['percentage__avg'] or 0,
+                'highest_score': completed_submissions.aggregate(Max('percentage'))['percentage__max'] or 0,
+                'lowest_score': completed_submissions.aggregate(Min('percentage'))['percentage__min'] or 0,
+                'pass_rate': completed_submissions.filter(percentage__gte=exam.passing_marks).count() / completed_submissions.count() * 100 if completed_submissions.count() > 0 else 0,
+            }
+            
+            exam_class = exam.classid
+            
+            writer.writerow([
+                exam.examname,
+                exam_class.title if exam_class else 'General',
+                exam.date.strftime('%Y-%m-%d'),
+                analytics['total_participants'],
+                analytics['completed_count'],
+                f"{analytics['average_score']:.2f}%",
+                f"{analytics['highest_score']:.2f}%",
+                f"{analytics['lowest_score']:.2f}%",
+                f"{analytics['pass_rate']:.2f}%"
+            ])
+        
+        return response
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

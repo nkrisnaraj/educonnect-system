@@ -21,7 +21,7 @@ import hashlib
 from django.conf import settings
 from django.db import IntegrityError
 # from .utils.google_creds import setup_google_credentials  # Temporarily commented
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from instructor.models import Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer
 from instructor.serializers import ExamListSerializer, ExamQuestionSerializer
@@ -729,9 +729,44 @@ def get_available_exams(request):
         ).select_related('classid').order_by('-created_at')
         
         exam_data = []
+        current_datetime = timezone.now()
+        current_date = current_datetime.date()
+        current_time = current_datetime.time()
+        
         for exam in exams:
             # Check if student has already attempted
             submission = ExamSubmission.objects.filter(exam=exam, student=student).first()
+            
+            # Calculate exam time window
+            exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+            exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+            
+            # Make datetime objects timezone-aware
+            exam_start_datetime = timezone.make_aware(exam_start_datetime)
+            exam_end_datetime = timezone.make_aware(exam_end_datetime)
+            
+            # Determine exam availability status
+            is_available = False
+            availability_status = "not_started"  # not_started, available, expired, completed
+            availability_message = ""
+            
+            if submission and submission.is_completed:
+                availability_status = "completed"
+                availability_message = f"Completed on {submission.submitted_at.strftime('%Y-%m-%d %H:%M')}"
+                is_available = False
+            elif current_datetime < exam_start_datetime:
+                availability_status = "not_started"
+                availability_message = f"Exam starts at {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+                is_available = False
+            elif exam_start_datetime <= current_datetime <= exam_end_datetime:
+                availability_status = "available"
+                remaining_minutes = int((exam_end_datetime - current_datetime).total_seconds() / 60)
+                availability_message = f"Available now! {remaining_minutes} minutes remaining"
+                is_available = True
+            else:  # current_datetime > exam_end_datetime
+                availability_status = "expired"
+                availability_message = f"Exam ended at {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+                is_available = False
             
             exam_info = {
                 "id": exam.id,
@@ -740,13 +775,17 @@ def get_available_exams(request):
                 "class_name": exam.classid.title,
                 "date": exam.date.isoformat(),
                 "start_time": exam.start_time.strftime('%H:%M'),
+                "end_time": exam_end_datetime.strftime('%H:%M'),
                 "duration_minutes": exam.duration_minutes,
                 "total_marks": exam.total_marks,
                 "questions_count": exam.questions.count(),
                 "attempted": submission is not None,
                 "submission_id": submission.id if submission else None,
                 "score": submission.percentage if submission else None,
-                "status": exam.status
+                "status": exam.status,
+                "is_available": is_available,
+                "availability_status": availability_status,
+                "availability_message": availability_message
             }
             exam_data.append(exam_info)
         
@@ -767,6 +806,26 @@ def get_exam_details(request, exam_id):
         # Verify student has access to this exam
         enrolled_classes = Enrollment.objects.filter(stuid=student).values_list("classid__id", flat=True)
         exam = Exam.objects.get(id=exam_id, classid__in=enrolled_classes, is_published=True)
+        
+        # Check time-based availability
+        current_datetime = timezone.now()
+        exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+        exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+        
+        # Make datetime objects timezone-aware
+        exam_start_datetime = timezone.make_aware(exam_start_datetime)
+        exam_end_datetime = timezone.make_aware(exam_end_datetime)
+        
+        # Check if exam is currently available
+        if current_datetime < exam_start_datetime:
+            return Response({
+                "error": f"Exam has not started yet. It will be available from {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if current_datetime > exam_end_datetime:
+            return Response({
+                "error": f"Exam has expired. It was available until {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
         
         # Check if already submitted (unless multiple attempts allowed)
         if not exam.allow_multiple_attempts:
@@ -845,7 +904,7 @@ def start_exam_attempt(request, exam_id):
                 "error": "Student profile not found. Please contact administrator."
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Verify access
+        # Verify access and check time availability
         enrolled_classes = Enrollment.objects.filter(stuid=student).values_list("classid__id", flat=True)
         
         try:
@@ -854,6 +913,25 @@ def start_exam_attempt(request, exam_id):
             return Response({
                 "error": "Exam not found or you don't have access to this exam."
             }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check time-based availability
+        current_datetime = timezone.now()
+        exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+        exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+        
+        # Make datetime objects timezone-aware
+        exam_start_datetime = timezone.make_aware(exam_start_datetime)
+        exam_end_datetime = timezone.make_aware(exam_end_datetime)
+        
+        if current_datetime < exam_start_datetime:
+            return Response({
+                "error": f"Exam has not started yet. It will be available from {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if current_datetime > exam_end_datetime:
+            return Response({
+                "error": f"Exam has expired. It was available until {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
         
         # Check if already has incomplete submission
         existing_submission = ExamSubmission.objects.filter(
@@ -985,6 +1063,37 @@ def submit_exam_answers(request, exam_id):
                     if option.is_correct:
                         score = question.marks
                         answer.is_correct = True
+            
+            elif question.question_type in ['date', 'time']:
+                # Date/Time questions - award marks for valid input
+                if question.question_type == 'date':
+                    date_value = answer_data.get('date_answer')
+                    if date_value:
+                        try:
+                            from datetime import datetime
+                            answer.date_answer = datetime.strptime(date_value, '%Y-%m-%d').date()
+                            score = question.marks
+                            answer.is_correct = True
+                        except (ValueError, TypeError):
+                            pass
+                elif question.question_type == 'time':
+                    time_value = answer_data.get('time_answer')
+                    if time_value:
+                        try:
+                            from datetime import datetime
+                            answer.time_answer = datetime.strptime(time_value, '%H:%M').time()
+                            score = question.marks
+                            answer.is_correct = True
+                        except (ValueError, TypeError):
+                            pass
+            
+            elif question.question_type == 'file_upload':
+                # File upload questions - require manual grading
+                file_answer = answer_data.get('file_answer')
+                if file_answer:
+                    answer.file_answer = file_answer
+                    # Don't award marks automatically - instructor will grade manually
+                    score = 0
                         
             # Save the score
             answer.marks_obtained = score

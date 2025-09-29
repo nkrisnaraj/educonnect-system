@@ -126,25 +126,7 @@ def create_message_notification(sender, instance, created, **kwargs):
     else:
         print(f"📨 Message not created by student or not new: created={created}, sender_role={getattr(instance.sender, 'role', 'unknown')}")
 
-@receiver(post_save, sender=StudentNotification)
-def create_student_notification_forward(sender, instance, created, **kwargs):
-    """Create notification when a student notification is created (for other types)"""
-    if created and instance.type == 'message':
-        # Find the instructor associated with this student
-        # We need to find the instructor whose class the student is enrolled in
-        student_enrollments = Enrollment.objects.filter(stuid=instance.student_id)
-        
-        for enrollment in student_enrollments:
-            instructor = enrollment.classid.instructor
-            
-            InstructorNotification.objects.create(
-                instructor=instructor,
-                title="New Message from Student",
-                message=f"Student {instance.student_id.user.first_name} {instance.student_id.user.last_name} sent you a message: '{instance.title}'",
-                type="message",
-                color="purple"
-            )
-        logger.info(f"Created message notification for instructors")
+
 
 @receiver(post_save, sender=Exam)
 def update_exam_status_notification(sender, instance, **kwargs):
