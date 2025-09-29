@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 
 from .zoom_api import ZoomAPIClient
 from .models import ZoomWebinar, ZoomOccurrence
+from .notification_service import WebinarNotificationService
 
 # Import Class models
 from instructor.models import Class, ClassSchedule
@@ -467,7 +468,23 @@ def register_student_for_class_webinar(student, class_obj, payment_id=None):
         print(f"   📝 Serial number: {student.user.username}")
         print(f"   🔑 Secret number: {payment_id or 'Generated'}")
         
-        # 🚀 AUTO-APPROVAL: Check and approve paid registrations for this webinar
+        # � NOTIFICATION: Send registration notification to student
+        print(f"📧 Sending registration notification to {student.user.username}...")
+        try:
+            notification_sent = WebinarNotificationService.send_webinar_registration_notification(
+                student_user=student.user,
+                webinar_topic=webinar.topic,
+                webinar_id=webinar.webinar_id,
+                payment_id=payment_id
+            )
+            if notification_sent:
+                print(f"   ✅ Registration notification sent successfully")
+            else:
+                print(f"   ⚠️ Failed to send registration notification")
+        except Exception as notification_error:
+            print(f"   ❌ Error sending registration notification: {notification_error}")
+        
+        # �🚀 AUTO-APPROVAL: Check and approve paid registrations for this webinar
         print(f"🔄 Checking for auto-approval of paid registrations...")
         try:
             approval_result = check_and_approve_paid_registrations(webinar_id=webinar.webinar_id)
@@ -594,6 +611,52 @@ def check_and_approve_paid_registrations(webinar_id=None):
                                 print(f"      ✅ APPROVED: {registrant_email} for {webinar.topic}")
                                 approved_count += 1
                                 total_approved += 1
+                                
+                                # 📧 NOTIFICATION: Send approval notification to student
+                                print(f"      📧 Sending approval notification to {student_user.username}...")
+                                try:
+                                    # Get join URL from Zoom if available
+                                    join_url = None
+                                    try:
+                                        # Get updated registrant info to fetch join URL
+                                        approved_registrants = zoom_client.get_webinar_registrants(webinar.webinar_id, status="approved")
+                                        for approved_reg in approved_registrants.get('registrants', []):
+                                            if approved_reg.get('email', '').lower() == registrant_email.lower():
+                                                join_url = approved_reg.get('join_url')
+                                                break
+                                    except Exception as join_url_error:
+                                        print(f"         ⚠️ Could not fetch join URL: {join_url_error}")
+                                    
+                                    # Find payment ID if available
+                                    payment_id = None
+                                    if registration:
+                                        # Try to get payment ID from registration record or from student's payments
+                                        try:
+                                            latest_payment = Payment.objects.filter(
+                                                stuid=student_user,
+                                                status='success'
+                                            ).order_by('-date').first()
+                                            if latest_payment:
+                                                payment_id = latest_payment.payid
+                                        except Exception:
+                                            pass
+                                    
+                                    notification_sent = WebinarNotificationService.send_webinar_approval_notification(
+                                        student_user=student_user,
+                                        webinar_topic=webinar.topic,
+                                        webinar_id=webinar.webinar_id,
+                                        join_url=join_url,
+                                        payment_id=payment_id
+                                    )
+                                    
+                                    if notification_sent:
+                                        print(f"         ✅ Approval notification sent successfully")
+                                    else:
+                                        print(f"         ⚠️ Failed to send approval notification")
+                                        
+                                except Exception as notification_error:
+                                    print(f"         ❌ Error sending approval notification: {notification_error}")
+                                    # Don't fail the approval if notification fails
                                 
                             except Exception as approve_error:
                                 print(f"      ❌ Error approving {registrant_email}: {approve_error}")

@@ -7,6 +7,7 @@ from .models import ZoomWebinar
 from .zoom_api import ZoomAPIClient
 import traceback
 from .services import ZoomWebinarService
+from .notification_service import WebinarNotificationService
 from students.models import ChatRoom, Message, Enrollment
 from students.serializers import MessageSerializer
 from students.models import Notification
@@ -386,6 +387,24 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
                                     )
                                     enrollments_created.append(f"{class_obj.title} ({class_obj.classid})")
                                     print(f"✅ Created enrollment for {student_profile.user.username} in {class_obj.title}")
+                                    
+                                    # 📧 NOTIFICATION: Send enrollment notification to student
+                                    print(f"📧 Sending enrollment notification to {student_profile.user.username}...")
+                                    try:
+                                        webinar_topic = class_obj.webinar.topic if class_obj.webinar else None
+                                        notification_sent = WebinarNotificationService.send_webinar_enrollment_notification(
+                                            student_user=student_profile.user,
+                                            class_name=class_obj.title,
+                                            webinar_topic=webinar_topic,
+                                            payment_amount=payment.amount,
+                                            # payment_id=payment.payid
+                                        )
+                                        if notification_sent:
+                                            print(f"   ✅ Enrollment notification sent successfully")
+                                        else:
+                                            print(f"   ⚠️ Failed to send enrollment notification")
+                                    except Exception as notification_error:
+                                        print(f"   ❌ Error sending enrollment notification: {notification_error}")
                                     
                                     # ✅ Auto-register student for class webinar
                                     try:
