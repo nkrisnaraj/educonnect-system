@@ -202,9 +202,6 @@ export default function StudentsPage() {
                 <th className="text-left py-3 px-6 font-medium text-gray-900">
                   A/L Year
                 </th>
-                <th className="text-left py-3 px-6 font-medium text-gray-900">
-                  Joined
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -256,9 +253,6 @@ export default function StudentsPage() {
                       }`}>
                         {student.batch}
                       </span>
-                    </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {student.date_joined ? new Date(student.date_joined).toLocaleDateString() : 'N/A'}
                     </td>
                   </tr>
                 ))

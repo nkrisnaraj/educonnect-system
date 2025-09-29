@@ -49,41 +49,55 @@ export default function Topbar({ toggleSidebar }) {
   useEffect(() => {
     const fetchNotice = async () => {
       try {
-        // Final safety check before making API call
-        if (!accessToken) {
-          console.log("No access token available, aborting fetch");
+        // Don't fetch if auth is still loading or tokens not available
+        if (loading || !accessToken || !user) {
+          console.log("Auth not ready for notifications fetch - loading:", loading, "hasToken:", !!accessToken, "hasUser:", !!user);
           return;
         }
         
-        console.log("Fetching notifications for student...");
+        // Add a small delay to ensure auth is fully ready after login
+        await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Use the api instance from AuthContext which has interceptors for token refresh
-        const response = await api.get("students/notifications/");
-        console.log("Successfully fetched notifications:", response.data);
+        console.log("🔔 Fetching notifications for user:", user.username);
+        console.log("🔔 Using token:", accessToken ? `${accessToken.substring(0, 20)}...` : 'none');
+        
+        // Don't add manual headers - api interceptor handles authentication automatically
+        const response = await api.get("students/notifications/",{
+          headers:{
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        console.log("✅ Fetched notifications successfully:", response.data);
         setNotifications(response.data.notifications || []);
       } catch (error) {
-        console.error("Failed to fetch notifications:", error);
+        console.error("❌ Failed to fetch notifications:", error);
+        console.error("❌ Error details:", {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: error.config
+        });
         
-        // Handle specific error cases
+        // Handle 401 errors but don't cause redirects
         if (error.response?.status === 401) {
-          console.log("401 Unauthorized - this should not happen with interceptors");
-        } else if (error.response?.status === 400) {
-          console.log("400 Bad Request - user profile may not exist");
-        } else if (error.response?.status === 403) {
-          console.log("403 Forbidden - user may not have permission");
+          console.log("🔄 Token expired in notifications fetch, attempting refresh...");
+          try {
+            const newToken = await refreshAccessToken();
+            console.log("✅ Token refreshed successfully, new token:", newToken ? `${newToken.substring(0, 20)}...` : 'none');
+            // Let the next useEffect cycle handle retry when accessToken updates
+          } catch (refreshError) {
+            console.error("❌ Failed to refresh token:", refreshError);
+            // Don't do anything here that could cause a redirect
+            // Let the main auth flow handle session expiry
+          }
+        } else {
+          console.error("Non-401 error fetching notifications:", error.message);
         }
-        
-        // Set empty array on error to prevent UI issues
-        setNotifications([]);
       }
     };
     
-    // Only fetch if auth is ready and user is a student
-    if (authReady && user?.role === 'student' && richUser?.student_profile) {
-      console.log("All conditions met, fetching notifications...");
-      fetchNotice();
-    }
-  }, [authReady, user?.role, richUser?.student_profile, accessToken, api]);
+    fetchNotice();
+  }, [loading, accessToken, user, api, refreshAccessToken]); // Add user to dependencies
 
   const unreadCount = Array.isArray(notifications) ? notifications.filter((n)=>!n.read_status).length : 0;
 

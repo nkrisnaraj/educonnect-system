@@ -1,110 +1,234 @@
 "use client"
 
-import { useState } from "react"
-import { Download, Award, Eye, Edit, } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Download, Award, Eye, RefreshCw, AlertCircle, BarChart3, Users, Clock, Loader2, ChevronDown, FileText, FileImage } from "lucide-react"
+import { useInstructorApi } from "@/hooks/useInstructorApi"
+import ExamDetailsModal from "@/components/ExamDetailsModal"
 
 export default function ResultsPage() {
   const [selectedCourse, setSelectedCourse] = useState("all")
-  const [selectedBatch, setSelectedBatch] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [results, setResults] = useState([])
+  const [topPerformers, setTopPerformers] = useState([])
+  const [selectedExam, setSelectedExam] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [loadingStates, setLoadingStates] = useState({})
+  const [exportingAll, setExportingAll] = useState(false)
+  
+  const { getExamResults, downloadExamResultsCSV, downloadAllResultsCSV, loading, error } = useInstructorApi()
 
-  const results = [
-    {
-      id: 1,
-      examTitle: "Physics Final Exam - 2025 A/L",
-      subject: "Physics",
-      batch: "2025 A/L",
-      date: "2024-06-15",
-      totalStudents: 45,
-      submitted: 43,
-      avgScore: 87.5,
-      highestScore: 98,
-      lowestScore: 65,
-      status: "published",
-      passRate: 95.3,
-    },
-    {
-      id: 2,
-      examTitle: "Chemistry Practical Test - 2026 A/L",
-      subject: "Chemistry",
-      batch: "2026 A/L",
-      date: "2024-06-12",
-      totalStudents: 38,
-      submitted: 36,
-      avgScore: 82.3,
-      highestScore: 95,
-      lowestScore: 58,
-      status: "published",
-      passRate: 89.5,
-    },
-    {
-      id: 3,
-      examTitle: "Biology Theory Paper - 2025 A/L",
-      subject: "Biology",
-      batch: "2025 A/L",
-      date: "2024-06-10",
-      totalStudents: 52,
-      submitted: 50,
-      avgScore: 0,
-      highestScore: 0,
-      lowestScore: 0,
-      status: "pending",
-      passRate: 0,
-    },
-    {
-      id: 4,
-      examTitle: "Mathematics Unit Test - 2026 A/L",
-      subject: "Mathematics",
-      batch: "2026 A/L",
-      date: "2024-06-08",
-      totalStudents: 48,
-      submitted: 48,
-      avgScore: 91.2,
-      highestScore: 100,
-      lowestScore: 72,
-      status: "published",
-      passRate: 97.9,
-    },
-  ]
+  useEffect(() => {
+    fetchResults()
+  }, [])
 
-  const batches = [
-    { id: "all", name: "All Batches" },
-    { id: "2025", name: "2025 A/L" },
-    { id: "2026", name: "2026 A/L" },
-  ]
-
-  const subjects = [
-    { id: "all", name: "All Subjects" },
-    { id: "physics", name: "Physics" },
-    { id: "chemistry", name: "Chemistry" },
-    { id: "biology", name: "Biology" },
-    { id: "mathematics", name: "Mathematics" },
-  ]
-
-  const topPerformers = [
-    { name: "Kasun Perera", subject: "Physics", score: 98, exam: "Final Exam", batch: "2025 A/L" },
-    { name: "Nimali Silva", subject: "Chemistry", score: 95, exam: "Practical Test", batch: "2026 A/L" },
-    { name: "Tharindu Fernando", subject: "Mathematics", score: 100, exam: "Unit Test", batch: "2026 A/L" },
-    { name: "Sachini Jayawardena", subject: "Physics", score: 94, exam: "Final Exam", batch: "2025 A/L" },
-  ]
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "published":
-        return "bg-green-100 text-green-800"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
-      case "draft":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  const fetchResults = async (retryCount = 0) => {
+    console.log('🔍 Starting fetchResults...')
+    try {
+      console.log('📡 Calling getExamResults API...')
+      const response = await getExamResults()
+      console.log('📊 Exam Results Response:', response)
+      
+      if (response && response.results) {
+        console.log('✅ Found results:', response.results.length, 'exams')
+        setResults(response.results)
+        
+        // Extract top performers from submissions (class-based highest achievers)
+        const classPerformers = {}
+        response.results.forEach(result => {
+          console.log('🎯 Processing exam:', result.examTitle, 'with', result.submissions?.length || 0, 'submissions')
+          if (result.submissions && Array.isArray(result.submissions)) {
+            result.submissions.forEach(submission => {
+              if (submission.is_completed && submission.percentage > 0) {
+                const classKey = result.subject
+                if (!classPerformers[classKey] || submission.percentage > classPerformers[classKey].score) {
+                  classPerformers[classKey] = {
+                    name: submission.student_name || 'Unknown Student',
+                    subject: result.subject,
+                    score: Math.round(submission.percentage),
+                    exam: result.examTitle,
+                    class: classKey
+                  }
+                }
+              }
+            })
+          }
+        })
+        
+        // Convert to array and take top 4 classes
+        const topPerformers = Object.values(classPerformers)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 4)
+        
+        console.log('🏆 Top performers found:', topPerformers.length)
+        setTopPerformers(topPerformers)
+      } else {
+        console.log('⚠️ No results in response, setting empty arrays')
+        setResults([])
+        setTopPerformers([])
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch results:', error)
+      
+      // Retry logic for network issues
+      if (retryCount < 3 && (!error.response || error.response.status >= 500)) {
+        console.log(`🔄 Retrying results fetch (attempt ${retryCount + 1})`)
+        setTimeout(() => {
+          fetchResults(retryCount + 1)
+        }, 2000 * (retryCount + 1))
+        return
+      }
+      
+      // Don't throw error, just show empty state
+      console.log('💥 Setting empty results due to error')
+      setResults([])
+      setTopPerformers([])
     }
   }
 
+  const handleViewExam = (exam) => {
+    setSelectedExam(exam)
+    setIsModalOpen(true)
+  }
+
+  const handleDownloadExam = async (examId, examTitle, format = 'csv') => {
+    const loadingKey = `${examId}_${format}`
+    setLoadingStates(prev => ({ ...prev, [loadingKey]: 'downloading' }))
+    try {
+      let blob
+      if (format === 'pdf') {
+        // Direct fetch for PDF download
+        const response = await fetch(`http://127.0.0.1:8000/instructor/exams/${examId}/download-pdf/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to download PDF')
+        }
+        
+        blob = await response.blob()
+      } else {
+        blob = await downloadExamResultsCSV(examId)
+      }
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${examTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_results.${format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error(`Error downloading exam results as ${format}:`, error)
+      alert(`Failed to download exam results as ${format.toUpperCase()}. Please try again.`)
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [loadingKey]: null }))
+    }
+  }
+
+  const handleExportAllResults = async (format = 'csv') => {
+    const exportingKey = `all_${format}`
+    setExportingAll(exportingKey)
+    try {
+      let blob
+      if (format === 'pdf') {
+        // Direct fetch for PDF download
+        const response = await fetch(`http://127.0.0.1:8000/instructor/download-all-results-pdf/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to download all results PDF')
+        }
+        
+        blob = await response.blob()
+      } else {
+        blob = await downloadAllResultsCSV()
+      }
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `all_exam_results.${format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error(`Error exporting all results as ${format}:`, error)
+      alert(`Failed to export all results as ${format.toUpperCase()}. Please try again.`)
+    } finally {
+      setExportingAll(false)
+    }
+  }
+
+  // Generate dynamic filter options from data
+  const subjects = [
+    { id: "all", name: "All Subjects" },
+    ...Array.from(new Set(results.map(r => r.subject)))
+      .filter(subject => subject && subject !== 'General')
+      .map(subject => ({ id: subject.toLowerCase(), name: subject }))
+  ]
+
   const filteredResults = results.filter((result) => {
-    const subjectMatch = selectedCourse === "all" || result.subject.toLowerCase().includes(selectedCourse)
-    const batchMatch = selectedBatch === "all" || result.batch.includes(selectedBatch)
-    return subjectMatch && batchMatch
+    const subjectMatch = selectedCourse === "all" || 
+      result.subject.toLowerCase().includes(selectedCourse) ||
+      selectedCourse === result.subject.toLowerCase()
+      
+    const searchMatch = !searchQuery || 
+      result.examTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      result.subject.toLowerCase().includes(searchQuery.toLowerCase())
+      
+    return subjectMatch && searchMatch
   })
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Exam Results Management</h1>
+            <p className="text-gray-600">Loading exam results and student performance data...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3 bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+            <div className="p-6">
+              <div className="animate-pulse space-y-4">
+                <div className="flex items-center justify-center gap-3 py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <BarChart3 className="h-6 w-6 text-blue-600 animate-pulse" />
+                  <p className="text-blue-700 font-medium">Loading exam results...</p>
+                </div>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-12 bg-gray-300 rounded w-full"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="bg-white/60 backdrop-blur-sm border border-purple-200 rounded-xl">
+            <div className="p-6">
+              <div className="animate-pulse space-y-3">
+                <div className="h-6 bg-gray-300 rounded w-3/4"></div>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-16 bg-gray-300 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -113,10 +237,47 @@ export default function ResultsPage() {
           <h1 className="text-2xl font-bold text-gray-900">A/L Results Management</h1>
           <p className="text-gray-600">View and manage A/L exam results and student performance</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700">
-          <Download className="h-4 w-4" />
-          Export All Results
-        </button>
+        <div className="relative group">
+          <button 
+            onClick={() => handleExportAllResults('csv')}
+            disabled={exportingAll}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exportingAll ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {exportingAll === 'all_csv' ? 'Exporting CSV...' : exportingAll === 'all_pdf' ? 'Exporting PDF...' : 'Export All Results'}
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          
+          {/* Dropdown Menu */}
+          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+            <button
+              onClick={() => handleExportAllResults('csv')}
+              disabled={exportingAll}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileText className="h-4 w-4 text-green-600" />
+              <div>
+                <p className="font-medium text-gray-900">Export as CSV</p>
+                <p className="text-xs text-gray-500">Excel-compatible spreadsheet</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleExportAllResults('pdf')}
+              disabled={exportingAll}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileImage className="h-4 w-4 text-red-600" />
+              <div>
+                <p className="font-medium text-gray-900">Export as PDF</p>
+                <p className="text-xs text-gray-500">Formatted report document</p>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -140,20 +301,11 @@ export default function ResultsPage() {
                     </option>
                   ))}
                 </select>
-                <select
-                  value={selectedBatch}
-                  onChange={(e) => setSelectedBatch(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.name}
-                    </option>
-                  ))}
-                </select>
                 <input
                   type="text"
                   placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -166,12 +318,9 @@ export default function ResultsPage() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Exam</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Subject</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Batch</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Date</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Students</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Avg Score</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Pass Rate</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
                 </thead>
@@ -180,58 +329,66 @@ export default function ResultsPage() {
                     <tr key={result.id} className="border-b border-gray-100">
                       <td className="py-3 px-4 font-medium">{result.examTitle}</td>
                       <td className="py-3 px-4">{result.subject}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{result.batch}</span>
-                      </td>
                       <td className="py-3 px-4">{new Date(result.date).toLocaleDateString()}</td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col">
                           <span>
-                            {result.submitted}/{result.totalStudents}
+                            {result.analytics?.total_submissions || 0}
                           </span>
                           <span className="text-xs text-gray-500">submitted</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {result.status === "pending" ? (
-                          <span className="text-gray-400">-</span>
-                        ) : (
-                          <span className="font-medium">{result.avgScore}%</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {result.status === "pending" ? (
-                          <span className="text-gray-400">-</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-primary h-2 rounded-full"
-                                style={{ width: `${result.passRate}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm">{result.passRate}%</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(result.status)}`}>
-                          {result.status}
-                        </span>
+                        <span className="font-medium">{Math.round(result.analytics?.average_score || 0)}%</span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                            <Eye className="h-4 w-4" />
+                          <button 
+                            onClick={() => handleViewExam(result)}
+                            disabled={loadingStates[result.examId] === 'viewing'}
+                            className="p-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="View exam details and students"
+                          >
+                            {loadingStates[result.examId] === 'viewing' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </button>
-                          {result.status === "pending" && (
-                            <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                              <Edit className="h-4 w-4" />
+                          
+                          {/* Download Dropdown */}
+                          <div className="relative group">
+                            <button 
+                              className="p-1 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Download exam results"
+                            >
+                              {loadingStates[`${result.examId}_csv`] === 'downloading' || loadingStates[`${result.examId}_pdf`] === 'downloading' ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4" />
+                              )}
                             </button>
-                          )}
-                          <button className="p-1 border border-gray-300 rounded hover:bg-gray-50">
-                            <Download className="h-4 w-4" />
-                          </button>
+                            
+                            {/* Dropdown Menu */}
+                            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                              <button
+                                onClick={() => handleDownloadExam(result.examId, result.examTitle, 'csv')}
+                                disabled={loadingStates[`${result.examId}_csv`] === 'downloading'}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <FileText className="h-3 w-3 text-green-600" />
+                                <span className="text-sm">CSV</span>
+                              </button>
+                              <button
+                                onClick={() => handleDownloadExam(result.examId, result.examTitle, 'pdf')}
+                                disabled={loadingStates[`${result.examId}_pdf`] === 'downloading'}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <FileImage className="h-3 w-3 text-red-600" />
+                                <span className="text-sm">PDF</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -247,9 +404,9 @@ export default function ResultsPage() {
           <div className="p-6 border-b border-purple-200">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Award className="h-5 w-5 text-purple-600" />
-              Top A/L Performers
+              Top A/L Performers by Class
             </h3>
-            <p className="text-gray-600">Recent high achievers</p>
+            <p className="text-gray-600">Highest achievers in each subject</p>
           </div>
           <div className="p-6">
             <div className="space-y-4">
@@ -264,19 +421,34 @@ export default function ResultsPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{performer.name}</p>
                     <p className="text-xs text-gray-500">
-                      {performer.subject} - {performer.batch}
+                      {performer.subject}
                     </p>
                     <p className="text-xs text-gray-500">{performer.exam}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-purple-600">{performer.score}%</p>
+                    <p className="text-xs text-gray-500">Top in class</p>
                   </div>
                 </div>
               ))}
+              
+              {topPerformers.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No top performers data available yet.
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Exam Details Modal */}
+      <ExamDetailsModal 
+        examId={selectedExam?.examId}
+        examTitle={selectedExam?.examTitle}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   )
 }

@@ -21,7 +21,7 @@ import hashlib
 from django.conf import settings
 from django.db import IntegrityError
 # from .utils.google_creds import setup_google_credentials  # Temporarily commented
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
 from instructor.models import Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer
 from instructor.serializers import ExamListSerializer, ExamQuestionSerializer
@@ -89,13 +89,28 @@ class ReceiptUploadView(APIView):
         user = request.user
         image = request.FILES.get("image")
         method = 'receipt'
+        
+        # Extract class information from request
+        class_ids_str = request.data.get('class_ids', '[]')  # JSON string of class IDs
+        class_names = request.data.get('class_names', '')    # Comma-separated class names
+        amount = request.data.get('amount', 0.0)             # Payment amount
+        
+        print(f"📋 Receipt Upload Request Data:")
+        print(f"   Class IDs: {class_ids_str}")
+        print(f"   Class Names: {class_names}")
+        print(f"   Amount: {amount}")
 
         if not image:
             # No image file was sent in the request
             return Response({'error': "No image provided"}, status=400)
 
-        # Create initial Payment record with zero amount (to be updated after OCR)
-        payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
+        # Create initial Payment record with class names
+        payment = Payment.objects.create(
+            stuid=user, 
+            method=method, 
+            amount=float(amount) if amount else 0.0,
+            class_names=class_names if class_names else None  # Store class names (can be null)
+        )
 
         # Initialize Google Vision API client - TEMPORARILY DISABLED
         # client = vision.ImageAnnotatorClient()
@@ -178,47 +193,67 @@ class PaymentInfoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        payments = Payment.objects.filter(stuid=user)
+        try:
+            user = request.user
+            payments = Payment.objects.filter(stuid=user)
 
-        payment_list = []
+            payment_list = []
 
-        for payment in payments:
-            # Try to get Enrollment related to this payment
-            enrollment = Enrollment.objects.filter(payid=payment).first()
-            classname = enrollment.classid.title if enrollment else None
-            print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
-
-            invoice_no = None
-            record_no = None
-
-            if payment.method == 'online' :
+            for payment in payments:
                 try:
-                    online_payment = OnlinePayment.objects.get(payid=payment)
-                    invoice_no = online_payment.invoice_no
-                except OnlinePayment.DoesNotExist:
+                    # Get class name from Payment.class_names field first (for receipt payments before verification)
+                    # Then fallback to Enrollment table (for verified payments and online payments)
+                    classname = None
+                    
+                    # First priority: class_names field in Payment model
+                    if payment.class_names:
+                        classname = payment.class_names
+                    else:
+                        # Fallback: Try to get from Enrollment table (for verified/enrolled classes)
+                        enrollment = Enrollment.objects.filter(payid=payment).first()
+                        if enrollment and hasattr(enrollment, 'classid') and enrollment.classid:
+                            classname = enrollment.classid.title
+                    
+                    print(f"Payment: {payment.payid}, Method: {payment.method}, Class Names: {classname}")
+
                     invoice_no = None
+                    record_no = None
 
-            elif payment.method == 'receipt':
-                try:
-                    receipt_payment = ReceiptPayment.objects.get(payid=payment)
-                    record_no = receipt_payment.record_no
-                except ReceiptPayment.DoesNotExist:
-                     record_no = None
+                    if payment.method == 'online':
+                        try:
+                            online_payment = OnlinePayment.objects.get(payid=payment)
+                            invoice_no = online_payment.invoice_no
+                        except OnlinePayment.DoesNotExist:
+                            invoice_no = None
 
-            # Append payment details to list
-            payment_list.append({
-                    "payid": payment.payid,
-                    "date": payment.date.strftime('%Y-%m-%d'),
-                    "amount": float(payment.amount),
-                    "status": payment.status,
-                    "method": payment.method,
-                    "class": classname,
-                    "Invoice_No" : invoice_no,
-                    "Record_No" : record_no
-            })
+                    elif payment.method == 'receipt':
+                        try:
+                            receipt_payment = ReceiptPayment.objects.get(payid=payment)
+                            record_no = receipt_payment.record_no
+                        except ReceiptPayment.DoesNotExist:
+                            record_no = None
 
-        return Response({"payments": payment_list})
+                    # Append payment details to list
+                    payment_list.append({
+                        "payid": payment.payid,
+                        "date": payment.date.strftime('%Y-%m-%d') if payment.date else "N/A",
+                        "amount": float(payment.amount) if payment.amount else 0.0,
+                        "status": payment.status or "pending",
+                        "method": payment.method or "unknown",
+                        "class": classname or "No class specified",
+                        "Invoice_No": invoice_no,
+                        "Record_No": record_no
+                    })
+                    
+                except Exception as payment_error:
+                    print(f"Error processing payment {payment.payid}: {payment_error}")
+                    continue
+
+            return Response({"payments": payment_list})
+            
+        except Exception as e:
+            print(f"Error in PaymentInfoView: {e}")
+            return Response({"error": "Failed to fetch payment information", "detail": str(e)}, status=500)
 
 
 class StudentProfileView(APIView):
@@ -297,7 +332,7 @@ def initiate_payment(request):
             stuid=user,
             method='online',
             amount=amount,
-            status='pending',
+            status='Success',
         )
         OnlinePayment.objects.create(
             payid=payment,
@@ -577,6 +612,8 @@ def build_class_data(class_obj):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_classess(request):
+    from django.utils import timezone
+    
     student = request.user.student_profile
     enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related(
         'classid', 'classid__webinar').prefetch_related('classid__schedules')
@@ -584,8 +621,15 @@ def student_classess(request):
 
     enrolled_data = [build_class_data(c) for c in enrolled_classes]
 
+    # Get current date
+    current_date = timezone.now().date()
+    
+    # Filter other classes to show active (currently running) and pending (future) classes
+    # but exclude completed classes and non-enrolled classes
     all_classes = Class.objects.all()
-    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes])
+    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes]).filter(
+        end_date__gte=current_date  # Only exclude completed classes (end_date < current_date)
+    )
     others_data = [build_class_data(c) for c in other_classes]
     print("Enrolled Classes Data:")
     print(enrolled_data)
@@ -601,31 +645,45 @@ from collections import defaultdict
 @permission_classes([IsAuthenticated])
 def getStudentMarks(request):
     """
-    API view to get marks for a specific student
+    API view to get exam results for a specific student
     """
-   
-    student = request.user.student_profile
-    marks_qs = Marks.objects.filter(stuid=student).select_related('examid','examid__classid').order_by('examid__date')
-    result =defaultdict(list)
+    try:
+        student = request.user.student_profile
+        
+        # Get all completed exam submissions for the student
+        submissions = ExamSubmission.objects.filter(
+            student=student, 
+            is_completed=True
+        ).select_related('exam', 'exam__classid').order_by('exam__date')
+        
+        result = defaultdict(list)
 
-    for mark in marks_qs:
-        class_name = mark.examid.classid.title
-        exam_month = mark.examid.date.strftime('%Y-%m')
-        result[class_name].append({
-            "month":exam_month,
-            "marks": mark.marks,
-        })
-    response_data = []
+        for submission in submissions:
+            class_name = submission.exam.classid.title
+            result[class_name].append({
+                "exam_name": submission.exam.examname,
+                "exam_date": submission.exam.date.strftime('%Y-%m-%d'),
+                "marks_obtained": submission.total_marks_obtained,
+                "total_marks": submission.exam.total_marks,
+                "percentage": submission.percentage,
+                "submitted_at": submission.submitted_at.strftime('%Y-%m-%d %H:%M'),
+            })
+        
+        response_data = []
+        for class_name, data in result.items():
+            response_data.append({
+                "class_name": class_name,
+                "exams": data
+            })
 
-    for class_name,data in result.items():
-        response_data.append({
-            "class_name": class_name,
-            "marks": data
-        })
-
-    return Response({
-        "marks": response_data
-    },status=status.HTTP_200_OK)
+        return Response({
+            "results": response_data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            "error": str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
        
 
 
@@ -662,50 +720,84 @@ from instructor.models import Exams
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def calendarEvent(request):
-    #fetch webinars
+    """Get calendar events for student - simplified version for debugging"""
     user = request.user
     try:
         student = StudentProfile.objects.get(user=user)
     except:
         return Response({"error": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
     
-    # Step 1: Get all enrolled classes for this student
-    enrolled_classes = Enrollment.objects.filter(stuid=student).select_related("classid")
-    class_ids = enrolled_classes.values_list("classid__id",flat=True)
+    # Step 1: Get all enrolled classes for this student with successful payments
+    enrolled_classes = Enrollment.objects.filter(
+        stuid=student, 
+        payid__status='success'
+    ).select_related("classid", "classid__webinar")
     
-
-   # 3. Get related webinars from those classes
-    webinar_ids = Class.objects.filter(id__in=class_ids).values_list("webinar_id", flat=True)
-
-    # 4. Now get all occurrences linked to those webinars
-    webinars = ZoomOccurrence.objects.filter(webinar_id__in=webinar_ids).select_related("webinar")
-    webinar_data = [
-        {
-            "id": webinar.id,
-            "title": webinar.webinar.topic,
-            "webinarid":webinar.webinar.webinar_id,
-            "type": "webinar",
-            "date": webinar.start_time,
-            "color": "red",
-        }
-        for webinar in webinars
-    ]
-
-    #fetch exams
-    exams = Exams.objects.filter(classid__in=class_ids)
-    exam_data = [
-        {
-            "id": exam.id,
-            "title": exam.examname,
+    print(f"=== CALENDAR DEBUG ===")
+    print(f"Student: {user.first_name} {user.last_name}")
+    print(f"Enrolled classes: {enrolled_classes.count()}")
+    
+    events = []
+    
+    # Step 2: Process each enrolled class
+    for enrollment in enrolled_classes:
+        class_obj = enrollment.classid
+        print(f"\nClass: {class_obj.title}")
+        print(f"  Start: {class_obj.start_date}, End: {class_obj.end_date}")
+        print(f"  Has webinar: {class_obj.webinar is not None}")
+        
+        # Add class start event for debugging
+        events.append({
+            "id": f"class_{class_obj.id}",
+            "title": f"📚 {class_obj.title}",
+            "type": "class",
+            "date": f"{class_obj.start_date}T09:00:00",
+            "color": "green",
+        })
+        
+        # Get zoom occurrences if webinar exists
+        if class_obj.webinar:
+            print(f"  Webinar: {class_obj.webinar.topic} (ID: {class_obj.webinar.webinar_id})")
+            
+            # Get ALL occurrences for this webinar (no date filtering for now)
+            occurrences = ZoomOccurrence.objects.filter(webinar=class_obj.webinar)
+            print(f"  Zoom occurrences found: {occurrences.count()}")
+            
+            for occurrence in occurrences:
+                print(f"    - Occurrence: {occurrence.start_time}")
+                events.append({
+                    "id": f"zoom_{occurrence.id}",
+                    "title": f"🎥 {class_obj.webinar.topic}",
+                    "webinarid": class_obj.webinar.webinar_id,
+                    "type": "zoom_meeting",
+                    "date": occurrence.start_time.isoformat() if occurrence.start_time else None,
+                    "color": "blue",
+                    "duration": occurrence.duration,
+                    "class_title": class_obj.title,
+                })
+    
+    # Step 3: Get published exams (simplified)
+    all_enrolled_class_ids = [enrollment.classid.id for enrollment in enrolled_classes]
+    exams = Exam.objects.filter(
+        classid__in=all_enrolled_class_ids,
+        is_published=True
+    )
+    
+    print(f"\nPublished exams found: {exams.count()}")
+    for exam in exams:
+        print(f"  - Exam: {exam.examname} on {exam.date}")
+        events.append({
+            "id": f"exam_{exam.id}",
+            "title": f"📝 {exam.examname}",
             "type": "exam",
-            "date": exam.date.isoformat(),
-            "color": "purple",
-        }
-        for exam in exams
-    ]
-
-    #combine
-    events = webinar_data + exam_data
+            "date": exam.date.isoformat() if exam.date else None,
+            "color": "red",
+            "duration": exam.duration_minutes,
+        })
+    
+    print(f"\nTotal events returned: {len(events)}")
+    print("=== END DEBUG ===")
+    
     return Response(events, status=status.HTTP_200_OK)
 
 
@@ -729,9 +821,44 @@ def get_available_exams(request):
         ).select_related('classid').order_by('-created_at')
         
         exam_data = []
+        current_datetime = timezone.now()
+        current_date = current_datetime.date()
+        current_time = current_datetime.time()
+        
         for exam in exams:
             # Check if student has already attempted
             submission = ExamSubmission.objects.filter(exam=exam, student=student).first()
+            
+            # Calculate exam time window
+            exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+            exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+            
+            # Make datetime objects timezone-aware
+            exam_start_datetime = timezone.make_aware(exam_start_datetime)
+            exam_end_datetime = timezone.make_aware(exam_end_datetime)
+            
+            # Determine exam availability status
+            is_available = False
+            availability_status = "not_started"  # not_started, available, expired, completed
+            availability_message = ""
+            
+            if submission and submission.is_completed:
+                availability_status = "completed"
+                availability_message = f"Completed on {submission.submitted_at.strftime('%Y-%m-%d %H:%M')}"
+                is_available = False
+            elif current_datetime < exam_start_datetime:
+                availability_status = "not_started"
+                availability_message = f"Exam starts at {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+                is_available = False
+            elif exam_start_datetime <= current_datetime <= exam_end_datetime:
+                availability_status = "available"
+                remaining_minutes = int((exam_end_datetime - current_datetime).total_seconds() / 60)
+                availability_message = f"Available now! {remaining_minutes} minutes remaining"
+                is_available = True
+            else:  # current_datetime > exam_end_datetime
+                availability_status = "expired"
+                availability_message = f"Exam ended at {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+                is_available = False
             
             exam_info = {
                 "id": exam.id,
@@ -740,13 +867,17 @@ def get_available_exams(request):
                 "class_name": exam.classid.title,
                 "date": exam.date.isoformat(),
                 "start_time": exam.start_time.strftime('%H:%M'),
+                "end_time": exam_end_datetime.strftime('%H:%M'),
                 "duration_minutes": exam.duration_minutes,
                 "total_marks": exam.total_marks,
                 "questions_count": exam.questions.count(),
                 "attempted": submission is not None,
                 "submission_id": submission.id if submission else None,
                 "score": submission.percentage if submission else None,
-                "status": exam.status
+                "status": exam.status,
+                "is_available": is_available,
+                "availability_status": availability_status,
+                "availability_message": availability_message
             }
             exam_data.append(exam_info)
         
@@ -767,6 +898,26 @@ def get_exam_details(request, exam_id):
         # Verify student has access to this exam
         enrolled_classes = Enrollment.objects.filter(stuid=student).values_list("classid__id", flat=True)
         exam = Exam.objects.get(id=exam_id, classid__in=enrolled_classes, is_published=True)
+        
+        # Check time-based availability
+        current_datetime = timezone.now()
+        exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+        exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+        
+        # Make datetime objects timezone-aware
+        exam_start_datetime = timezone.make_aware(exam_start_datetime)
+        exam_end_datetime = timezone.make_aware(exam_end_datetime)
+        
+        # Check if exam is currently available
+        if current_datetime < exam_start_datetime:
+            return Response({
+                "error": f"Exam has not started yet. It will be available from {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if current_datetime > exam_end_datetime:
+            return Response({
+                "error": f"Exam has expired. It was available until {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
         
         # Check if already submitted (unless multiple attempts allowed)
         if not exam.allow_multiple_attempts:
@@ -845,7 +996,7 @@ def start_exam_attempt(request, exam_id):
                 "error": "Student profile not found. Please contact administrator."
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Verify access
+        # Verify access and check time availability
         enrolled_classes = Enrollment.objects.filter(stuid=student).values_list("classid__id", flat=True)
         
         try:
@@ -854,6 +1005,25 @@ def start_exam_attempt(request, exam_id):
             return Response({
                 "error": "Exam not found or you don't have access to this exam."
             }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check time-based availability
+        current_datetime = timezone.now()
+        exam_start_datetime = datetime.combine(exam.date, exam.start_time)
+        exam_end_datetime = exam_start_datetime + timedelta(minutes=exam.duration_minutes)
+        
+        # Make datetime objects timezone-aware
+        exam_start_datetime = timezone.make_aware(exam_start_datetime)
+        exam_end_datetime = timezone.make_aware(exam_end_datetime)
+        
+        if current_datetime < exam_start_datetime:
+            return Response({
+                "error": f"Exam has not started yet. It will be available from {exam.start_time.strftime('%H:%M')} on {exam.date.strftime('%Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        if current_datetime > exam_end_datetime:
+            return Response({
+                "error": f"Exam has expired. It was available until {exam_end_datetime.strftime('%H:%M on %Y-%m-%d')}"
+            }, status=status.HTTP_403_FORBIDDEN)
         
         # Check if already has incomplete submission
         existing_submission = ExamSubmission.objects.filter(
@@ -985,6 +1155,37 @@ def submit_exam_answers(request, exam_id):
                     if option.is_correct:
                         score = question.marks
                         answer.is_correct = True
+            
+            elif question.question_type in ['date', 'time']:
+                # Date/Time questions - award marks for valid input
+                if question.question_type == 'date':
+                    date_value = answer_data.get('date_answer')
+                    if date_value:
+                        try:
+                            from datetime import datetime
+                            answer.date_answer = datetime.strptime(date_value, '%Y-%m-%d').date()
+                            score = question.marks
+                            answer.is_correct = True
+                        except (ValueError, TypeError):
+                            pass
+                elif question.question_type == 'time':
+                    time_value = answer_data.get('time_answer')
+                    if time_value:
+                        try:
+                            from datetime import datetime
+                            answer.time_answer = datetime.strptime(time_value, '%H:%M').time()
+                            score = question.marks
+                            answer.is_correct = True
+                        except (ValueError, TypeError):
+                            pass
+            
+            elif question.question_type == 'file_upload':
+                # File upload questions - require manual grading
+                file_answer = answer_data.get('file_answer')
+                if file_answer:
+                    answer.file_answer = file_answer
+                    # Don't award marks automatically - instructor will grade manually
+                    score = 0
                         
             # Save the score
             answer.marks_obtained = score
@@ -1309,8 +1510,21 @@ from rest_framework.permissions import AllowAny
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def getAllClass(request):
+    """
+    Get only active and pending classes for the home page
+    - Active classes: start_date <= current_date <= end_date
+    - Pending classes: start_date > current_date
+    - Excludes completed classes: end_date < current_date
+    """
     try:
-        classes = Class.objects.all()
+        from datetime import date
+        current_date = date.today()
+        
+        # Filter for active and pending classes only
+        classes = Class.objects.filter(
+            end_date__gte=current_date  # Exclude completed classes (end_date < current_date)
+        ).order_by('start_date')  # Order by start date for better UX
+        
         serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:

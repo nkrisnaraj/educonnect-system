@@ -26,7 +26,45 @@ export default function Classes() {
   const {user,accessToken,refreshToken,refreshAccessToken,api,loading} = useAuth()
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+  // Debug logging
+  useEffect(() => {
+    console.log('📊 Classes page auth state:', {
+      hasUser: !!user,
+      username: user?.username,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      authLoading: loading,
+      pageLoading: isLoading
+    });
+  }, [user, accessToken, refreshToken, loading, isLoading]);
+
+  // Helper function to categorize classes based on dates
+  const categorizeClass = (classItem) => {
+    const currentDate = new Date();
+    const startDate = new Date(classItem.start_date);
+    const endDate = new Date(classItem.end_date);
+    
+    if (currentDate < startDate) {
+      return 'pending';
+    } else if (currentDate >= startDate && currentDate <= endDate) {
+      return 'active';
+    } else {
+      return 'completed';
+    }
+  };
+
+  // Helper function to categorize classes into groups
+  const categorizeClasses = (classList) => {
+    return classList.reduce((acc, classItem) => {
+      const category = categorizeClass(classItem);
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(classItem);
+      return acc;
+    }, {});
+  };
 
   useEffect(() => {
     if (status === "success") {
@@ -38,53 +76,13 @@ export default function Classes() {
     }
   }, [status]);
 
-  useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem("user");
-      const storedToken = sessionStorage.getItem("accessToken");
-      console.log("Stored User:", storedUser);
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-        setAccessToken(storedToken);
-      }
-    } catch (e) {
-      sessionStorage.clear();
-    }
-  }, []);
+  // Token handling is now managed by AuthContext - removed deprecated code
 
-  const isTokenExpired = (token) => {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.exp < Math.floor(Date.now() / 1000);
-    } catch {
-      return true;
-    }
-  };
+  // Token expiration checking is now handled by AuthContext
 
-  // const refreshAccessToken = async () => {
-  //   try {
-  //     const refreshToken = sessionStorage.getItem("refreshToken");
-  //     const response = await axios.post(`${API_BASE_URL}/api/accounts/token/refresh/`, {
-  //       refresh: refreshToken,
-  //     });
-  //     const newAccessToken = response.data.access;
-  //     sessionStorage.setItem("accessToken", newAccessToken);
-  //     return newAccessToken;
-  //   } catch {
-  //     sessionStorage.clear();
-  //     alert("Session expired. Please log in again.");
-  //     return null;
-  //   }
-  // };
+  // Token validation is now handled by AuthContext and api interceptors
 
-  const getValidToken = async () => {
-    let token = accessToken;
-    if (!token || isTokenExpired(token)) {
-      token = await refreshAccessToken();
-      setAccessToken(token);
-    }
-    return token;
-  };
+  // Token validation is now handled by AuthContext and api interceptors
 
   const toggleClassSelection = (classId) => {
     setSelectedClasses((prev) =>
@@ -96,15 +94,30 @@ export default function Classes() {
 
   useEffect(() => {
       const fetchAllClasses = async () => {
+        // Don't start loading if auth context is still loading
+        if (loading) {
+          console.log("Auth context still loading, waiting...");
+          return;
+        }
+        
+        // Check if we have tokens but no user data - this might be a refresh scenario
+        if (!user && (accessToken || refreshToken)) {
+          console.log("Tokens exist but user not loaded yet, waiting...");
+          return;
+        }
+        
+        // If no tokens at all, stop loading but don't fetch
+        if (!accessToken || !refreshToken) {
+          console.log("No tokens available, stopping fetch");
+          setIsLoading(false);
+          return;
+        }
+        
+        setIsLoading(true);
         try {
-          if (!accessToken || !refreshToken) {
-            console.log("Tokens not ready yet");
-            return;
-          }
-          const token = accessToken;
           const response = await api.get("/students/classes/", {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${accessToken}`,
             },
           });
           console.log("Fetched Classes:", response.data);
@@ -112,12 +125,28 @@ export default function Classes() {
           setEnrolledClasses(response.data.enrolled);
         } catch (error) {
           console.error("Error fetching classes:", error);
-          alert("Failed to fetch classes. Please try again later.");
+          if (error.response?.status === 401) {
+            console.log("Token expired, attempting refresh...");
+            try {
+              await refreshAccessToken();
+              // Retry the request after token refresh
+              const retryResponse = await api.get("/students/classes/");
+              setClasses(retryResponse.data.others);
+              setEnrolledClasses(retryResponse.data.enrolled);
+            } catch (refreshError) {
+              console.error("Token refresh failed:", refreshError);
+              alert("Session expired. Please login again.");
+            }
+          } else {
+            alert("Failed to fetch classes. Please try again later.");
+          }
+        } finally {
+          setIsLoading(false);
         }
       };
 
       fetchAllClasses();
-    }, [accessToken]);
+    }, [accessToken, refreshToken, loading, user, api, refreshAccessToken]);
 
 
   const handlePaidClass = (Class) => {
@@ -140,37 +169,144 @@ export default function Classes() {
       alert("Please upload a valid image.");
       return;
     }
+    
+    // Check authentication state before making the request
+    console.log("🔐 Pre-upload Auth Check:", {
+      hasUser: !!user,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      authLoading: loading,
+      tokenLength: accessToken?.length
+    });
+    
+    if (!accessToken) {
+      alert("❌ Authentication required. Please log in again.");
+      return;
+    }
+    
+    // Check token expiry and refresh if needed
+    if (refreshToken && refreshAccessToken) {
+      try {
+        // Try to decode the token to check expiry (basic check)
+        if (accessToken) {
+          const tokenParts = accessToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timeUntilExpiry = payload.exp - currentTime;
+            
+            console.log("🔍 Token expiry check:", {
+              expiresAt: new Date(payload.exp * 1000).toLocaleString(),
+              timeUntilExpiry: `${timeUntilExpiry} seconds`,
+              needsRefresh: timeUntilExpiry < 300 // Less than 5 minutes
+            });
+            
+            // Refresh if token expires in less than 5 minutes
+            if (timeUntilExpiry < 300) {
+              console.log("🔄 Token expires soon, refreshing...");
+              await refreshAccessToken();
+              console.log("✅ Token refreshed successfully");
+            }
+          }
+        }
+      } catch (refreshError) {
+        console.log("⚠️ Token analysis/refresh failed, continuing with existing token:", refreshError);
+      }
+    }
+    
     setIsProcessing(true);
     try {
-      const token = await getValidToken();
-      const selectedClassDetails = allClasses.filter((Class) =>
-        selectedClasses.includes(Class.id)
+      const selectedClassDetails = classes.filter((Class) =>
+        selectedClasses.includes(Class.classid)
       );
       const totalAmount = selectedClassDetails.reduce(
-        (sum, Class) => sum + Class.amount,
+        (sum, Class) => sum + parseFloat(Class.fee),
         0
       );
+      
+      // Extract class names for the payment record
+      const classNames = selectedClassDetails.map(cls => cls.title).join(", ");
+      
+      console.log("📋 Receipt Upload Data:", {
+        classIds: selectedClasses,
+        classNames: classNames,
+        amount: totalAmount,
+        hasApi: !!api,
+        tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'No token'
+      });
+      
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of course IDs
+      formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of class IDs
+      formData.append("class_names", classNames); // Send class names as comma-separated string
       formData.append("amount", totalAmount);
 
-      const response = await axios.post(
-        `${API_BASE_URL}/students/payments/upload-receipt/`,
+      // Debug: Check token and API configuration before request
+      console.log("🔧 Pre-request debug:", {
+        hasApi: !!api,
+        currentToken: accessToken ? `${accessToken.substring(0, 20)}...${accessToken.substring(-10)}` : 'No token',
+        tokenFromStorage: sessionStorage.getItem('accessToken') ? 'Found in session' : 'Not in session',
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => [key, typeof value === 'object' ? 'File' : value])
+      });
+
+      const response = await api.post(
+        "/students/payments/upload-receipt/",
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
+            // Don't set Content-Type manually for FormData - let browser set it with boundary
+            // "Content-Type": "multipart/form-data",
+            // Explicitly add the Authorization header as backup
+            ...(accessToken && { "Authorization": `Bearer ${accessToken}` })
           },
-
         }
       );
+      
+      console.log("✅ Receipt upload successful:", response.data);
       alert(response.data.message || "Receipt uploaded successfully!");
       closeAllModals();
     } catch (error) {
-      console.error(error);
-      alert("❌ Upload failed. Try again.");
+      // Enhanced error logging to capture all possible error details
+      console.error("❌ Receipt upload error - Full error object:", error);
+      console.error("❌ Receipt upload error - Detailed info:", {
+        errorType: error?.name || 'Unknown',
+        errorMessage: error?.message || 'No message',
+        httpStatus: error?.response?.status || 'No status',
+        httpStatusText: error?.response?.statusText || 'No status text',
+        responseData: error?.response?.data || 'No response data',
+        requestUrl: error?.config?.url || 'No URL',
+        requestMethod: error?.config?.method || 'No method',
+        hasRefreshToken: !!refreshToken,
+        hasAccessToken: !!accessToken,
+        isAxiosError: error?.isAxiosError || false,
+        errorCode: error?.code || 'No code',
+        errorStack: error?.stack || 'No stack'
+      });
+      
+      // Check specific error conditions
+      if (error?.response?.status === 401) {
+        console.log("🔑 401 Unauthorized - Token may have expired");
+        alert("❌ Authentication expired. Please refresh the page and try again.");
+      } else if (error?.response?.status === 413) {
+        console.log("📁 413 Payload Too Large - File might be too big");
+        alert("❌ File is too large. Please choose a smaller image.");
+      } else if (error?.response?.status === 400) {
+        console.log("📋 400 Bad Request - Invalid data sent");
+        alert(`❌ Invalid request: ${error?.response?.data?.message || error?.response?.data?.error || 'Please check your data'}`);
+      } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network')) {
+        console.log("🌐 Network error - Connection issue");
+        alert("❌ Network error. Please check your internet connection and try again.");
+      } else if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        console.log("⏱️ Request timeout");
+        alert("❌ Upload timeout. Please try again with a smaller image.");
+      } else {
+        console.log("❓ Unknown error occurred");
+        const errorMsg = error?.response?.data?.message 
+          || error?.response?.data?.error 
+          || error?.message 
+          || 'Unknown error occurred';
+        alert(`❌ Upload failed: ${errorMsg}`);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -299,78 +435,332 @@ export default function Classes() {
 
   return (
     <>
-      <div className="bg-gray-50 min-h-screen p-6">
-        {/* Enrolled courses */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Enrolled Classes</h2>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {enrolledClasses.map((clz) => (
-              <div
-                key={clz.classid}
-                className="bg-white p-5 rounded-xl shadow border"
-              >
-                <h3 className="text-lg font-semibold mb-2 ">{clz.title}</h3>
-                
-                <p className="text-primary font-bold mb-2">LKR {clz.fee}</p>
-                <button
-                  onClick={() => handlePaidClass(clz)}
-                  className="bg-primary text-white px-4 py-2 rounded"
-                >
-                  View More
-                </button>
-              </div>
-            ))}
+      {/* Header Section - Outside main div */}
+      <div className="mb-8 px-6 pt-6">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8">
+          My Classes
+        </h1>
+        {/* <p className="text-gray-600">Manage your enrolled classes and explore new courses</p> */}
+      </div>
+
+      <div className="bg-white min-h-screen p-6 pt-0">
+        {/* Loading State within page */}
+        {(loading || isLoading) && (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4 mx-auto"></div>
+              <p className="text-gray-600 font-medium text-lg">Loading classes...</p>
+            </div>
           </div>
+        )}
+
+        {/* Show content only when not loading */}
+        {!(loading || isLoading) && (
+          <>
+            {/* Enrolled courses */}
+            <section className="mb-12 p-4">
+          <div className="flex items-center mb-6">
+            <div className="w-1 h-8 bg-gradient-to-b from-green-500 to-blue-500 rounded-full mr-4"></div>
+            <h2 className="text-2xl font-bold text-gray-800">Enrolled Classes</h2>
+          </div>
+          
+          {(() => {
+            const categorizedEnrolled = categorizeClasses(enrolledClasses);
+            return (
+              <div>
+                {/* <div className="mb-6 p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
+                      <span className="font-medium text-gray-800">Total Enrolled: {enrolledClasses.length}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-green-700">{categorizedEnrolled.active?.length || 0} Active</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <span className="text-yellow-700">{categorizedEnrolled.pending?.length || 0} Pending</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                      <span className="text-gray-700">{categorizedEnrolled.completed?.length || 0} Completed</span>
+                    </div>
+                  </div>
+                </div> */}
+                
+                {/* Three column layout with scroll */}
+                <div className="grid gap-6 lg:grid-cols-3 max-h-96 overflow-hidden">
+                  
+                  {/* Active Classes Column */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 shadow-lg">
+                    <div className="flex items-center mb-4 sticky top-0 bg-gradient-to-br from-green-50 to-emerald-50 pb-2">
+                      <div className="w-2 h-6 bg-gradient-to-b from-green-500 to-emerald-600 rounded-full mr-3"></div>
+                      <h3 className="text-lg font-semibold text-green-700">
+                        Active Classes ({categorizedEnrolled.active?.length || 0})
+                      </h3>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto pr-2">
+                      <div className="space-y-3">
+                        {(categorizedEnrolled.active || []).map((clz) => (
+                          <div
+                            key={clz.classid}
+                            className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg border border-green-200 hover:border-green-300 transition-all duration-300 group"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-sm text-gray-800 group-hover:text-green-700 transition-colors">{clz.title}</h4>
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            </div>
+                            <p className="text-primary font-bold text-sm mb-2 flex items-center">
+                              <span className="text-green-600 mr-1">₨</span>{clz.fee}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-3 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                              </svg>
+                              {new Date(clz.start_date).toLocaleDateString()} - {new Date(clz.end_date).toLocaleDateString()}
+                            </p>
+                            <button
+                              onClick={() => handlePaidClass(clz)}
+                              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 w-full shadow-sm hover:shadow-md transform hover:scale-105"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        ))}
+                        {(!categorizedEnrolled.active || categorizedEnrolled.active.length === 0) && (
+                          <p className="text-gray-500 text-sm text-center py-8">No active classes</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pending Classes Column */}
+                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200 shadow-lg">
+                    <div className="flex items-center mb-4 sticky top-0 bg-gradient-to-br from-yellow-50 to-orange-50 pb-2">
+                      <div className="w-2 h-6 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full mr-3"></div>
+                      <h3 className="text-lg font-semibold text-yellow-700">
+                        Pending Classes ({categorizedEnrolled.pending?.length || 0})
+                      </h3>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto pr-2">
+                      <div className="space-y-3">
+                        {(categorizedEnrolled.pending || []).map((clz) => (
+                          <div
+                            key={clz.classid}
+                            className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg border border-yellow-200 hover:border-yellow-300 transition-all duration-300 group"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-sm text-gray-800 group-hover:text-yellow-700 transition-colors">{clz.title}</h4>
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            </div>
+                            <p className="text-primary font-bold text-sm mb-2 flex items-center">
+                              <span className="text-yellow-600 mr-1">₨</span>{clz.fee}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-3 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                              </svg>
+                              Starts: {new Date(clz.start_date).toLocaleDateString()}
+                            </p>
+                            <button
+                              onClick={() => handlePaidClass(clz)}
+                              className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 w-full shadow-sm hover:shadow-md transform hover:scale-105"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        ))}
+                        {(!categorizedEnrolled.pending || categorizedEnrolled.pending.length === 0) && (
+                          <p className="text-gray-500 text-sm text-center py-8">No pending classes</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Completed Classes Column */}
+                  <div className="bg-gradient-to-br from-gray-50 to-slate-100 p-4 rounded-xl border border-gray-200 shadow-lg">
+                    <div className="flex items-center mb-4 sticky top-0 bg-gradient-to-br from-gray-50 to-slate-100 pb-2">
+                      <div className="w-2 h-6 bg-gradient-to-b from-gray-500 to-slate-600 rounded-full mr-3"></div>
+                      <h3 className="text-lg font-semibold text-gray-700">
+                        Completed Classes ({categorizedEnrolled.completed?.length || 0})
+                      </h3>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto pr-2">
+                      <div className="space-y-3">
+                        {(categorizedEnrolled.completed || []).map((clz) => (
+                          <div
+                            key={clz.classid}
+                            className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg border border-gray-200 hover:border-gray-300 transition-all duration-300 group"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-sm text-gray-800 group-hover:text-gray-700 transition-colors">{clz.title}</h4>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            </div>
+                            <p className="text-primary font-bold text-sm mb-2 flex items-center">
+                              <span className="text-gray-600 mr-1">₨</span>{clz.fee}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-3 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              Completed: {new Date(clz.end_date).toLocaleDateString()}
+                            </p>
+                            <button
+                              onClick={() => handlePaidClass(clz)}
+                              className="bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 w-full shadow-sm hover:shadow-md transform hover:scale-105"
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        ))}
+                        {(!categorizedEnrolled.completed || categorizedEnrolled.completed.length === 0) && (
+                          <p className="text-gray-500 text-sm text-center py-8">No completed classes</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+                
+                {enrolledClasses.length === 0 && (
+                  <p className="text-gray-500 text-center py-8">No enrolled classes found</p>
+                )}
+              </div>
+            );
+          })()}
         </section>
 
         {/* Other courses */}
         <section>
-          <h2 className="text-2xl font-bold mb-6">Other Classes</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (selectedClasses.length === 0) {
-                alert("Please select at least one class to pay.");
-                return;
-              }
-              setShowPayModal(true);
-            }}
-          >
-            <ul className="space-y-4 max-w-3xl">
-              {classes.map((clz) => (
-                <li
-                  key={clz.classid}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white p-5 rounded-xl shadow border"
+          <div className="flex items-center mb-6">
+            <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-4"></div>
+            <h2 className="text-2xl font-bold text-gray-800">Explore New Classes</h2>
+          </div>
+          
+          {(() => {
+            const categorizedOthers = categorizeClasses(classes);
+            
+            return (
+              <div>
+                {/* <div className="mb-4 text-sm text-gray-600">
+                  Available Classes: {(categorizedOthers.active?.length || 0) + (categorizedOthers.pending?.length || 0)} 
+                  ({categorizedOthers.active?.length || 0} Active, {categorizedOthers.pending?.length || 0} Pending)
+                </div> */}
+                
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (selectedClasses.length === 0) {
+                      alert("Please select at least one class to pay.");
+                      return;
+                    }
+                    setShowPayModal(true);
+                  }}
                 >
+                  {/* Two column layout with scroll */}
+                  <div className="grid gap-6 lg:grid-cols-2 max-h-96 overflow-hidden">
+                    
+                    {/* Active Classes Column */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="text-lg font-semibold mb-4 text-green-700 sticky top-0 bg-gray-50 pb-2">
+                        Active Classes ({categorizedOthers.active?.length || 0})
+                      </h3>
+                      <div className="max-h-72 overflow-y-auto pr-2">
+                        <ul className="space-y-3">
+                          {(categorizedOthers.active || []).map((clz) => (
+                            <li
+                              key={clz.classid}
+                              className="bg-white p-3 rounded-lg shadow border border-green-200"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-sm mb-1">{clz.title}</h4>
+                                  <p className="text-xs text-gray-600 mb-1">{clz.description}</p>
+                                  <p className="text-primary font-bold text-sm mb-1">LKR {clz.fee}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(clz.start_date).toLocaleDateString()} - {new Date(clz.end_date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary ml-2 mt-1"
+                                  checked={selectedClasses.includes(clz.classid)}
+                                  onChange={() => toggleClassSelection(clz.classid)}
+                                />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        {(!categorizedOthers.active || categorizedOthers.active.length === 0) && (
+                          <p className="text-gray-500 text-sm text-center py-8">No active classes available</p>
+                        )}
+                      </div>
+                    </div>
 
-                  {/* Left: Course Info */}
-                  <div>
-                    <h3 className="font-semibold">{clz.title}</h3>
-                    <p className="text-sm text-gray-600">{clz.description}</p>
-                    <p className="text-primary font-bold">LKR {clz.fee}</p>
+                    {/* Pending Classes Column */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="text-lg font-semibold mb-4 text-yellow-700 sticky top-0 bg-gray-50 pb-2">
+                        Pending Classes ({categorizedOthers.pending?.length || 0})
+                      </h3>
+                      <div className="max-h-72 overflow-y-auto pr-2">
+                        <ul className="space-y-3">
+                          {(categorizedOthers.pending || []).map((clz) => (
+                            <li
+                              key={clz.classid}
+                              className="bg-white p-3 rounded-lg shadow border border-yellow-200"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-sm mb-1">{clz.title}</h4>
+                                  <p className="text-xs text-gray-600 mb-1">{clz.description}</p>
+                                  <p className="text-primary font-bold text-sm mb-1">LKR {clz.fee}</p>
+                                  <p className="text-xs text-gray-500">
+                                    Starts: {new Date(clz.start_date).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary ml-2 mt-1"
+                                  checked={selectedClasses.includes(clz.classid)}
+                                  onChange={() => toggleClassSelection(clz.classid)}
+                                />
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                        {(!categorizedOthers.pending || categorizedOthers.pending.length === 0) && (
+                          <p className="text-gray-500 text-sm text-center py-8">No pending classes available</p>
+                        )}
+                      </div>
+                    </div>
+                    
                   </div>
-
-                  {/* Right: Checkbox */}
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
-                    checked={selectedClasses.includes(clz.classid)}
-                    onChange={() => toggleClassSelection(clz.classid)}
-                  />
-                </li>
-              ))}
-            </ul>
-
-            <button
-              type="submit"
-              className="mt-4 bg-primary text-white px-6 py-2 rounded"
-              onClick={proceedpay}
-            >
-              Proceed to Pay
-            </button>
-          </form>
+                  
+                  {/* Payment Button */}
+                  {((categorizedOthers.active?.length || 0) + (categorizedOthers.pending?.length || 0)) > 0 && (
+                    <button
+                      type="submit"
+                      className="mt-6 bg-primary text-white px-6 py-3 rounded hover:bg-primary/90 transition-colors w-full"
+                      onClick={proceedpay}
+                    >
+                      Proceed to Pay ({selectedClasses.length} selected)
+                    </button>
+                  )}
+                  
+                  {((categorizedOthers.active?.length || 0) + (categorizedOthers.pending?.length || 0)) === 0 && (
+                    <p className="text-gray-500 text-center py-8">No classes available for enrollment</p>
+                  )}
+                </form>
+              </div>
+            );
+          })()}
         </section>
+        
+        </>
+        )}
 
+        {/* Modals - Always show regardless of loading state */}
         {/* Paid Modal */}
         {showPaidClassModal && (
           <Modal title={selectedClass?.title} onClose={closeAllModals} className="space-y-4 gap-4">
@@ -378,9 +768,33 @@ export default function Classes() {
             <p className="text-md text-center text-gray-600"style={{ whiteSpace: "pre-line" }}>{selectedClass.schedule}</p>
             <p className="text-center text-gray-600">{selectedClass.description}</p>
             <p className="text-center text-gray-600">LKR {selectedClass.fee}</p>
-            <div className="text-center mt-4">
-              <button onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} className="bg-primary text-white px-4 py-2 rounded">Notes</button>
-              <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button>
+            <div className="text-center mt-4 space-y-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <button 
+                  onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} 
+                  className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors"
+                >
+                  📚 Notes
+                </button>
+                <button 
+                  onClick={() => {
+                    if (selectedClass.webinar_id) {
+                      window.open(`https://zoom.us/j/${selectedClass.webinar_id}`, '_blank');
+                    } else {
+                      alert('No webinar link available for this class');
+                    }
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+                >
+                  🎥 Join Webinar
+                </button>
+                <button 
+                  onClick={()=>{router.push(`/students/${id}/exams`)}} 
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+                >
+                  📝 Exams
+                </button>
+              </div>
             </div>
           </Modal>
         )}

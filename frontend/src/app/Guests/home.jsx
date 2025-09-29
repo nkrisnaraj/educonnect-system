@@ -35,9 +35,9 @@ export default function HomePage() {
   const [classList, setClassList] = useState([]);
   const [showAll, setShowAll] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
+  // useEffect(() => {
+  //   document.documentElement.classList.toggle("dark", isDarkMode);
+  // }, [isDarkMode]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -289,7 +289,7 @@ export default function HomePage() {
     </p>
 
     {/* First Row - Course Categories */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       {(showAll ? classList : classList.slice(0, 6)).map((category, i) => (
         <div
           key={i}
@@ -300,7 +300,7 @@ export default function HomePage() {
               {BookCopy}
             </div> */}
             <div>
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
                 {category.title}
               </h3>
               <p className="text-sm text-blue-600 dark:text-blue-400">
@@ -308,7 +308,7 @@ export default function HomePage() {
               </p>
             </div>
           </div>
-          <p className="text-gray-600 dark:text-gray-300 text-sm">
+          <p className="text-gray-600 dark:text-gray-300 text-xs">
             {category.description}
           </p>
         </div>

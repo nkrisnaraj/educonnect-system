@@ -10,7 +10,10 @@ import {
   FileText,
   Send,
   Eye,
-  EyeOff
+  EyeOff,
+  XCircle,
+  AlertCircle,
+  BookOpen
 } from "lucide-react"
 import { useStudentExamApi } from "@/hooks/useStudentExamApi"
 import { useRouter, useParams } from "next/navigation"
@@ -25,6 +28,7 @@ export default function TakeExamPage() {
   const [submissionId, setSubmissionId] = useState(null)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
   const [examStarted, setExamStarted] = useState(false)
+  const [examError, setExamError] = useState(null)
   const timerRef = useRef(null)
   
   const { 
@@ -47,13 +51,37 @@ export default function TakeExamPage() {
     }
   }, [examId])
 
-  const fetchExamDetails = async () => {
+  const fetchExamDetails = async (retryCount = 0) => {
     try {
       const response = await getExamDetails(examId)
       console.log('Exam Details:', response)
-      setExam(response)
+      
+      if (response && response.id) {
+        setExam(response)
+        setExamError(null)
+      } else {
+        throw new Error('Invalid exam data received')
+      }
     } catch (error) {
       console.error('Failed to fetch exam details:', error)
+      
+      // Retry logic for network issues
+      if (retryCount < 3 && (!error.response || error.response.status >= 500)) {
+        console.log(`Retrying exam details fetch (attempt ${retryCount + 1})`)
+        setTimeout(() => {
+          fetchExamDetails(retryCount + 1)
+        }, 2000 * (retryCount + 1)) // Exponential backoff
+        return
+      }
+      
+      // Handle time-based restrictions
+      if (error.response?.status === 403) {
+        setExamError(error.response.data.error)
+      } else if (error.response?.status === 404) {
+        setExamError('Exam not found. Please check if the exam exists and try again.')
+      } else {
+        setExamError('Failed to load exam. Please check your connection and try again.')
+      }
     }
   }
 
@@ -63,6 +91,7 @@ export default function TakeExamPage() {
       console.log('Exam started:', response)
       setSubmissionId(response.submission_id)
       setExamStarted(true)
+      setExamError(null)
       
       // Start timer
       const durationMs = exam.duration_minutes * 60 * 1000
@@ -80,6 +109,13 @@ export default function TakeExamPage() {
       }, 1000)
     } catch (error) {
       console.error('Failed to start exam:', error)
+      
+      // Handle time-based restrictions  
+      if (error.response?.status === 403) {
+        setExamError(error.response.data.error)
+      } else {
+        setExamError('Failed to start exam. Please try again.')
+      }
     }
   }
 
@@ -279,8 +315,60 @@ export default function TakeExamPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading exam...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <FileText className="h-8 w-8 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Clock className="h-5 w-5 text-gray-600 animate-pulse" />
+            <p className="text-gray-600 text-lg font-medium">Loading exam details...</p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <BookOpen className="h-4 w-4 text-gray-500" />
+            <p className="text-sm text-gray-500">Please wait while we prepare your exam</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (examError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="relative mb-4">
+            <AlertTriangle className="h-16 w-16 text-red-500 mx-auto" />
+            <XCircle className="h-6 w-6 text-red-600 absolute -top-1 -right-1 animate-pulse" />
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Unable to Load Exam</h2>
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <FileText className="h-4 w-4 text-gray-500" />
+            <p className="text-gray-600">{examError}</p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setExamError(null)
+                fetchExamDetails()
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Try Again
+            </button>
+            <button
+              onClick={() => router.push(`/students/${id}/exams`)}
+              className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to Exams
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -289,16 +377,37 @@ export default function TakeExamPage() {
   if (!exam) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Exam not found</h2>
-          <p className="text-gray-600 mb-4">The exam you're looking for doesn't exist or you don't have access to it.</p>
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Go Back
-          </button>
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <div className="relative mb-4">
+            <AlertTriangle className="h-16 w-16 text-orange-500 mx-auto" />
+            <FileText className="h-6 w-6 text-orange-600 absolute -top-1 -right-1" />
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <XCircle className="h-5 w-5 text-orange-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Exam Not Found</h2>
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <AlertCircle className="h-4 w-4 text-gray-500" />
+            <p className="text-gray-600">The exam you're looking for doesn't exist or you don't have access to it.</p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => fetchExamDetails()}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+            <button
+              onClick={() => router.push(`/students/${id}/exams`)}
+              className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to Exams
+            </button>
+          </div>
         </div>
       </div>
     )

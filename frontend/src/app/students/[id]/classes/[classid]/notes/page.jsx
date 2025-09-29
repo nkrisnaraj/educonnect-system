@@ -100,11 +100,11 @@ export default function ClassNotes() {
         )}
 
         {/* Debug Info */}
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        {/* <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
             <strong>Debug:</strong> Found {notes.length} notes for class "{classDetails.title}"
           </p>
-        </div>
+        </div> */}
 
         {notes.length === 0 ? (
           <div className="text-center py-12">

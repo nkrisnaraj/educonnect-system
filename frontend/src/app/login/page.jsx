@@ -18,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showEmailModel, setShowEmailModel] = useState(false);
   const [email, setEmail] = useState("");
@@ -26,6 +27,8 @@ export default function Login() {
 
     const handleLogin = async(e) => {
         e.preventDefault();
+        setIsLoading(true);
+        setMessage("");
         
         console.log('🔍 Form submission values:');
         console.log('Username:', username);
@@ -39,6 +42,7 @@ export default function Login() {
         if (!username || !password) {
             console.error('❌ Empty username or password');
             setMessage('Please enter both username and password');
+            setIsLoading(false);
             return;
         }
         
@@ -70,7 +74,7 @@ export default function Login() {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             },
-            timeout: 10000  // 10 second timeout
+            timeout: 30000  // Increase timeout to 30 seconds
           });
           
           // Remove interceptor
@@ -98,28 +102,30 @@ export default function Login() {
             
             console.log('🍪 Cookie set:', Cookies.get("accessToken") ? 'Success' : 'Failed');
 
-            login(data); // this replace all loalstorage
-            
+            console.log('🔄 Starting login process...');
+            await login(data); // Wait for login process to complete
+            console.log('✅ Login process completed');
+
             //sessionStorage.setItem("user", JSON.stringify(userObject));
             //sessionStorage.setItem("userRole",data.user.role);
             //sessionStorage.setItem("accessToken", response.data.access);
             //sessionStorage.setItem("refreshToken", response.data.refresh);
 
             //const userrole = sessionStorage.getItem("userRole");
-            console.log(data.user.id);
-            setTimeout(() => {
-              try {
-                if (data.user.role === 'admin') {
-                  router.push("/admin");
-                } else if (data.user.role === 'instructor') {
-                  router.push("/instructor");
-                } else if (data.user.role === 'student') {
-                  router.push(`/students/${data.user.id}`);
-                }
-              } catch (err) {
-                console.error("Router push error:", err);
+            console.log('🧭 Navigating to:', data.user.role, 'dashboard for user ID:', data.user.id);
+            
+            // Navigate immediately after login completes - no setTimeout needed
+            try {
+              if (data.user.role === 'admin') {
+                router.push("/admin");
+              } else if (data.user.role === 'instructor') {
+                router.push("/instructor");
+              } else if (data.user.role === 'student') {
+                router.push(`/students/${data.user.id}`);
               }
-            }, 1000);
+            } catch (err) {
+              console.error("Router push error:", err);
+            }
           }else{
             setMessage("Login Failed")
             setIsSuccess(false);
@@ -132,13 +138,19 @@ export default function Login() {
             console.error("❌ Error data:", error.response?.data);
             console.error("❌ Request config:", error.config);
             
-            if(error.response){
+            if (error.code === 'ECONNABORTED') {
+              setMessage("Request timed out. Please check your connection and try again.");
+            } else if (error.response) {
               setMessage(error.response.data?.detail || "Invalid Credentials");
+            } else if (error.request) {
+              setMessage("Unable to connect to server. Please check if the server is running.");
+            } else {
+              setMessage("An Error Occurred");
             }
-            else{
-              setMessage("An Error Occurred")
-            }
-        } 
+            setIsSuccess(false);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleforgotPassword = () => {
@@ -230,8 +242,17 @@ export default function Login() {
                 </span>
             </div>
             <button type="submit"
-              className="w-full bg-primary text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-900 transition duration-300">
-              Login
+              disabled={isLoading}
+              className={`w-full py-3 rounded-lg font-bold text-lg transition duration-300 flex items-center justify-center gap-2 ${
+                isLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-primary text-white hover:bg-blue-900'
+              }`}
+            >
+              {isLoading && (
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              )}
+              {isLoading ? 'Signing in...' : 'Login'}
             </button>
             </form>
 

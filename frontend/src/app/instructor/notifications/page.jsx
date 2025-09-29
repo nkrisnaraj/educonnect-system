@@ -1,143 +1,108 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bell, Check, Trash2, Filter, Search, AlertCircle, Info, CheckCircle, Clock } from "lucide-react"
+import { useInstructorApi } from "@/hooks/useInstructorApi"
 
 export default function NotificationsPage() {
+  const [notifications, setNotifications] = useState([])
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [loading, setLoading] = useState(true)
 
-  const notifications = [
-    {
-      id: 1,
-      title: "New Student Enrollment",
-      message: "Kasun Perera has enrolled in Chemistry 2025 A/L batch",
-      type: "info",
-      time: "2 hours ago",
-      read: false,
-      priority: "medium",
-      category: "enrollment",
-    },
-    {
-      id: 2,
-      title: "Assignment Submission",
-      message: "15 students have submitted Chemistry practical reports",
-      type: "success",
-      time: "4 hours ago",
-      read: false,
-      priority: "low",
-      category: "assignment",
-    },
-    {
-      id: 3,
-      title: "Exam Schedule Reminder",
-      message: "Chemistry final exam is scheduled for tomorrow at 2:00 PM",
-      type: "warning",
-      time: "6 hours ago",
-      read: true,
-      priority: "high",
-      category: "exam",
-    },
-    {
-      id: 4,
-      title: "Low Attendance Alert",
-      message: "Nimali Silva has missed 3 consecutive Chemistry classes",
-      type: "alert",
-      time: "1 day ago",
-      read: false,
-      priority: "high",
-      category: "attendance",
-    },
-    {
-      id: 5,
-      title: "Grade Update Required",
-      message: "Please update marks for Chemistry Unit Test 2",
-      type: "warning",
-      time: "1 day ago",
-      read: true,
-      priority: "medium",
-      category: "grading",
-    },
-    {
-      id: 6,
-      title: "Parent Meeting Request",
-      message: "Mrs. Silva requested a meeting regarding Nimali's progress",
-      type: "info",
-      time: "2 days ago",
-      read: false,
-      priority: "medium",
-      category: "meeting",
-    },
-    {
-      id: 7,
-      title: "System Maintenance",
-      message: "Scheduled maintenance on Sunday 2:00 AM - 4:00 AM",
-      type: "info",
-      time: "3 days ago",
-      read: true,
-      priority: "low",
-      category: "system",
-    },
-    {
-      id: 8,
-      title: "Outstanding Performance",
-      message: "Tharindu Fernando scored 98% in Chemistry practical exam",
-      type: "success",
-      time: "3 days ago",
-      read: true,
-      priority: "low",
-      category: "achievement",
-    },
-  ]
+  // Import notification API functions
+  const { 
+    getNotifications, 
+    markNotificationAsRead, 
+    markAllNotificationsAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    loading: apiLoading,
+    error: apiError
+  } = useInstructorApi()
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case "success":
-        return <CheckCircle className="h-5 w-5 text-green-600" />
-      case "warning":
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />
-      case "alert":
-        return <AlertCircle className="h-5 w-5 text-red-600" />
-      case "info":
-      default:
-        return <Info className="h-5 w-5 text-blue-600" />
+  // Fetch notifications on load
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setLoading(true)
+      try {
+        const data = await getNotifications()
+        if (data) {
+          setNotifications(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchNotifications()
+  }, [getNotifications])
+
+  // Mark single as read
+  const markAsRead = async (id) => {
+    try {
+      const res = await markNotificationAsRead(id)
+      if (res !== null) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        )
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
     }
   }
 
-  const getNotificationColor = (type) => {
-    switch (type) {
-      case "success":
-        return "border-l-green-500 bg-green-50"
-      case "warning":
-        return "border-l-yellow-500 bg-yellow-50"
-      case "alert":
-        return "border-l-red-500 bg-red-50"
-      case "info":
-      default:
-        return "border-l-blue-500 bg-blue-50"
+  // Delete notification
+  const removeNotification = async (id) => {
+    if (window.confirm('Are you sure you want to delete this notification?')) {
+      try {
+        const res = await deleteNotification(id)
+        if (res !== null) {
+          setNotifications((prev) => prev.filter((n) => n.id !== id))
+        }
+      } catch (error) {
+        console.error('Failed to delete notification:', error)
+      }
     }
   }
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "low":
-        return "bg-green-100 text-green-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  // Mark all as read
+  const markAllAsRead = async () => {
+    try {
+      const res = await markAllNotificationsAsRead()
+      if (res !== null) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+      }
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error)
     }
   }
 
+  // Delete all notifications
+  const deleteAll = async () => {
+    if (window.confirm('Are you sure you want to delete all notifications?')) {
+      try {
+        const res = await deleteAllNotifications()
+        if (res !== null) {
+          setNotifications([])
+        }
+      } catch (error) {
+        console.error('Failed to delete all notifications:', error)
+      }
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  // Enhanced filtering and search
   const filteredNotifications = notifications.filter((notification) => {
     const filterMatch =
       selectedFilter === "all" ||
       (selectedFilter === "unread" && !notification.read) ||
       (selectedFilter === "read" && notification.read) ||
       notification.type === selectedFilter ||
-      notification.priority === selectedFilter
+      notification.color === selectedFilter
 
     const searchMatch =
       notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -146,22 +111,116 @@ export default function NotificationsPage() {
     return filterMatch && searchMatch
   })
 
-  const markAsRead = (id) => {
-    // Mark notification as read logic here
-    console.log("Mark as read:", id)
+  // Get notification icon based on type
+  const getNotificationIcon = (type) => {
+    const iconColor = getNotificationIconColor(type)
+    
+    switch (type) {
+      case "success":
+      case "enrollment":
+        return <CheckCircle className={`h-5 w-5 ${iconColor}`} />
+      case "warning":
+      case "exam":
+        return <AlertCircle className={`h-5 w-5 ${iconColor}`} />
+      case "alert":
+        return <AlertCircle className={`h-5 w-5 ${iconColor}`} />
+      case "message":
+        return <Bell className={`h-5 w-5 ${iconColor}`} />
+      case "webinar":
+        return <Info className={`h-5 w-5 ${iconColor}`} />
+      case "class":
+        return <Info className={`h-5 w-5 ${iconColor}`} />
+      case "info":
+      case "system":
+      default:
+        return <Info className={`h-5 w-5 ${iconColor}`} />
+    }
   }
 
-  const markAllAsRead = () => {
-    // Mark all notifications as read logic here
-    console.log("Mark all as read")
+  // Get notification color classes based on type
+  const getNotificationColor = (type) => {
+    switch (type) {
+      case "success":
+      case "enrollment":
+        return "border-l-green-500 bg-green-50"
+      case "warning":
+      case "exam":
+        return "border-l-yellow-500 bg-yellow-50"
+      case "alert":
+        return "border-l-red-500 bg-red-50"
+      case "message":
+        return "border-l-purple-500 bg-purple-50"
+      case "webinar":
+        return "border-l-blue-500 bg-blue-50"
+      case "class":
+        return "border-l-indigo-500 bg-indigo-50"
+      case "info":
+      case "system":
+      default:
+        return "border-l-gray-500 bg-gray-50"
+    }
   }
 
-  const deleteNotification = (id) => {
-    // Delete notification logic here
-    console.log("Delete notification:", id)
+  // Get notification icon color based on type
+  const getNotificationIconColor = (type) => {
+    switch (type) {
+      case "success":
+      case "enrollment":
+        return "text-green-600"
+      case "warning":
+      case "exam":
+        return "text-yellow-600"
+      case "alert":
+        return "text-red-600"
+      case "message":
+        return "text-purple-600"
+      case "webinar":
+        return "text-blue-600"
+      case "class":
+        return "text-indigo-600"
+      case "info":
+      case "system":
+      default:
+        return "text-gray-600"
+    }
   }
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  // Format time display
+  const formatTime = (createdAt) => {
+    const now = new Date()
+    const notificationDate = new Date(createdAt)
+    const diffInMinutes = Math.floor((now - notificationDate) / (1000 * 60))
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minutes ago`
+    } else if (diffInMinutes < 1440) {
+      const hours = Math.floor(diffInMinutes / 60)
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    } else {
+      const days = Math.floor(diffInMinutes / 1440)
+      return `${days} day${days > 1 ? 's' : ''} ago`
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (apiError) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">Error loading notifications: {apiError}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -180,6 +239,15 @@ export default function NotificationsPage() {
             <Check className="h-4 w-4" />
             Mark All Read
           </button>
+          {notifications.length > 0 && (
+            <button
+              onClick={deleteAll}
+              className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete All
+            </button>
+          )}
         </div>
       </div>
 
@@ -206,13 +274,12 @@ export default function NotificationsPage() {
               <option value="all">All Notifications</option>
               <option value="unread">Unread</option>
               <option value="read">Read</option>
-              <option value="high">High Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="low">Low Priority</option>
-              <option value="alert">Alerts</option>
-              <option value="warning">Warnings</option>
-              <option value="info">Information</option>
-              <option value="success">Success</option>
+              <option value="webinar">Webinars</option>
+              <option value="class">Classes</option>
+              <option value="exam">Exams</option>
+              <option value="message">Messages</option>
+              <option value="enrollment">Enrollments</option>
+              <option value="system">System</option>
             </select>
           </div>
         </div>
@@ -247,18 +314,15 @@ export default function NotificationsPage() {
                           {notification.title}
                         </h4>
                         {!notification.read && <div className="w-2 h-2 bg-purple-600 rounded-full"></div>}
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(notification.priority)}`}>
-                          {notification.priority}
+                        <span className={`px-2 py-1 text-xs rounded-full ${getNotificationIconColor(notification.type)} bg-opacity-20`}>
+                          {notification.type}
                         </span>
                       </div>
                       <p className="text-gray-600 mb-2">{notification.message}</p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {notification.time}
-                        </span>
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                          {notification.category}
+                          {formatTime(notification.created_at)}
                         </span>
                       </div>
                     </div>
@@ -274,7 +338,7 @@ export default function NotificationsPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => deleteNotification(notification.id)}
+                      onClick={() => removeNotification(notification.id)}
                       className="p-1 text-red-600 hover:bg-red-100 rounded"
                       title="Delete notification"
                     >

@@ -35,6 +35,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=20,choices=[('success', 'Success'), ('fail', 'Fail'), ('pending' , 'Pending')], default='pending')
+    class_names = models.TextField(blank=True, null=True, help_text="Comma-separated class names for this payment")
 
     def save(self, *args, **kwargs):
         if not self.payid:
