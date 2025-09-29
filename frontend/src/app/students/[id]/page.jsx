@@ -179,19 +179,15 @@ useEffect(() => {
     }
   };
 
-  const [formatdate, setFormatdate] = useState("");
-
-  // Fix hydration mismatch by setting date on client side
-  useEffect(() => {
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-GB", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    });
-    setFormatdate(formattedDate);
-  }, []);
+  
+   
+  const today = new Date();
+  const formatdate = today.toLocaleDateString("en-GB",{
+    weekday:"long",
+    year:"numeric",
+    month:"long",
+    day:"numeric"
+  })
 
 //console.log("messages:", messages);
   return (
@@ -199,7 +195,7 @@ useEffect(() => {
       {/* Welcome Banner */}
       <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
         <div className="relative z-10 p-4">
-          <p className="text-sm mb-6">{formatdate || "Loading date..."}</p>
+          <p className="text-sm mb-6">{formatdate}</p>
           <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back {user?.first_name || 'Student'}!</h1>
           <p className="text-sm opacity-90">Always stay updated in your student portal</p>
         </div>
@@ -221,14 +217,7 @@ useEffect(() => {
           {/* Ad Section */}
           <div>
             <h2 className="text-lg font-bold mb-2">New Classes</h2>
-            {classesLoading ? (
-              <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <p>Loading new classes...</p>
-                </div>
-              </div>
-            ) : classes.length === 0 ? (
+            {classes.length === 0 ? (
               <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
                 <p>No New Classes found</p>
               </div>
