@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useInstructorApi } from '@/hooks/useInstructorApi';
-import { Calendar, Clock, DollarSign, Video } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useInstructorApi } from "@/hooks/useInstructorApi";
+import { Calendar, Clock, DollarSign, Video } from "lucide-react";
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedTab, setSelectedTab] = useState('all'); // all | active | pending | completed
+  const [selectedTab, setSelectedTab] = useState("active"); // all | active | pending | completed
   const instructorApi = useInstructorApi();
 
   useEffect(() => {
@@ -25,17 +25,19 @@ export default function ClassesPage() {
       } else if (Array.isArray(response)) {
         setClasses(response);
       } else {
-        setError('Failed to fetch classes');
+        setError("Failed to fetch classes");
       }
     } catch (err) {
-      setError(err.message || 'Failed to load data');
+      setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
   };
 
   const filteredClasses =
-    selectedTab === 'all' ? classes : classes.filter((cls) => cls.status === selectedTab);
+    selectedTab === "all"
+      ? classes
+      : classes.filter((cls) => cls.status === selectedTab);
 
   if (loading) {
     return (
@@ -75,14 +77,14 @@ export default function ClassesPage() {
 
       {/* Tabs */}
       <div className="flex gap-3 border-b pb-2">
-        {['all', 'active', 'pending', 'completed'].map((tab) => (
+        {["active", "pending", "completed", "all"].map((tab) => (
           <button
             key={tab}
             onClick={() => setSelectedTab(tab)}
             className={`px-4 py-2 rounded-t-lg font-medium transition ${
               selectedTab === tab
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -101,35 +103,35 @@ export default function ClassesPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    {cls.title || 'Unnamed Class'}
+                    {cls.title || "Unnamed Class"}
                   </h3>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full font-medium ${
-                    cls.status === 'active'
-                      ? 'bg-green-100 text-green-700'
-                      : cls.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : cls.status === 'completed'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-gray-100 text-gray-700'
+                    cls.status === "active"
+                      ? "bg-green-100 text-green-700"
+                      : cls.status === "pending"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : cls.status === "completed"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {cls.status || 'Unknown'}
+                  {cls.status || "Unknown"}
                 </span>
               </div>
 
               {/* Fee */}
               <div className="flex items-center gap-2 text-gray-700 mb-4">
                 <DollarSign className="h-4 w-4 text-green-500" />
-                <span>Rs.{cls.fee || '0'}</span>
+                <span>Rs.{cls.fee || "0"}</span>
               </div>
 
               {/* Duration */}
               {cls.start_date && cls.end_date && (
                 <div className="flex items-center gap-2 text-gray-500 mb-4">
                   <Calendar className="h-4 w-4" />
-                  {new Date(cls.start_date).toLocaleDateString()} -{' '}
+                  {new Date(cls.start_date).toLocaleDateString()} -{" "}
                   {new Date(cls.end_date).toLocaleDateString()}
                 </div>
               )}
@@ -142,14 +144,14 @@ export default function ClassesPage() {
                     {cls.schedules.map((schedule, index) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center bg-gray-50 rounded px-2 py-1"
+                        className="flex justify-between items-center bg-gray-50 rounded px-1 py-1"
                       >
                         <span className="flex items-center gap-1 text-gray-700">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-6 w-6" />
                           {schedule.start_time} ({schedule.duration_minutes}m)
                         </span>
                         <span className="text-gray-500 ">
-                          {schedule.days_of_week?.join(', ')}
+                          {schedule.days_of_week?.join(", ")}
                         </span>
                       </div>
                     ))}
@@ -174,12 +176,23 @@ export default function ClassesPage() {
               {cls.webinar_info?.registration_url && (
                 <div className="mt-auto">
                   <a
-                    href={cls.webinar_info.registration_url}
-                    target="_blank"
+                    href={
+                      cls.status === "active"
+                        ? cls.webinar_info.registration_url
+                        : undefined
+                    }
+                    target={cls.status === "active" ? "_blank" : undefined}
                     rel="noopener noreferrer"
-                    className="inline-block w-full text-center px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-accent transition"
+                    className={`inline-block w-full text-center px-4 py-2 text-sm rounded-lg transition ${
+                      cls.status === "active"
+                        ? "bg-primary text-white hover:bg-accent cursor-pointer"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
+                    onClick={(e) => {
+                      if (cls.status !== "active") e.preventDefault(); // disable navigation
+                    }}
                   >
-                    Register for Webinar
+                    {cls.status === "active" ? "Join Webinar" : "Not Available"}
                   </a>
                 </div>
               )}
@@ -188,7 +201,9 @@ export default function ClassesPage() {
         </div>
       ) : (
         <div className="text-center py-16">
-          <h3 className="text-gray-500 text-lg">No {selectedTab} classes found</h3>
+          <h3 className="text-gray-500 text-lg">
+            No {selectedTab} classes found
+          </h3>
           <p className="text-gray-400">Try switching to another tab</p>
         </div>
       )}

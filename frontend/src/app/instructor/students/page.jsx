@@ -233,7 +233,6 @@ export default function StudentsPage() {
                           <p className="font-medium text-gray-900">
                             {student.name}
                           </p>
-                          <p className="text-sm text-gray-500">ID: {student.id}</p>
                         </div>
                       </div>
                     </td>
@@ -246,7 +245,7 @@ export default function StudentsPage() {
                     <td className="py-4 px-6 text-gray-900">{student.school}</td>
                     <td className="py-4 px-6 text-gray-900">{student.address}</td>
                     <td className="py-4 px-6">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      <span className={`px-2 py-1 font-medium rounded-full ${
                         student.batch === currentYear.toString()
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
