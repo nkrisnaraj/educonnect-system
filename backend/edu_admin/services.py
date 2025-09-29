@@ -466,12 +466,34 @@ def register_student_for_class_webinar(student, class_obj, payment_id=None):
         print(f"✅ Successfully registered {student.user.username} for webinar {webinar.topic}")
         print(f"   📝 Serial number: {student.user.username}")
         print(f"   🔑 Secret number: {payment_id or 'Generated'}")
+        
+        # 🚀 AUTO-APPROVAL: Check and approve paid registrations for this webinar
+        print(f"🔄 Checking for auto-approval of paid registrations...")
+        try:
+            approval_result = check_and_approve_paid_registrations(webinar_id=webinar.webinar_id)
+            if approval_result['success']:
+                approved_count = approval_result['total_approved']
+                if approved_count > 0:
+                    print(f"🎉 Auto-approved {approved_count} paid registrations!")
+                    
+                    # Refresh our registration status from database
+                    registration.refresh_from_db()
+                    print(f"   📋 Registration status updated to: {registration.status}")
+                else:
+                    print(f"ℹ️  No additional approvals needed at this time")
+            else:
+                print(f"⚠️ Auto-approval check failed: {approval_result.get('error', 'Unknown error')}")
+        except Exception as approval_error:
+            print(f"⚠️ Auto-approval process failed: {approval_error}")
+            # Don't fail the registration if approval fails
+        
         return {
             "success": True,
             "message": f"Successfully registered for webinar: {webinar.topic}",
             "registration_id": registration.id,
             "zoom_registrant_id": zoom_response.get('registrant_id'),
-            "join_url": zoom_response.get('join_url')
+            "join_url": zoom_response.get('join_url'),
+            "auto_approval_attempted": True
         }
         
     except Exception as e:

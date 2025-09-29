@@ -479,6 +479,95 @@ def approve_paid_webinar_registrations(request):
             "error": f"Error in approval process: {str(e)}"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def approve_all_paid_webinar_registrations(request):
+    """
+    Admin endpoint to check and approve ALL pending webinar registrations for ALL webinars
+    """
+    try:
+        print(f"🎯 Starting bulk approval process for ALL webinars")
+        
+        from .services import check_and_approve_paid_registrations
+        result = check_and_approve_paid_registrations()  # No webinar_id = check all
+        
+        if result['success']:
+            return Response({
+                "success": True,
+                "message": f"Bulk approval process completed. {result['total_approved']} total registrations approved across all webinars.",
+                "total_approved": result['total_approved'],
+                "webinars_processed": len(result['results']),
+                "details": result['results']
+            })
+        else:
+            return Response({
+                "success": False,
+                "error": result['error']
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response({
+            "success": False,
+            "error": f"Error in bulk approval process: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminRole])
+def get_webinar_pending_status(request):
+    """
+    Admin endpoint to get overview of pending registrations across all webinars
+    """
+    try:
+        from .models import ZoomWebinar
+        from .zoom_api import ZoomAPIClient
+        
+        webinars = ZoomWebinar.objects.all()
+        webinar_status = []
+        
+        for webinar in webinars:
+            try:
+                zoom_client = ZoomAPIClient(webinar.account_key)
+                
+                # Get pending registrants
+                pending_response = zoom_client.get_webinar_registrants(webinar.webinar_id, status="pending")
+                pending_count = len(pending_response.get('registrants', []))
+                
+                # Get approved registrants
+                approved_response = zoom_client.get_webinar_registrants(webinar.webinar_id, status="approved")
+                approved_count = len(approved_response.get('registrants', []))
+                
+                webinar_status.append({
+                    "webinar_id": webinar.webinar_id,
+                    "topic": webinar.topic,
+                    "pending_count": pending_count,
+                    "approved_count": approved_count,
+                    "needs_approval": pending_count > 0
+                })
+                
+            except Exception as webinar_error:
+                webinar_status.append({
+                    "webinar_id": webinar.webinar_id,
+                    "topic": webinar.topic,
+                    "error": str(webinar_error)
+                })
+        
+        total_pending = sum(w.get('pending_count', 0) for w in webinar_status)
+        webinars_needing_approval = sum(1 for w in webinar_status if w.get('needs_approval', False))
+        
+        return Response({
+            "success": True,
+            "total_webinars": len(webinar_status),
+            "total_pending_registrations": total_pending,
+            "webinars_needing_approval": webinars_needing_approval,
+            "webinars": webinar_status
+        })
+        
+    except Exception as e:
+        return Response({
+            "success": False,
+            "error": f"Error getting webinar status: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_list_students_with_chats(request):

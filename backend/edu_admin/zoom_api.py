@@ -291,9 +291,17 @@ class ZoomAPIClient:
         
         url = f"https://api.zoom.us/v2/webinars/{webinar_id}/registrants/status"
         try:
-            response = requests.patch(url, headers=headers, json=payload)
+            # Use PUT instead of PATCH as per Zoom API documentation
+            response = requests.put(url, headers=headers, json=payload)
             response.raise_for_status()
-            return response.json()
+            
+            # Handle successful response (204 No Content has empty body)
+            if response.status_code == 204:
+                return {"success": True, "message": f"Registrant {action}d successfully"}
+            else:
+                # If there's actual content, parse it
+                return response.json() if response.text else {"success": True}
+                
         except requests.exceptions.RequestException as e:
             print(f"Error updating registrant status for webinar {webinar_id}:", e)
             print(f"Response: {response.text if 'response' in locals() else 'No response'}")

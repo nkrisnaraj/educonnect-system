@@ -6,7 +6,8 @@ from .views import (
     ReceiptPaymentAdminViewSet, admin_get_chat_with_student, admin_list_students_with_chats, admin_send_message_to_student, mark_messages_read,
     ComprehensiveWebinarSyncView, WebinarSyncStatusView, CreateClassFromWebinarView,
     UpdateClassView, DashboardStatsView, ComprehensiveReportsView, admin_test,
-    admin_get_notifications, admin_create_notification, admin_delete_notification, approve_paid_webinar_registrations
+    admin_get_notifications, admin_create_notification, admin_delete_notification, 
+    approve_paid_webinar_registrations, approve_all_paid_webinar_registrations, get_webinar_pending_status
 )
 from .token_validation import TokenValidationView
 
@@ -43,6 +44,8 @@ urlpatterns = [
 
     # Webinar registration management
     path('approve-webinar-registrations/', approve_paid_webinar_registrations, name='approve-paid-webinar-registrations'),
+    path('approve-all-webinar-registrations/', approve_all_paid_webinar_registrations, name='approve-all-paid-webinar-registrations'),
+    path('webinar-pending-status/', get_webinar_pending_status, name='get-webinar-pending-status'),
     
     # Token validation endpoint
     path('validate-token/', TokenValidationView.as_view(), name='validate-token'),
