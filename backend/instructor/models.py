@@ -289,3 +289,42 @@ class StudyNote(models.Model):
     def __str__(self):
         return f"{self.title} ({self.related_class.title})"
 
+class InstructorNotification(models.Model):
+    TYPE_CHOICES = [
+        ("webinar", "Webinar"),
+        ("class", "Class"),
+        ("exam", "Exam"),
+        ("message", "Message"),
+        ("enrollment", "Enrollment"),
+        ("system", "System"),
+    ]
+
+    COLOR_CHOICES = [
+        ("blue", "Blue"),
+        ("green", "Green"),
+        ("yellow", "Yellow"),
+        ("red", "Red"),
+        ("purple", "Purple"),
+        ("gray", "Gray"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    instructor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="instructor_notifications"
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="system")
+    read = models.BooleanField(default=False)
+    color = models.CharField(max_length=20, choices=COLOR_CHOICES, default="blue")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.type})"
+
+

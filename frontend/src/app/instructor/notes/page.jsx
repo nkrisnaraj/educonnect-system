@@ -10,10 +10,6 @@ import {
   Filter,
   Trash2,
   Pencil,
-  Download,
-  BookOpen,
-  Calendar,
-  Users,
 } from "lucide-react";
 
 export default function NotesPage() {
@@ -116,13 +112,9 @@ export default function NotesPage() {
 
     if (file) formData.append("file", file);
 
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value);
-    }
-
     try {
       if (noteBeingEdited) {
-        const res = await axios.put(
+        await axios.put(
           `http://127.0.0.1:8000/instructor/notes/${noteBeingEdited.id}/`,
           formData,
           {
@@ -154,28 +146,27 @@ export default function NotesPage() {
   };
 
   const handleDeleteNote = async (noteId) => {
-  if (!window.confirm("Are you sure you want to delete this note?")) return;
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
 
-  try {
-    const accessToken = sessionStorage.getItem("accessToken");
+    try {
+      const accessToken = sessionStorage.getItem("accessToken");
 
-    if (!accessToken) {
-      alert("No access token found. Please log in again.");
-      return;
+      if (!accessToken) {
+        alert("No access token found. Please log in again.");
+        return;
+      }
+
+      await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      fetchData();
+      alert("Note deleted.");
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete note.");
     }
-
-    await axios.delete(`http://127.0.0.1:8000/instructor/notes/${noteId}/`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    fetchData();
-    alert("Note deleted.");
-  } catch (err) {
-    console.error("Delete failed:", err);
-    alert("Failed to delete note.");
-  }
-};
-
+  };
 
   const getFileIcon = (type) => {
     switch (type) {
@@ -238,13 +229,16 @@ export default function NotesPage() {
         </div>
       </div>
 
-      {/* Notes */}
-      {notes.length > 0 ? (
+      {/* Notes Section */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600 text-lg">Loading notes...</p>
+        </div>
+      ) : notes.length > 0 ? (
         <div className="bg-white/60 border border-purple-200 rounded-xl">
           <div className="p-6 border-b border-purple-200">
-            <h3 className="text-xl font-semibold">
-              A/L Study Materials Library
-            </h3>
+            <h3 className="text-xl font-semibold">A/L Study Materials Library</h3>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
@@ -277,9 +271,7 @@ export default function NotesPage() {
                     </div>
                   </div>
 
-                  <p className="text-lg text-gray-600 mb-3">
-                    {note.description}
-                  </p>
+                  <p className="text-lg text-gray-600 mb-3">{note.description}</p>
                 </div>
               ))}
             </div>
@@ -288,12 +280,8 @@ export default function NotesPage() {
       ) : (
         <div className="text-center py-12">
           <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No notes found
-          </h3>
-          <p className="text-gray-500 mb-4">
-            Try adjusting your search or filters
-          </p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No notes found</h3>
+          <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
           <button
             onClick={() => openUploadModal()}
             className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-accent"

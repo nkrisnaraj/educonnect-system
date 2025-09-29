@@ -11,9 +11,13 @@ import {
   BookOpen,
   AlertCircle,
   Play,
-  Eye
+  Eye,
+  Timer,
+  Lock,
+  Unlock
 } from "lucide-react"
 import { useStudentExamApi } from "@/hooks/useStudentExamApi"
+import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
 
@@ -23,34 +27,66 @@ export default function StudentExamsPage() {
   const [exams, setExams] = useState([])
   const [selectedTab, setSelectedTab] = useState("upcoming")
   const [searchQuery, setSearchQuery] = useState("")
+  const { loading: authLoading, accessToken } = useAuth()
   const { getAvailableExams, loading, error } = useStudentExamApi()
 
   useEffect(() => {
-    fetchExams()
-  }, [])
+    // Only fetch exams when auth is ready
+    if (!authLoading && accessToken) {
+      fetchExams()
+    }
+  }, [authLoading, accessToken]) // Add dependencies
 
-  const fetchExams = async () => {
+  const fetchExams = async (retryCount = 0) => {
     try {
+      console.log('Fetching exams with auth state:', {
+        authLoading,
+        hasToken: !!accessToken,
+        retryCount
+      });
+      
       const response = await getAvailableExams()
       console.log('Student Exams:', response)
       if (response && response.exams) {
         setExams(response.exams)
+      } else {
+        // Handle case where response doesn't have expected structure
+        setExams([])
       }
     } catch (error) {
       console.error('Failed to fetch exams:', error)
+      
+      // Handle authentication errors
+      if (error.message.includes('Authentication') || error.message.includes('token')) {
+        console.log('Authentication issue, waiting for auth context...')
+        // Don't retry authentication errors immediately
+        return
+      }
+      
+      // Retry logic for network issues only
+      if (retryCount < 3 && (!error.response || error.response.status >= 500)) {
+        console.log(`Retrying exams fetch (attempt ${retryCount + 1})`)
+        setTimeout(() => {
+          fetchExams(retryCount + 1)
+        }, 2000 * (retryCount + 1)) // Exponential backoff
+        return
+      }
+      
+      // Don't throw error, just log it and show empty state
+      setExams([])
     }
   }
 
   const getFilteredExams = () => {
     let filtered = exams.filter((exam) => {
-      const today = new Date()
-      const examDate = new Date(exam.date)
-      
       if (selectedTab === "upcoming") {
-        return !exam.attempted && examDate >= today
+        return exam.availability_status === "not_started" || exam.availability_status === "available"
       }
       if (selectedTab === "completed") {
-        return exam.attempted
+        return exam.availability_status === "completed"
+      }
+      if (selectedTab === "expired") {
+        return exam.availability_status === "expired"
       }
       if (selectedTab === "all") {
         return true
@@ -69,31 +105,35 @@ export default function StudentExamsPage() {
   }
 
   const getStatusBadge = (exam) => {
-    if (exam.attempted) {
-      const score = exam.score || 0
-      if (score >= 80) {
-        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">Excellent</span>
-      } else if (score >= 60) {
-        return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Good</span>
-      } else if (score >= 40) {
-        return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">Average</span>
-      } else {
-        return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">Needs Improvement</span>
-      }
-    }
-    
-    const today = new Date()
-    const examDate = new Date(exam.date)
-    
-    if (examDate < today) {
-      return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Missed</span>
-    } else {
-      return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">Available</span>
+    switch (exam.availability_status) {
+      case "completed":
+        const score = exam.score || 0
+        if (score >= 80) {
+          return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="h-3 w-3" />Excellent</span>
+        } else if (score >= 60) {
+          return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="h-3 w-3" />Good</span>
+        } else if (score >= 40) {
+          return <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><CheckCircle className="h-3 w-3" />Average</span>
+        } else {
+          return <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><XCircle className="h-3 w-3" />Needs Improvement</span>
+        }
+      case "available":
+        return <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><Unlock className="h-3 w-3" />Available Now</span>
+      case "not_started":
+        return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><Timer className="h-3 w-3" />Scheduled</span>
+      case "expired":
+        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><Lock className="h-3 w-3" />Expired</span>
+      default:
+        return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">Unknown</span>
     }
   }
 
-  const startExam = (examId) => {
-    router.push(`/students/${id}/exams/take/${examId}`)
+  const startExam = (exam) => {
+    if (!exam.is_available) {
+      alert(exam.availability_message)
+      return
+    }
+    router.push(`/students/${id}/exams/take/${exam.id}`)
   }
 
   const viewResults = (examId) => {
@@ -101,8 +141,9 @@ export default function StudentExamsPage() {
   }
 
   const filteredExams = getFilteredExams()
-  const upcomingCount = exams.filter(exam => !exam.attempted).length
-  const completedCount = exams.filter(exam => exam.attempted).length
+  const upcomingCount = exams.filter(exam => exam.availability_status === "not_started" || exam.availability_status === "available").length
+  const completedCount = exams.filter(exam => exam.availability_status === "completed").length
+  const expiredCount = exams.filter(exam => exam.availability_status === "expired").length
 
   if (loading) {
     return (
@@ -110,6 +151,16 @@ export default function StudentExamsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-300 rounded w-1/4 mb-6"></div>
+            <div className="flex items-center justify-center gap-3 mb-8 p-4 bg-blue-50 rounded-lg">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <BookOpen className="h-4 w-4 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-600 animate-pulse" />
+                <p className="text-blue-700 font-medium">Loading your exams...</p>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-lg p-6 shadow-sm">
@@ -120,6 +171,18 @@ export default function StudentExamsPage() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state while auth is loading
+  if (authLoading || (loading && exams.length === 0)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading exams...</p>
         </div>
       </div>
     )
@@ -202,6 +265,16 @@ export default function StudentExamsPage() {
                 Completed ({completedCount})
               </button>
               <button
+                onClick={() => setSelectedTab("expired")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedTab === "expired"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Expired ({expiredCount})
+              </button>
+              <button
                 onClick={() => setSelectedTab("all")}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   selectedTab === "all"
@@ -233,6 +306,7 @@ export default function StudentExamsPage() {
             <p className="text-gray-500">
               {selectedTab === "upcoming" && "You don't have any upcoming exams."}
               {selectedTab === "completed" && "You haven't completed any exams yet."}
+              {selectedTab === "expired" && "No expired exams found."}
               {selectedTab === "all" && "No exams available at the moment."}
             </p>
           </div>
@@ -256,6 +330,7 @@ export default function StudentExamsPage() {
                     <div className="flex items-center text-sm text-gray-600">
                       <Calendar className="h-4 w-4 mr-2" />
                       {new Date(exam.date).toLocaleDateString()} at {exam.start_time}
+                      {exam.end_time && ` - ${exam.end_time}`}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Clock className="h-4 w-4 mr-2" />
@@ -267,6 +342,32 @@ export default function StudentExamsPage() {
                     </div>
                   </div>
 
+                  {/* Availability Message */}
+                  {exam.availability_message && (
+                    <div className={`mb-4 p-3 rounded-lg ${
+                      exam.availability_status === "available" 
+                        ? "bg-green-50 border border-green-200"
+                        : exam.availability_status === "not_started"
+                        ? "bg-blue-50 border border-blue-200"
+                        : "bg-gray-50 border border-gray-200"
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {exam.availability_status === "available" && <Unlock className="h-4 w-4 text-green-600" />}
+                        {exam.availability_status === "not_started" && <Timer className="h-4 w-4 text-blue-600" />}
+                        {exam.availability_status === "expired" && <Lock className="h-4 w-4 text-gray-600" />}
+                        <span className={`text-sm font-medium ${
+                          exam.availability_status === "available" 
+                            ? "text-green-700"
+                            : exam.availability_status === "not_started"
+                            ? "text-blue-700"
+                            : "text-gray-700"
+                        }`}>
+                          {exam.availability_message}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {exam.attempted && exam.score !== null && (
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
@@ -277,7 +378,7 @@ export default function StudentExamsPage() {
                   )}
 
                   <div className="flex gap-2">
-                    {exam.attempted ? (
+                    {exam.availability_status === "completed" ? (
                       <button
                         onClick={() => viewResults(exam.id)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -285,19 +386,60 @@ export default function StudentExamsPage() {
                         <Eye className="h-4 w-4" />
                         View Results
                       </button>
-                    ) : (
+                    ) : exam.availability_status === "available" ? (
                       <button
-                        onClick={() => startExam(exam.id)}
+                        onClick={() => startExam(exam)}
                         className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         <Play className="h-4 w-4" />
                         Start Exam
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startExam(exam)}
+                        disabled
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+                        title={exam.availability_message}
+                      >
+                        <Lock className="h-4 w-4" />
+                        {exam.availability_status === "not_started" ? "Not Started" : "Expired"}
                       </button>
                     )}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && filteredExams.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+            <div className="relative mb-6">
+              <BookOpen className="h-16 w-16 text-gray-400 mx-auto" />
+              <AlertCircle className="h-6 w-6 text-orange-500 absolute -top-1 -right-1" />
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-gray-500" />
+              <h3 className="text-lg font-medium text-gray-900">No exams found</h3>
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <p className="text-gray-600">
+                {selectedTab === "all" 
+                  ? "You don't have any exams assigned yet." 
+                  : `No ${selectedTab} exams found.`}
+              </p>
+            </div>
+            <button
+              onClick={() => fetchExams()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Refresh
+            </button>
           </div>
         )}
 

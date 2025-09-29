@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext"
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 1)) // June 2025
   const [events, setEvents] = useState({})
+  const [isLoading, setIsLoading] = useState(true)
   const {user,api,loading,accessToken,token,refreshToken,refreshAccessToken} = useAuth()
   const [showModal, setShowModal] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
@@ -102,48 +103,99 @@ export default function Calendar() {
 
   
  const fetchEvents = async () => {
+  setIsLoading(true);
   try {
-    const response = await api.get("/students/calendar-events/",{
-      headers:{
+    // Fetch enrolled classes
+    const classesResponse = await api.get("/students/classes/", {
+      headers: {
         Authorization: `Bearer ${accessToken}`
       }
     });
-    console.log(response.data);
-    if (response.status === 200) {
+
+    // Fetch exams
+    const examsResponse = await api.get("/students/exams/", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    console.log("Classes data:", classesResponse.data);
+    console.log("Exams data:", examsResponse.data);
+
+    if (classesResponse.status === 200) {
       const eventMap = {};
-      response.data.forEach(event => {
-        const dateKey = event.date.slice(0, 10); // "YYYY-MM-DD"
-        if (!eventMap[dateKey]) {
-          eventMap[dateKey] = [];
+      
+      // Process enrolled classes (active and pending only)
+      const enrolledClasses = classesResponse.data.enrolled || [];
+      const currentDate = new Date();
+      
+      enrolledClasses.forEach(classItem => {
+        // Filter for active and pending classes only
+        const startDate = new Date(classItem.start_date);
+        const endDate = new Date(classItem.end_date);
+        const isActive = startDate <= currentDate && endDate >= currentDate;
+        const isPending = startDate > currentDate;
+        
+        if (isActive || isPending) {
+          const dateKey = classItem.start_date.slice(0, 10); // "YYYY-MM-DD"
+          if (!eventMap[dateKey]) {
+            eventMap[dateKey] = [];
+          }
+
+          // Determine color based on class status
+          let colorClass = isActive ? "bg-green-500" : "bg-yellow-500";
+
+          eventMap[dateKey].push({
+            id: `class_${classItem.classid}`,
+            title: classItem.title,
+            webinarid: classItem.webinar_id,
+            date: classItem.start_date,
+            type: isActive ? "Active Class" : "Pending Class",
+            color: colorClass,
+            fee: classItem.fee,
+            description: classItem.description
+          });
         }
-
-        // Map backend color (string) to Tailwind classes
-        let colorClass = "bg-gray-400";
-        if (event.color === "blue") colorClass = "bg-blue-500";
-        else if (event.color === "purple") colorClass = "bg-purple-500";
-        else if (event.color === "red") colorClass = "bg-red-500";
-        else if (event.color === "green") colorClass = "bg-green-500";
-
-        eventMap[dateKey].push({
-          id: event.id,
-          title: event.title,
-          webinarid:event.webinarid,
-          date:event.date,
-          type: event.type,
-          color: colorClass,
-        });
       });
+
+      // Process exams
+      if (examsResponse.status === 200 && examsResponse.data) {
+        const exams = Array.isArray(examsResponse.data) ? examsResponse.data : examsResponse.data.results || [];
+        
+        exams.forEach(exam => {
+          const dateKey = exam.exam_date ? exam.exam_date.slice(0, 10) : exam.created_at.slice(0, 10);
+          if (!eventMap[dateKey]) {
+            eventMap[dateKey] = [];
+          }
+
+          eventMap[dateKey].push({
+            id: `exam_${exam.id}`,
+            title: `Exam: ${exam.title}`,
+            webinarid: exam.webinar_id || 'N/A',
+            date: exam.exam_date || exam.created_at,
+            type: "Exam",
+            color: "bg-red-500",
+            duration: exam.duration,
+            description: exam.description || 'Class Exam'
+          });
+        });
+      }
+
       setEvents(eventMap);
     }
   } catch (error) {
     console.error("Error fetching events:", error);
+  } finally {
+    setIsLoading(false);
   }
 };
 
   
   useEffect(() => {
-    fetchEvents();
-  },[])
+    if (accessToken) {
+      fetchEvents();
+    }
+  }, [accessToken])
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -184,8 +236,20 @@ export default function Calendar() {
             ))}
           </div>
 
+          {/* Loading state */}
+          {(loading || isLoading) && (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mb-4 mx-auto"></div>
+                <p className="text-gray-600 font-medium text-lg">Loading calendar events...</p>
+              </div>
+            </div>
+          )}
+
           {/* Calendar grid */}
-          <div className="grid grid-cols-7">{renderCalendarDays()}</div>
+          {!(loading || isLoading) && (
+            <div className="grid grid-cols-7">{renderCalendarDays()}</div>
+          )}
         </div>
 
         
@@ -193,32 +257,63 @@ export default function Calendar() {
       {showModal && selectedEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h2 className="text-xl font-semibold mb-4">Class Details</h2>
-            <p className="text-gray-600">Title: {selectedEvent.title}</p>
-            <p className="text-gray-600">Webinar_Id: {selectedEvent.webinarid}</p>
-            <p className="text-gray-600">Type: {selectedEvent.type}</p>
-            <p className="text-gray-600">
-  Time: {
-    selectedEvent.date
-      ? (() => {
-          const date = new Date(selectedEvent.date);
-          if (isNaN(date.getTime())) return "Invalid date";
-          const hours = date.getUTCHours().toString().padStart(2, '0');
-          const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-          return `${hours}:${minutes}`;
-        })()
-      : "No time available"
-  }
-</p>
+            <h2 className="text-xl font-semibold mb-4">
+              {selectedEvent.type === "Exam" ? "Exam Details" : "Class Details"}
+            </h2>
+            <div className="space-y-3">
+              <p className="text-gray-600"><strong>Title:</strong> {selectedEvent.title}</p>
+              
+              {selectedEvent.webinarid && selectedEvent.webinarid !== 'N/A' && (
+                <p className="text-gray-600"><strong>Webinar ID:</strong> {selectedEvent.webinarid}</p>
+              )}
+              
+              <p className="text-gray-600"><strong>Type:</strong> {selectedEvent.type}</p>
+              
+              {selectedEvent.fee && (
+                <p className="text-gray-600"><strong>Fee:</strong> ₨{selectedEvent.fee}</p>
+              )}
+              
+              {selectedEvent.duration && (
+                <p className="text-gray-600"><strong>Duration:</strong> {selectedEvent.duration} minutes</p>
+              )}
+              
+              {selectedEvent.description && (
+                <p className="text-gray-600"><strong>Description:</strong> {selectedEvent.description}</p>
+              )}
+              
+              <p className="text-gray-600">
+                <strong>Time:</strong> {
+                  selectedEvent.date
+                    ? (() => {
+                        const date = new Date(selectedEvent.date);
+                        if (isNaN(date.getTime())) return "Invalid date";
+                        const hours = date.getUTCHours().toString().padStart(2, '0');
+                        const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+                        return `${hours}:${minutes}`;
+                      })()
+                    : "No time available"
+                }
+              </p>
+            </div>
 
-
-
-            <button
-              onClick={() => setShowModal(false)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            >
-              Close
-            </button>
+            <div className="flex gap-2 mt-6">
+              {selectedEvent.webinarid && selectedEvent.webinarid !== 'N/A' && selectedEvent.type !== "Exam" && (
+                <button
+                  onClick={() => {
+                    window.open(`https://zoom.us/j/${selectedEvent.webinarid}`, '_blank');
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                >
+                  🎥 Join Webinar
+                </button>
+              )}
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Class, ClassSchedule, InstructorProfile, StudyNote, Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer, Exams
+from .models import Class, ClassSchedule, InstructorProfile, StudyNote, InstructorNotification, Exam, ExamQuestion, QuestionOption, ExamSubmission, ExamAnswer, Exams
 from django.contrib.auth.models import User
 from edu_admin.models import ZoomWebinar
 
@@ -65,6 +65,10 @@ class StudyNoteSerializer(serializers.ModelSerializer):
             'related_class': {'write_only': True},
         }
 
+class InstructorNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstructorNotification
+        fields = "__all__"
     
 class ClassScheduleSerializer(serializers.ModelSerializer):
     class Meta:

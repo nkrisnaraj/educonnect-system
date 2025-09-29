@@ -11,6 +11,8 @@ import StudentChatBox from "@/components/student/StudentChatBox";
 import { AnimatePresence, motion } from "framer-motion";
 
 
+
+
 export default function StudentPage() {
   const {user, accessToken, refreshToken, refreshAccessToken, logout,api,loading} = useAuth();
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function StudentPage() {
   const [adminMessages, setAdminMessages] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
-  const [classesLoading, setClassesLoading] = useState(true);
+  const [activeEnrolledClasses, setActiveEnrolledClasses] = useState([]);
   const receiverId = selectedChat === 'admin' ? "admin" : "instructor";
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
@@ -30,40 +32,55 @@ export default function StudentPage() {
 useEffect(() => {
       const fetchAllClasses = async () => {
         try {
-          if (!accessToken || !refreshToken || loading) {
-            console.log("Tokens not ready yet or still loading");
+          // Wait for AuthContext to finish loading
+          if (loading) {
+            console.log("Auth context still loading, waiting...");
             return;
           }
-          setClassesLoading(true);
-          const token = accessToken;
-          const response = await api.get("/students/classes/", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+          
+          if (!accessToken) {
+            console.log("No access token available");
+            return;
+          }
+          
+          console.log("Making API call with token:", accessToken ? 'Token exists' : 'No token');
+          const response = await api.get("/students/classes/",{
+            headers:{
+              Authorization: `Bearer ${accessToken}`
+            }
           });
           console.log("Fetched Classes:", response.data);
           setClasses(response.data.others || []);
           setEnrolledClasses(response.data.enrolled || []);
+          
+          // Filter for active enrolled classes only
+          const currentDate = new Date();
+          const activeClasses = (response.data.enrolled || []).filter(cls => {
+            const startDate = new Date(cls.start_date);
+            const endDate = new Date(cls.end_date);
+            return startDate <= currentDate && endDate >= currentDate;
+          });
+          setActiveEnrolledClasses(activeClasses);
         } catch (error) {
           console.error("Error fetching classes:", error);
-          
-          // Handle specific error cases
+          // If it's a 401 error, try to refresh token manually
           if (error.response?.status === 401) {
-            console.log("Unauthorized - token may be expired");
-            // Optionally trigger token refresh
-            // refreshAccessToken();
+            console.log("Got 401, attempting manual token refresh");
+            try {
+              const newToken = await refreshAccessToken();
+              if (newToken) {
+                console.log("Token refreshed, retrying in 2 seconds...");
+                setTimeout(() => fetchAllClasses(), 2000);
+              }
+            } catch (refreshError) {
+              console.error("Failed to refresh token:", refreshError);
+            }
           }
-          
-          // More user-friendly error handling
-          setClasses([]);
-          setEnrolledClasses([]);
-        } finally {
-          setClassesLoading(false);
         }
       };
 
       fetchAllClasses();
-    }, [accessToken, loading]);
+    }, [accessToken, loading]); // Add loading dependency
 
   useEffect(() => {
     if (classes.length === 0) return;
@@ -75,8 +92,50 @@ useEffect(() => {
 
   console.log(accessToken);
 
-  // Removed redundant fetchEnrolledClass function since enrolled classes 
-  // are already being fetched in the main useEffect above
+  const fetchEnrolledClass = async () => {
+    try {
+      if (loading) {
+        console.log("Auth not ready for enrolled classes fetch");
+        return;
+      }
+      
+      if (!accessToken) {
+        console.log("No access token for enrolled classes");
+        return;
+      }
+      
+      console.log("Fetching enrolled classes with token:", accessToken ? 'Token exists' : 'No token');
+      const enrollClass = await api.get("/students/enroll-class/",{
+        headers:{
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      console.log("Enrolled Classes:", enrollClass.data);
+      setEnrolledClasses(enrollClass.data || []);
+
+    } catch (error) {
+      console.error("Failed to fetch enrolled classes", error);
+      // Handle 401 errors with manual refresh
+      if (error.response?.status === 401) {
+        console.log("Got 401 for enrolled classes, attempting manual refresh");
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            console.log("Token refreshed for enrolled classes, retrying in 2 seconds...");
+            setTimeout(() => fetchEnrolledClass(), 2000);
+          }
+        } catch (refreshError) {
+          console.error("Failed to refresh token for enrolled classes:", refreshError);
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && accessToken) {
+      fetchEnrolledClass();
+    }
+  }, [loading, accessToken]); // Add loading dependency
 
   const markMessagesReadStudent = async (token) => {
     await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
@@ -197,7 +256,7 @@ useEffect(() => {
                       Start- {classes[currentAdIndex]?.start_date}
                     </p>
                     <button
-                      onClick={() => router.push(`/students/${id}/classes`)}
+                      onClick={()=>{router.push(`/students/${id}/classes`)}}
                       className="bg-white text-blue-600 px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                     >
                       Learn More
@@ -221,22 +280,22 @@ useEffect(() => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {
-                classesLoading ? (
-                  <div className="flex items-center space-x-2 p-6 bg-white border rounded-xl shadow-xl">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <p>Loading enrolled courses...</p>
-                  </div>
-                ) : enrolledClasses.length === 0 ? ( 
-                  <p className="text-gray-500 p-4">No enrolled classes found.</p>
+                activeEnrolledClasses.length === 0 ? ( 
+                  <p>No active enrolled classes found.</p>
                 ) : (
-                  enrolledClasses.map((cls, index) => (
+                  activeEnrolledClasses.map((cls, index) => (
                 <div
                   key={index}
                   className="flex justify-between items-center p-6 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
                 >
                   <div>
                     <h3 className="text-md font-semibold mb-2">{cls.title}</h3>
-                    <button onClick = {()=>{router.push(`/students/${id}/courses`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
+                    <p className="text-sm text-gray-500 mb-2">Rs {cls.fee}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-600 font-medium">Active</span>
+                    </div>
+                    <button onClick = {()=>{router.push(`/students/${id}/classes`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
                       View
                     </button>
                   </div>

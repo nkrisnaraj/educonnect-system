@@ -6,13 +6,28 @@ const BASE_URL = 'http://127.0.0.1:8000/students';
 export const useStudentExamApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { accessToken, refreshAccessToken, logout } = useAuth();
+  const { accessToken, refreshAccessToken, logout, loading: authLoading } = useAuth();
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     setLoading(true);
     setError(null);
     
     try {
+      // Wait for auth context to finish loading
+      if (authLoading) {
+        console.log('Auth context still loading, waiting...');
+        setLoading(false);
+        throw new Error('Authentication context still loading');
+      }
+
+      // Check if token is available
+      if (!accessToken) {
+        console.log('No access token available');
+        setLoading(false);
+        throw new Error('No authentication token available');
+      }
+
+      console.log('Making API call to:', `${BASE_URL}${endpoint}`);
       const response = await fetch(`${BASE_URL}${endpoint}`, {
         ...options,
         headers: {
@@ -38,7 +53,8 @@ export const useStudentExamApi = () => {
             });
             
             if (!retryResponse.ok) {
-              throw new Error(`HTTP error! status: ${retryResponse.status}`);
+              const errorData = await retryResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP error! status: ${retryResponse.status}`);
             }
             
             const data = await retryResponse.json();
@@ -56,19 +72,32 @@ export const useStudentExamApi = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const error = new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        error.response = { status: response.status, data: errorData };
+        throw error;
       }
 
       const data = await response.json();
       return data;
     } catch (err) {
       console.error('API call failed:', err);
-      setError(err.message);
+      
+      // Set more user-friendly error messages
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.');
+      } else if (err.response?.status === 404) {
+        setError('Resource not found.');
+      } else if (err.response?.status === 403) {
+        setError(err.response.data?.error || 'Access denied.');
+      } else {
+        setError(err.message || 'An unexpected error occurred.');
+      }
+      
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [accessToken, refreshAccessToken, logout]);
+  }, [accessToken, refreshAccessToken, logout, authLoading]); // Add authLoading dependency
 
   const clearError = useCallback(() => {
     setError(null);

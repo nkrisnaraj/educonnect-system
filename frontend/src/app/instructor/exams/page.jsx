@@ -157,12 +157,12 @@ export default function ExamsPage() {
           <p className="text-gray-600">Create and manage your exams and assessments</p>
         </div>
         <div className="flex gap-2">
-          <button 
+          {/* <button 
             onClick={() => console.log('Test button clicked')}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
           >
             Test Click
-          </button>
+          </button> */}
           <button 
             onClick={() => {
               console.log('Create Exam button clicked')
