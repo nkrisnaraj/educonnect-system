@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    'django.contrib.staticfiles', 
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
@@ -89,6 +89,11 @@ try:
 except json.JSONDecodeError:
     # Fallback in case someone sets invalid JSON
     ZOOM_ACCOUNTS = {}
+
+# Zoom OAuth settings
+ZOOM_CLIENT_ID = config('ZOOM_CLIENT_ID', default='')
+ZOOM_CLIENT_SECRET = config('ZOOM_CLIENT_SECRET', default='')
+ZOOM_REDIRECT_URI = config('ZOOM_REDIRECT_URI', default='http://localhost:8000/api/auth/zoom/callback/')
 
 PAYHERE_MERCHANT_ID = os.getenv("PAYHERE_MERCHANT_ID")
 PAYHERE_MERCHANT_SECRET = os.getenv("PAYHERE_MERCHANT_SECRET")
@@ -160,8 +165,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),  # Extended from 15 minutes to 2 hours
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),  # Extended from 1 day to 7 days
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
@@ -170,7 +175,7 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = False  # More secure approach
+CORS_ALLOW_ALL_ORIGINS = True  # Temporarily allow all for debugging
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

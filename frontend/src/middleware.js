@@ -1,31 +1,24 @@
 import { NextResponse } from 'next/server';
 
 export function middleware(request) {
-
-  console.log("🔒 Middleware is running:", request.nextUrl.pathname);
   const token = request.cookies.get("accessToken")?.value;
-
-  // Prepare the response
-  const response = NextResponse.next();
-
-  // Set CSP header to allow scripts from self and payhere sandbox
-//   response.headers.set(
-//   'Content-Security-Policy',
-//   "script-src 'self' https://sandbox.payhere.lk https://payhere.lk 'unsafe-inline' 'unsafe-eval';"
-// );
-
-//   response.headers.set(
-//   'Content-Security-Policy',
-//   "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
-// );
-
+  
+  // Debug logging
+  console.log('🔍 Middleware check:', {
+    path: request.nextUrl.pathname,
+    hasToken: !!token,
+    token: token ? `${token.substring(0, 20)}...` : 'none',
+    allCookies: Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value ? `${c.value.substring(0, 10)}...` : 'empty']))
+  });
 
   // If no token, redirect to login
   if (!token) {
+    console.log('❌ No token found, redirecting to login');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  return response;
+  console.log('✅ Token found, allowing access');
+  return NextResponse.next();
 }
 
 // Only apply middleware to these paths:

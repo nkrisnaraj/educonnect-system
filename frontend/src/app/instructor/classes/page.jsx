@@ -1,164 +1,183 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { BookOpen, Users, Clock } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useInstructorApi } from '@/hooks/useInstructorApi';
 
 export default function ClassesPage() {
-  const {user, accessToken, refreshAccessToken, logout } = useAuth();
   const [classes, setClasses] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const instructorApi = useInstructorApi();
 
-  const fetchClasses = async (token) => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/instructor/instructor/classes/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 401) throw new Error("Unauthorized");
-
-      const data = await res.json();
-      if (data?.classes) {
-        setClasses(data.classes);
+      setLoading(true);
+      console.log('Fetching classes data...');
+      const response = await instructorApi.getClasses();
+      console.log('API Response:', response);
+      
+      if (response && response.classes) {
+        console.log('Found classes:', response.classes.length);
+        console.log('First class sample:', response.classes[0]);
+        setClasses(response.classes || []);
+      } else if (response) {
+        // Handle case where response is direct array
+        console.log('Response is direct array:', Array.isArray(response));
+        console.log('Response sample:', response[0]);
+        setClasses(Array.isArray(response) ? response : []);
+      } else {
+        console.log('No response received');
+        setError('Failed to fetch classes');
       }
     } catch (err) {
-      if (err.message === "Unauthorized") {
-        try {
-          const newToken = await refreshAccessToken();
-          if (newToken) fetchClasses(newToken);
-          else logout();
-        } catch {
-          logout();
-        }
-      } else {
-        console.error("Fetch error:", err);
-      }
+      console.error('Error fetching classes:', err);
+      setError(err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (user && accessToken) fetchClasses(accessToken);
-  }, [user]);
-
-  const filteredClasses = classes.filter((c) =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // const classes = [
-  //   {
-  //     id: 1,
-  //     name: "Chemistry - 2025 A/L",
-  //     code: "CHE2025",
-  //     subject: "Chemistry",
-  //     batch: "2025 A/L",
-  //     students: 45,
-  //     lessons: 24,
-  //     progress: 75,
-  //     startDate: "2024-01-15",
-  //     endDate: "2024-12-15"
-  //   },
-  // ]
-
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My A/L Classes</h1>
-        </div>
-      </div>
-
-      {/* Classes List */}
-      <div className="bg-white/60 backdrop-blur-sm border border-primary rounded-lg">
-        <div className="p-6 border-b border-purple-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">A/L Class Management</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Search classes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          {/* Class Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredClasses.map((classes) => (
-              <div
-                key={classes.id}
-                className="bg-white/50 border border-primary rounded-lg p-6 transition transform hover:scale-[1.02] hover:shadow-lg hover:bg-white/80 cursor-pointer"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="text-lg font-semibold text-gray-900">
-                        {classes.title}
-                      </h4>
-                    </div>
-                    <p className="text-lg text-gray-600 mb-2">
-                      {classes.description}
-                    </p>
-
-                    <div className="grid grid-cols-2 text-lg text-gray-700 gap-2 mb-2">
-                      <p><strong>Fee:</strong> Rs. {classes.fee}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Students</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {class.students}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <BookOpen className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Lessons</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {class.lessons}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Clock className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Progress</span>
-                    </div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {class.progress}%
-                    </p>
-                  </div>
-                </div> */}
-
-                {/* <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Class Progress</span>
-                    <span>{class.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${class.progress}%` }}
-                    ></div>
-                  </div>
-                </div> */}
-              </div>
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
             ))}
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-medium">Error</h3>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={fetchData}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">My Classes</h1>
+      
+      {classes.length > 0 ? (
+        <div className="grid gap-6">
+          {classes.map((cls) => (
+            <div key={cls.id} className="bg-white border rounded-lg p-6 shadow-sm">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">
+                    {cls.title || 'Unnamed Class'}
+                  </h3>
+                  <span className="text-sm text-gray-500">
+                    {cls.classid || 'No ID'}
+                  </span>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-sm ${
+                  cls.status === 'active' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {cls.status || 'Unknown'}
+                </span>
+              </div>
+              
+              <p className="text-gray-600 mb-4 line-clamp-3">
+                {cls.description || 'No description provided'}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="text-sm">
+                  <span className="text-gray-500">Fee:</span>
+                  <span className="ml-1 font-medium">${cls.fee || '0'}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Instructor:</span>
+                  <span className="ml-1 font-medium">{cls.instructor_name || 'Unknown'}</span>
+                </div>
+              </div>
+              
+              {cls.start_date && cls.end_date && (
+                <div className="text-sm text-gray-500 mb-2">
+                  Duration: {new Date(cls.start_date).toLocaleDateString()} - {new Date(cls.end_date).toLocaleDateString()}
+                </div>
+              )}
+              
+              {cls.schedules && cls.schedules.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="text-sm text-gray-600">
+                    <strong>Schedules:</strong>
+                    {cls.schedules.map((schedule, index) => (
+                      <div key={index} className="mt-1">
+                        {schedule.start_time} ({schedule.duration_minutes}min) - {schedule.days_of_week?.join(', ')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {cls.webinar_info && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-gray-700">Webinar Details:</span>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-mono">
+                        ID: {cls.webinar_info.webinar_id}
+                      </span>
+                    </div>
+                    <div className="text-gray-600 space-y-1">
+                      <div><strong>Topic:</strong> {cls.webinar_info.topic}</div>
+                      {cls.webinar_info.start_time && (
+                        <div><strong>Webinar Time:</strong> {new Date(cls.webinar_info.start_time).toLocaleString()}</div>
+                      )}
+                      {cls.webinar_info.duration && (
+                        <div><strong>Duration:</strong> {cls.webinar_info.duration} minutes</div>
+                      )}
+                      {cls.webinar_info.agenda && (
+                        <div><strong>Agenda:</strong> {cls.webinar_info.agenda}</div>
+                      )}
+                      {cls.webinar_info.registration_url && (
+                        <div className="mt-2">
+                          <a 
+                            href={cls.webinar_info.registration_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                          >
+                            Register for Webinar
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <h3 className="text-gray-500 text-lg">No classes found</h3>
+          <p className="text-gray-400">Create your first class to get started</p>
+        </div>
+      )}
     </div>
   );
 }

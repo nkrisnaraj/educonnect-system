@@ -20,6 +20,7 @@ export default function StudentPage() {
   const [adminMessages, setAdminMessages] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
+  const [classesLoading, setClassesLoading] = useState(true);
   const receiverId = selectedChat === 'admin' ? "admin" : "instructor";
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
@@ -29,10 +30,11 @@ export default function StudentPage() {
 useEffect(() => {
       const fetchAllClasses = async () => {
         try {
-          if (!accessToken || !refreshToken) {
-            console.log("Tokens not ready yet");
+          if (!accessToken || !refreshToken || loading) {
+            console.log("Tokens not ready yet or still loading");
             return;
           }
+          setClassesLoading(true);
           const token = accessToken;
           const response = await api.get("/students/classes/", {
             headers: {
@@ -40,16 +42,28 @@ useEffect(() => {
             },
           });
           console.log("Fetched Classes:", response.data);
-          setClasses(response.data.others);
-          setEnrolledClasses(response.data.enrolled);
+          setClasses(response.data.others || []);
+          setEnrolledClasses(response.data.enrolled || []);
         } catch (error) {
           console.error("Error fetching classes:", error);
-          alert("Failed to fetch classes. Please try again later.");
+          
+          // Handle specific error cases
+          if (error.response?.status === 401) {
+            console.log("Unauthorized - token may be expired");
+            // Optionally trigger token refresh
+            // refreshAccessToken();
+          }
+          
+          // More user-friendly error handling
+          setClasses([]);
+          setEnrolledClasses([]);
+        } finally {
+          setClassesLoading(false);
         }
       };
 
       fetchAllClasses();
-    }, [accessToken]);
+    }, [accessToken, loading]);
 
   useEffect(() => {
     if (classes.length === 0) return;
@@ -61,28 +75,8 @@ useEffect(() => {
 
   console.log(accessToken);
 
-  const fetchEnrolledClass = async () => {
-    try {
-      const enrollClass = await api.get("/students/enroll-class/" ,{
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      console.log("Enrolled Classes:", enrollClass.data);
-      //const result = enrollClass.data?.enrolled_classes || [];
-      setEnrollClasses(enrollClass.data || []);
-
-    } catch (error) {
-      console.error("Failed to fetch enrolled classes", error);
-      
-    }
-  }
-
-  useEffect(() => {
-  if (!loading && accessToken) {
-    fetchEnrolledClass();
-  }
-}, [loading, accessToken]);
+  // Removed redundant fetchEnrolledClass function since enrolled classes 
+  // are already being fetched in the main useEffect above
 
   const markMessagesReadStudent = async (token) => {
     await axios.post(`http://127.0.0.1:8000/students/mark_messages_read_student/`, {}, {
@@ -126,15 +120,19 @@ useEffect(() => {
     }
   };
 
-  
-   
-  const today = new Date();
-  const formatdate = today.toLocaleDateString("en-GB",{
-    weekday:"long",
-    year:"numeric",
-    month:"long",
-    day:"numeric"
-  })
+  const [formatdate, setFormatdate] = useState("");
+
+  // Fix hydration mismatch by setting date on client side
+  useEffect(() => {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString("en-GB", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+    setFormatdate(formattedDate);
+  }, []);
 
 //console.log("messages:", messages);
   return (
@@ -142,7 +140,7 @@ useEffect(() => {
       {/* Welcome Banner */}
       <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
         <div className="relative z-10 p-4">
-          <p className="text-sm mb-6">{formatdate}</p>
+          <p className="text-sm mb-6">{formatdate || "Loading date..."}</p>
           <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back {user?.first_name || 'Student'}!</h1>
           <p className="text-sm opacity-90">Always stay updated in your student portal</p>
         </div>
@@ -164,7 +162,14 @@ useEffect(() => {
           {/* Ad Section */}
           <div>
             <h2 className="text-lg font-bold mb-2">New Classes</h2>
-            {classes.length === 0 ? (
+            {classesLoading ? (
+              <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <p>Loading new classes...</p>
+                </div>
+              </div>
+            ) : classes.length === 0 ? (
               <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-xl p-6 text-white relative overflow-hidden">
                 <p>No New Classes found</p>
               </div>
@@ -192,7 +197,7 @@ useEffect(() => {
                       Start- {classes[currentAdIndex]?.start_date}
                     </p>
                     <button
-                      onClick={() => router.push(`/students/${id}/courses`)}
+                      onClick={() => router.push(`/students/${id}/classes`)}
                       className="bg-white text-blue-600 px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                     >
                       Learn More
@@ -216,8 +221,13 @@ useEffect(() => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {
-                enrolledClasses.length === 0 ? ( 
-                  <p>No enrolled classes found.</p>
+                classesLoading ? (
+                  <div className="flex items-center space-x-2 p-6 bg-white border rounded-xl shadow-xl">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <p>Loading enrolled courses...</p>
+                  </div>
+                ) : enrolledClasses.length === 0 ? ( 
+                  <p className="text-gray-500 p-4">No enrolled classes found.</p>
                 ) : (
                   enrolledClasses.map((cls, index) => (
                 <div

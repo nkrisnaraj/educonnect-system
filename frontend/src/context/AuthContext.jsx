@@ -21,16 +21,40 @@ export const AuthProvider = ({ children }) => {
   
 
   useEffect(() => {
-    // Load tokens & user from sessionStorage on mount
-    const userJson = sessionStorage.getItem("user");
-    const token = sessionStorage.getItem("accessToken");
-    const refresh = sessionStorage.getItem("refreshToken")
-    const richUserJson = sessionStorage.getItem("richUser");
-    if (userJson) setUser(JSON.parse(userJson));
-    if (richUserJson) setRichUser(JSON.parse(richUserJson));
-    if (token) setAccessToken(token);
-    if (refresh) setRefreshToken(refresh);
-    setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        // Load tokens & user from sessionStorage on mount
+        const userJson = sessionStorage.getItem("user");
+        const token = sessionStorage.getItem("accessToken");
+        const refresh = sessionStorage.getItem("refreshToken");
+        const richUserJson = sessionStorage.getItem("richUser");
+        
+        if (userJson) {
+          const userData = JSON.parse(userJson);
+          setUser(userData);
+        }
+        
+        if (richUserJson) {
+          const richUserData = JSON.parse(richUserJson);
+          setRichUser(richUserData);
+        }
+        
+        if (token) setAccessToken(token);
+        if (refresh) setRefreshToken(refresh);
+        
+        // Add a small delay to ensure all state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+        // Clear invalid data on error
+        sessionStorage.clear();
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initializeAuth();
   }, []);
 
 
@@ -70,6 +94,7 @@ const login = async (userData) => {
 
 
   const logout = () => {
+    console.log('🚪 Logout called from:', new Error().stack);
     Cookies.remove("accessToken");
     sessionStorage.removeItem("user");
     sessionStorage.removeItem("userRole");

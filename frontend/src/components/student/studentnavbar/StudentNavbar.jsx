@@ -1,4 +1,4 @@
-import {Bell,BookOpen,Calendar,CreditCard,FileText,Home,LogOut,Notebook,User,X} from "lucide-react";
+import {Bell,BookOpen,Calendar,CreditCard,FileText,Home,LogOut,Notebook,User,X,GraduationCap} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext"; 
@@ -49,10 +49,14 @@ export default function StudentNavbar({ isOpen, onClose }) {
           <BookOpen className="w-5 h-5" />
           <span>Classes</span>
         </Link>
-        <Link href={`/students/${id}/notes`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+        <Link href={`/students/${id}/exams`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
+          <GraduationCap className="w-5 h-5" />
+          <span>Exams</span>
+        </Link>
+        {/* <Link href={`/students/${id}/notes`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <Notebook className="w-5 h-5" />
           <span>Notes</span>
-        </Link>
+        </Link> */}
         <Link href={`/students/${id}/results`} className="flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-md">
           <FileText className="w-5 h-5" />
           <span>Results</span>

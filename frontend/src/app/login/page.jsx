@@ -10,6 +10,7 @@ import "../globals.css";
 import MainNavbar from "@/components/MainNavbar";
 import Footer from "@/components/Footer";
 import Cookies from "js-cookie";
+import { X } from "lucide-react";
 
 export default function Login() {
   const router = useRouter();
@@ -25,21 +26,77 @@ export default function Login() {
 
     const handleLogin = async(e) => {
         e.preventDefault();
+        
+        console.log('🔍 Form submission values:');
+        console.log('Username:', username);
+        console.log('Password:', password);
+        console.log('Username length:', username.length);
+        console.log('Password length:', password.length);
+        console.log('Username type:', typeof username);
+        console.log('Password type:', typeof password);
+        
+        // Check for empty values
+        if (!username || !password) {
+            console.error('❌ Empty username or password');
+            setMessage('Please enter both username and password');
+            return;
+        }
+        
         try {
-          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/",{
-            username,
-            password
+          const requestData = {
+            username: username.trim(),  // Trim whitespace
+            password: password.trim()   // Trim whitespace
+          };
+          
+          console.log('🚀 Sending request with data:', requestData);
+          console.log('🚀 Request URL:', 'http://127.0.0.1:8000/api/accounts/login/');
+          
+          // Add axios interceptor to log the actual request
+          const requestInterceptor = axios.interceptors.request.use(
+            (config) => {
+              console.log('📤 Actual axios request config:', config);
+              console.log('📤 Request data:', config.data);
+              console.log('📤 Request headers:', config.headers);
+              return config;
+            },
+            (error) => {
+              console.error('📤 Request interceptor error:', error);
+              return Promise.reject(error);
+            }
+          );
+          
+          const response = await axios.post("http://127.0.0.1:8000/api/accounts/login/", requestData, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            timeout: 10000  // 10 second timeout
           });
+          
+          // Remove interceptor
+          axios.interceptors.request.eject(requestInterceptor);
+          
+          console.log('✅ Response status:', response.status);
+          console.log('✅ Response data:', response.data);
+          
           if(response.status === 200){
 
             setMessage("Login Successfully")
             setIsSuccess(true);
 
             const data = response.data;
-            console.log(data); //contains user, access, refresh
-            console.log(data.user.role);
+            console.log('🔐 Login successful:', data); //contains user, access, refresh
+            console.log('👤 User role:', data.user.role);
 
-            Cookies.set("accessToken", data.access, { path: "/" });
+            // Set cookie with explicit options
+            Cookies.set("accessToken", data.access, { 
+              path: "/",
+              expires: 1, // 1 day
+              secure: false, // Allow HTTP for development
+              sameSite: 'lax'
+            });
+            
+            console.log('🍪 Cookie set:', Cookies.get("accessToken") ? 'Success' : 'Failed');
 
             login(data); // this replace all loalstorage
             
@@ -69,7 +126,12 @@ export default function Login() {
             console.log("Login Failed");
           }
         } catch (error) {
-            console.error("Login error:", error);
+            console.error("❌ Login error:", error);
+            console.error("❌ Error response:", error.response);
+            console.error("❌ Error status:", error.response?.status);
+            console.error("❌ Error data:", error.response?.data);
+            console.error("❌ Request config:", error.config);
+            
             if(error.response){
               setMessage(error.response.data?.detail || "Invalid Credentials");
             }
@@ -187,8 +249,15 @@ export default function Login() {
     </div>
     {showEmailModel && (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-          {/* <h2 className="text-xl font-semibold mb-4">Forgot Password</h2> */}
+        <div className="relative bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+          {/* Close Button */}
+          <button
+            onClick={() => setShowEmailModel(false)}
+            className="absolute top-3 border border-gray-300 right-3 text-gray-700 hover:text-red-500 dark:hover:text-red-300 text-xl font-bold"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
             Please Enter the Email to send your OTP
           </p>

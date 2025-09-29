@@ -157,3 +157,18 @@ class ZoomAPIClient:
         except requests.exceptions.RequestException as e:
             print(f"Error fetching webinar {webinar_id} detail:", e)
             raise
+
+    def get_webinar_occurrences(self, webinar_id: str) -> dict:
+        """Get all occurrences for a recurring webinar"""
+        token = self.get_access_token()
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        url = f"https://api.zoom.us/v2/webinars/{webinar_id}/registrants"
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching webinar {webinar_id} occurrences:", e)
+            raise

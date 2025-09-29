@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 # Create your views here.
 from rest_framework.decorators import api_view, permission_classes
@@ -13,9 +13,56 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication 
 from datetime import datetime
+from datetime import datetime
+import requests
+from django.conf import settings
+from edu_admin.zoom_api import ZoomAPIClient
+import logging
+from urllib.parse import urlencode
+import uuid
 
 User = get_user_model()
 
+logger = logging.getLogger(__name__)
+
+def _get_default_zoom_account_key():
+    accounts = getattr(settings, "ZOOM_ACCOUNTS", {})
+    if not accounts:
+        return None
+    return next(iter(accounts.keys()))
+
+
+def has_zoom_account_for_email(email: str) -> bool:
+    """
+    Return True if Zoom user exists for the given email using the default Zoom account.
+    """
+    account_key = _get_default_zoom_account_key()
+    if not account_key:
+        logger.warning("No ZOOM_ACCOUNTS configured in settings.")
+        return False
+
+    try:
+        client = ZoomAPIClient(account_key)
+        token = client.get_access_token()
+    except Exception as e:
+        logger.exception("Failed to get Zoom access token: %s", e)
+        return False
+
+    url = f"https://api.zoom.us/v2/users/{email}"
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=6)
+    except requests.RequestException as e:
+        logger.exception("Zoom users API request failed: %s", e)
+        return False
+
+    if resp.status_code == 200:
+        return True
+    if resp.status_code == 404:
+        return False
+
+    logger.warning("Unexpected Zoom API status %s for %s: %s", resp.status_code, email, resp.text[:200])
+    return False
 
 class StudentDetailView(RetrieveAPIView):
     
@@ -57,7 +104,125 @@ def get_tokens_for_user(user):
     }
 
 
+# @api_view(['POST'])
+# def register_user(request):
+#     nic_no = request.data.get('student_profile', {}).get('nic_no')
+#     if nic_no:
+#         nic_error = validate_nic(nic_no)
+#         if nic_error:
+#             return Response({"error": nic_error}, status=status.HTTP_400_BAD_REQUEST)
+
+#     serializer = RegisterSerializer(data=request.data)
+#     if serializer.is_valid():
+#         user = serializer.save()
+#         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def zoom_login(request):
+    """Initiate Zoom OAuth login"""
+    # Generate a state parameter for security
+    state = str(uuid.uuid4())
+    request.session['zoom_oauth_state'] = state
+    
+    params = {
+        'response_type': 'code',
+        'client_id': getattr(settings, 'ZOOM_CLIENT_ID', ''),
+        'redirect_uri': getattr(settings, 'ZOOM_REDIRECT_URI', 'http://127.0.0.1:8000/api/accounts/zoom/callback/'),
+        'state': state,
+        'scope': 'user:read'
+    }
+    
+    zoom_auth_url = f"https://zoom.us/oauth/authorize?{urlencode(params)}"
+    return Response({'auth_url': zoom_auth_url}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def zoom_callback(request):
+    """Handle Zoom OAuth callback"""
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    error = request.GET.get('error')
+    
+    if error:
+        return Response({'error': f'Zoom OAuth error: {error}'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not code:
+        return Response({'error': 'Authorization code not provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verify state parameter
+    session_state = request.session.get('zoom_oauth_state')
+    if not session_state or session_state != state:
+        return Response({'error': 'Invalid state parameter'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Exchange code for access token
+        token_data = get_zoom_access_token(code)
+        access_token = token_data.get('access_token')
+        
+        if not access_token:
+            return Response({'error': 'Failed to get access token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get user info from Zoom
+        user_info = get_zoom_user_info(access_token)
+        zoom_email = user_info.get('email')
+        
+        if not zoom_email:
+            return Response({'error': 'Failed to get user email from Zoom'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify it's a Gmail address
+        if not zoom_email.lower().endswith('@gmail.com'):
+            return Response({
+                'error': 'Only Gmail addresses are allowed for student registration'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Store verified email in session for registration
+        request.session['verified_zoom_email'] = zoom_email
+        
+        return Response({
+            'success': True,
+            'email': zoom_email,
+            'message': 'Zoom verification successful. You can now complete registration.'
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.exception("Zoom OAuth callback error: %s", e)
+        return Response({'error': 'Zoom authentication failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+def get_zoom_access_token(code):
+    """Exchange authorization code for access token"""
+    token_url = "https://zoom.us/oauth/token"
+    
+    data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': getattr(settings, 'ZOOM_REDIRECT_URI', 'http://127.0.0.1:8000/api/accounts/zoom/callback/'),
+    }
+    
+    response = requests.post(
+        token_url,
+        data=data,
+        auth=(getattr(settings, 'ZOOM_CLIENT_ID', ''), getattr(settings, 'ZOOM_CLIENT_SECRET', '')),
+        timeout=10
+    )
+    
+    response.raise_for_status()
+    return response.json()
+
+def get_zoom_user_info(access_token):
+    """Get user information from Zoom API"""
+    user_url = "https://api.zoom.us/v2/users/me"
+    headers = {'Authorization': f'Bearer {access_token}'}
+    
+    response = requests.get(user_url, headers=headers, timeout=10)
+    response.raise_for_status()
+    return response.json()
+
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register_user(request):
     nic_no = request.data.get('student_profile', {}).get('nic_no')
     if nic_no:
@@ -65,14 +230,41 @@ def register_user(request):
         if nic_error:
             return Response({"error": nic_error}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Zoom verification temporarily disabled for development
+    # if request.data.get('student_profile'):
+    #     email = request.data.get('email') or request.data.get('username')
+        
+    #     # Verify it's a Gmail address
+    #     if not email.lower().endswith('@gmail.com'):
+    #         return Response({
+    #             'error': 'Students must register with a valid Gmail address.'
+    #         }, status=status.HTTP_400_BAD_REQUEST)
+        
+    #     # Check if user has Zoom account (using existing function)
+    #     if not has_zoom_account_for_email(email):
+    #         return Response({
+    #             'error': f'No Zoom account found for {email}. Please ensure you have a Zoom account registered with this Gmail address.',
+    #             'zoom_verification_required': True
+    #         }, status=status.HTTP_400_BAD_REQUEST)
+        
+    #     # Check if email was verified through Zoom OAuth (if OAuth is working)
+    #     verified_email = request.session.get('verified_zoom_email')
+    #     if verified_email and email != verified_email:
+    #         return Response({
+    #             'error': f'Email mismatch. You verified {verified_email} with Zoom, but trying to register with {email}.'
+    #         }, status=status.HTTP_400_BAD_REQUEST)
+
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        
+        # Clear the verified email from session after successful registration
+        if 'verified_zoom_email' in request.session:
+            del request.session['verified_zoom_email']
+            
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

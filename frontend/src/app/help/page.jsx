@@ -102,7 +102,7 @@ export default function HelpPage() {
       <MainNavbar />
       
       {/* Header Section */}
-      <section className="pt-24 pb-12 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900">
+      <section className="pt-28 pb-12 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-gray-900">
         <div className="max-w-6xl mx-auto px-8">
           <div className="flex items-center mb-6">
             <Link href="/" className="flex items-center text-blue-600 hover:text-blue-500 mr-4">
