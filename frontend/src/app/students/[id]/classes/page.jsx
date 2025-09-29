@@ -380,7 +380,7 @@ export default function Classes() {
             <p className="text-center text-gray-600">LKR {selectedClass.fee}</p>
             <div className="text-center mt-4">
               <button onClick={()=>{router.push(`/students/${id}/classes/${selectedClass.classid}/notes`)}} className="bg-primary text-white px-4 py-2 rounded">Notes</button>
-              <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button>
+              {/* <button className="bg-primary text-white px-4 py-2 rounded ml-2">Exams</button> */}
             </div>
           </Modal>
         )}

@@ -225,24 +225,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'educonnect',
-#         'USER': 'postgres',
-#         'PASSWORD': '1234',
-#         'HOST': 'db.ibgdlgbvvtsmqzcmafws.supabase.co',
-#         'PORT': '5432',
-#     }
-# }
-
-
-
-DATABASE_URL = os.getenv("DATABASE_URL")  # You will define this in .env or environment
-
 DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    'default': dj_database_url.parse(os.environ.get("DATABASE_URL"))
 }
 
 

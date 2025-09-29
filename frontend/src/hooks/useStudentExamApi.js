@@ -38,7 +38,8 @@ export const useStudentExamApi = () => {
             });
             
             if (!retryResponse.ok) {
-              throw new Error(`HTTP error! status: ${retryResponse.status}`);
+              const errorData = await retryResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP error! status: ${retryResponse.status}`);
             }
             
             const data = await retryResponse.json();
@@ -56,14 +57,27 @@ export const useStudentExamApi = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const error = new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        error.response = { status: response.status, data: errorData };
+        throw error;
       }
 
       const data = await response.json();
       return data;
     } catch (err) {
       console.error('API call failed:', err);
-      setError(err.message);
+      
+      // Set more user-friendly error messages
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.');
+      } else if (err.response?.status === 404) {
+        setError('Resource not found.');
+      } else if (err.response?.status === 403) {
+        setError(err.response.data?.error || 'Access denied.');
+      } else {
+        setError(err.message || 'An unexpected error occurred.');
+      }
+      
       throw err;
     } finally {
       setLoading(false);
