@@ -15,10 +15,10 @@ export const ThemeProvider = ({ children }) => {
     document.documentElement.classList.toggle("dark", dark);
   }, []);
 
-  useEffect(() => {
-    sessionStorage.setItem("theme", isDarkMode ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
+  // useEffect(() => {
+  //   sessionStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  //   document.documentElement.classList.toggle("dark", isDarkMode);
+  // }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode((prev) => !prev);
 

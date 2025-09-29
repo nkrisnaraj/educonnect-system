@@ -297,7 +297,7 @@ def initiate_payment(request):
             stuid=user,
             method='online',
             amount=amount,
-            status='pending',
+            status='Success',
         )
         OnlinePayment.objects.create(
             payid=payment,
@@ -577,6 +577,8 @@ def build_class_data(class_obj):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def student_classess(request):
+    from django.utils import timezone
+    
     student = request.user.student_profile
     enrolled_enrollments = Enrollment.objects.filter(stuid=student).select_related(
         'classid', 'classid__webinar').prefetch_related('classid__schedules')
@@ -584,8 +586,15 @@ def student_classess(request):
 
     enrolled_data = [build_class_data(c) for c in enrolled_classes]
 
+    # Get current date
+    current_date = timezone.now().date()
+    
+    # Filter other classes to show active (currently running) and pending (future) classes
+    # but exclude completed classes and non-enrolled classes
     all_classes = Class.objects.all()
-    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes])
+    other_classes = all_classes.exclude(pk__in=[c.pk for c in enrolled_classes]).filter(
+        end_date__gte=current_date  # Only exclude completed classes (end_date < current_date)
+    )
     others_data = [build_class_data(c) for c in other_classes]
     print("Enrolled Classes Data:")
     print(enrolled_data)
@@ -676,50 +685,84 @@ from instructor.models import Exams
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def calendarEvent(request):
-    #fetch webinars
+    """Get calendar events for student - simplified version for debugging"""
     user = request.user
     try:
         student = StudentProfile.objects.get(user=user)
     except:
         return Response({"error": "Student profile not found."}, status=status.HTTP_404_NOT_FOUND)
     
-    # Step 1: Get all enrolled classes for this student
-    enrolled_classes = Enrollment.objects.filter(stuid=student).select_related("classid")
-    class_ids = enrolled_classes.values_list("classid__id",flat=True)
+    # Step 1: Get all enrolled classes for this student with successful payments
+    enrolled_classes = Enrollment.objects.filter(
+        stuid=student, 
+        payid__status='success'
+    ).select_related("classid", "classid__webinar")
     
-
-   # 3. Get related webinars from those classes
-    webinar_ids = Class.objects.filter(id__in=class_ids).values_list("webinar_id", flat=True)
-
-    # 4. Now get all occurrences linked to those webinars
-    webinars = ZoomOccurrence.objects.filter(webinar_id__in=webinar_ids).select_related("webinar")
-    webinar_data = [
-        {
-            "id": webinar.id,
-            "title": webinar.webinar.topic,
-            "webinarid":webinar.webinar.webinar_id,
-            "type": "webinar",
-            "date": webinar.start_time,
-            "color": "red",
-        }
-        for webinar in webinars
-    ]
-
-    #fetch exams
-    exams = Exams.objects.filter(classid__in=class_ids)
-    exam_data = [
-        {
-            "id": exam.id,
-            "title": exam.examname,
+    print(f"=== CALENDAR DEBUG ===")
+    print(f"Student: {user.first_name} {user.last_name}")
+    print(f"Enrolled classes: {enrolled_classes.count()}")
+    
+    events = []
+    
+    # Step 2: Process each enrolled class
+    for enrollment in enrolled_classes:
+        class_obj = enrollment.classid
+        print(f"\nClass: {class_obj.title}")
+        print(f"  Start: {class_obj.start_date}, End: {class_obj.end_date}")
+        print(f"  Has webinar: {class_obj.webinar is not None}")
+        
+        # Add class start event for debugging
+        events.append({
+            "id": f"class_{class_obj.id}",
+            "title": f"📚 {class_obj.title}",
+            "type": "class",
+            "date": f"{class_obj.start_date}T09:00:00",
+            "color": "green",
+        })
+        
+        # Get zoom occurrences if webinar exists
+        if class_obj.webinar:
+            print(f"  Webinar: {class_obj.webinar.topic} (ID: {class_obj.webinar.webinar_id})")
+            
+            # Get ALL occurrences for this webinar (no date filtering for now)
+            occurrences = ZoomOccurrence.objects.filter(webinar=class_obj.webinar)
+            print(f"  Zoom occurrences found: {occurrences.count()}")
+            
+            for occurrence in occurrences:
+                print(f"    - Occurrence: {occurrence.start_time}")
+                events.append({
+                    "id": f"zoom_{occurrence.id}",
+                    "title": f"🎥 {class_obj.webinar.topic}",
+                    "webinarid": class_obj.webinar.webinar_id,
+                    "type": "zoom_meeting",
+                    "date": occurrence.start_time.isoformat() if occurrence.start_time else None,
+                    "color": "blue",
+                    "duration": occurrence.duration,
+                    "class_title": class_obj.title,
+                })
+    
+    # Step 3: Get published exams (simplified)
+    all_enrolled_class_ids = [enrollment.classid.id for enrollment in enrolled_classes]
+    exams = Exam.objects.filter(
+        classid__in=all_enrolled_class_ids,
+        is_published=True
+    )
+    
+    print(f"\nPublished exams found: {exams.count()}")
+    for exam in exams:
+        print(f"  - Exam: {exam.examname} on {exam.date}")
+        events.append({
+            "id": f"exam_{exam.id}",
+            "title": f"📝 {exam.examname}",
             "type": "exam",
-            "date": exam.date.isoformat(),
-            "color": "purple",
-        }
-        for exam in exams
-    ]
-
-    #combine
-    events = webinar_data + exam_data
+            "date": exam.date.isoformat() if exam.date else None,
+            "color": "red",
+            "duration": exam.duration_minutes,
+        })
+    
+    print(f"\nTotal events returned: {len(events)}")
+    print("=== END DEBUG ===")
+    
     return Response(events, status=status.HTTP_200_OK)
 
 
@@ -1432,8 +1475,21 @@ from rest_framework.permissions import AllowAny
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def getAllClass(request):
+    """
+    Get only active and pending classes for the home page
+    - Active classes: start_date <= current_date <= end_date
+    - Pending classes: start_date > current_date
+    - Excludes completed classes: end_date < current_date
+    """
     try:
-        classes = Class.objects.all()
+        from datetime import date
+        current_date = date.today()
+        
+        # Filter for active and pending classes only
+        classes = Class.objects.filter(
+            end_date__gte=current_date  # Exclude completed classes (end_date < current_date)
+        ).order_by('start_date')  # Order by start date for better UX
+        
         serializer = ClassSerializer(classes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:

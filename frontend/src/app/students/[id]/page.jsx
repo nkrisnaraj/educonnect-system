@@ -20,6 +20,7 @@ export default function StudentPage() {
   const [adminMessages, setAdminMessages] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrolledClasses, setEnrolledClasses] = useState([]);
+  const [activeEnrolledClasses, setActiveEnrolledClasses] = useState([]);
   const receiverId = selectedChat === 'admin' ? "admin" : "instructor";
   const messages = selectedChat === 'instructor' ? instructorMessages : adminMessages;
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
@@ -42,6 +43,15 @@ useEffect(() => {
           console.log("Fetched Classes:", response.data);
           setClasses(response.data.others);
           setEnrolledClasses(response.data.enrolled);
+          
+          // Filter for active enrolled classes only
+          const currentDate = new Date();
+          const activeClasses = (response.data.enrolled || []).filter(cls => {
+            const startDate = new Date(cls.start_date);
+            const endDate = new Date(cls.end_date);
+            return startDate <= currentDate && endDate >= currentDate;
+          });
+          setActiveEnrolledClasses(activeClasses);
         } catch (error) {
           console.error("Error fetching classes:", error);
           alert("Failed to fetch classes. Please try again later.");
@@ -192,7 +202,7 @@ useEffect(() => {
                       Start- {classes[currentAdIndex]?.start_date}
                     </p>
                     <button
-                      onClick={() => router.push(`/students/${id}/courses`)}
+                      onClick={()=>{router.push(`/students/${id}/classes`)}}
                       className="bg-white text-blue-600 px-6 py-2 rounded-lg text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                     >
                       Learn More
@@ -216,17 +226,22 @@ useEffect(() => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {
-                enrolledClasses.length === 0 ? ( 
-                  <p>No enrolled classes found.</p>
+                activeEnrolledClasses.length === 0 ? ( 
+                  <p>No active enrolled classes found.</p>
                 ) : (
-                  enrolledClasses.map((cls, index) => (
+                  activeEnrolledClasses.map((cls, index) => (
                 <div
                   key={index}
                   className="flex justify-between items-center p-6 bg-white border rounded-xl shadow-xl hover:bg-blue-600 hover:text-white transition"
                 >
                   <div>
                     <h3 className="text-md font-semibold mb-2">{cls.title}</h3>
-                    <button onClick = {()=>{router.push(`/students/${id}/courses`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
+                    <p className="text-sm text-gray-500 mb-2">Rs {cls.fee}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-600 font-medium">Active</span>
+                    </div>
+                    <button onClick = {()=>{router.push(`/students/${id}/classes`)}} className="bg-blue-500 text-white text-sm px-4 py-2 rounded hover:bg-blue-700 transition">
                       View
                     </button>
                   </div>

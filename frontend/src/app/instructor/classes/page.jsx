@@ -87,9 +87,9 @@ export default function ClassesPage() {
                     <h3 className="text-lg font-semibold mb-1 truncate">
                       {cls.title || 'Unnamed Class'}
                     </h3>
-                    <span className="text-sm text-gray-500 break-all">
+                    {/* <span className="text-sm text-gray-500 break-all">
                       {cls.classid || 'No ID'}
-                    </span>
+                    </span> */}
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm ${
                     cls.status === 'active' 
@@ -111,10 +111,10 @@ export default function ClassesPage() {
                     <span className="text-gray-500">Fee:</span>
                     <span className="ml-1 font-medium">${cls.fee || '0'}</span>
                   </div>
-                  <div className="truncate">
+                  {/* <div className="truncate">
                     <span className="text-gray-500">Instructor:</span>
                     <span className="ml-1 font-medium">{cls.instructor_name || 'Unknown'}</span>
-                  </div>
+                  </div> */}
                 </div>
 
                 {cls.start_date && cls.end_date && (
@@ -145,12 +145,12 @@ export default function ClassesPage() {
                         {cls.webinar_info.webinar_id}
                       </span>
                     </div>
-                    <div className="space-y-1 text-gray-600">
+                    {/* <div className="space-y-1 text-gray-600">
                       <div><strong>Topic:</strong> {cls.webinar_info.topic}</div>
                       {cls.webinar_info.start_time && (
                         <div><strong>Time:</strong> {new Date(cls.webinar_info.start_time).toLocaleString()}</div>
                       )}
-                    </div>
+                    </div> */}
                   </div>
                 )}
 
@@ -162,7 +162,7 @@ export default function ClassesPage() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
                     >
-                      Register for Webinar
+                      Join for Webinar
                     </a>
                   </div>
                 )}

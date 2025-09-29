@@ -10,7 +10,10 @@ import {
   FileText,
   Send,
   Eye,
-  EyeOff
+  EyeOff,
+  XCircle,
+  AlertCircle,
+  BookOpen
 } from "lucide-react"
 import { useStudentExamApi } from "@/hooks/useStudentExamApi"
 import { useRouter, useParams } from "next/navigation"
