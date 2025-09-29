@@ -79,12 +79,22 @@ export default function ReceiptModal({ payment, onClose, onUpdate, token }) {
 
             if (!res.ok) throw new Error("Failed to verify payment")
 
+            // Get the success response to show enrollment details
+            const responseData = await res.json()
+            console.log("✅ Verification successful:", responseData)
+
             onUpdate({
                 ...payment,
                 id: payment.id ?? payment.payid,
                 amount: parseFloat(form.paid_amount),
                 status: "completed"
             })
+            
+            // Show success message with enrollment details if available
+            if (responseData.detail) {
+                alert(`Success! ${responseData.detail}`)
+            }
+            
             onClose()
         } catch (err) {
             setError(err.message)

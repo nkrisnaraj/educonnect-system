@@ -7,7 +7,7 @@ from .models import ZoomWebinar
 from .zoom_api import ZoomAPIClient
 import traceback
 from .services import ZoomWebinarService
-from students.models import ChatRoom, Message
+from students.models import ChatRoom, Message, Enrollment
 from students.serializers import MessageSerializer
 from students.models import Notification
 from students.serializers import NotificationSerializer
@@ -328,8 +328,60 @@ class ReceiptPaymentAdminViewSet(viewsets.ModelViewSet):
         if updated_fields:
             payment.save(update_fields=updated_fields)
 
+        # ✅ Create enrollments for the student if payment is successful
+        if payment.status == "success":
+            try:
+                student_profile = payment.stuid.student_profile
+                enrollments_created = []
+                
+                # Parse class names from payment
+                if payment.class_names:
+                    class_names_list = [name.strip() for name in payment.class_names.split(',') if name.strip()]
+                    print(f"🎓 Processing enrollments for classes: {class_names_list}")
+                    
+                    for class_name in class_names_list:
+                        try:
+                            # Find class by title (assuming class_names contains titles)
+                            from instructor.models import Class
+                            class_obj = Class.objects.filter(title__icontains=class_name).first()
+                            
+                            if class_obj:
+                                # Check if enrollment already exists
+                                from students.models import Enrollment
+                                existing_enrollment = Enrollment.objects.filter(
+                                    stuid=student_profile,
+                                    classid=class_obj,
+                                    payid=payment
+                                ).first()
+                                
+                                if not existing_enrollment:
+                                    enrollment = Enrollment.objects.create(
+                                        stuid=student_profile,
+                                        classid=class_obj,
+                                        payid=payment
+                                    )
+                                    enrollments_created.append(f"{class_obj.title} ({class_obj.classid})")
+                                    print(f"✅ Created enrollment for {student_profile.user.username} in {class_obj.title}")
+                                else:
+                                    print(f"⚠️ Enrollment already exists for {student_profile.user.username} in {class_obj.title}")
+                            else:
+                                print(f"❌ Class not found for name: {class_name}")
+                                
+                        except Exception as e:
+                            print(f"❌ Error creating enrollment for class {class_name}: {e}")
+                            continue
+                    
+                    enrollment_message = f" Student enrolled in: {', '.join(enrollments_created)}." if enrollments_created else " No new enrollments created."
+                else:
+                    enrollment_message = " No class names specified in payment."
+                    print("⚠️ No class names found in payment")
+                    
+            except Exception as e:
+                print(f"❌ Error processing enrollments: {e}")
+                enrollment_message = " Enrollment processing failed."
+
         return Response({
-            "detail": "Receipt verified, amount synced, and payment marked as completed."
+            "detail": f"Receipt verified, amount synced, and payment marked as completed.{enrollment_message}"
         })
 
 @api_view(['GET'])
