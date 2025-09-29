@@ -255,10 +255,27 @@ export default function CreateExamPage() {
 
   const saveExam = async () => {
     try {
-      // Validate required fields
-      if (!examData.examname || !examData.classid || !examData.date) {
-        alert('Please fill in all required fields (Exam Name, Class, and Date)')
-        return
+      // Debug: Log current examData to see what's actually in it
+      console.log('🔍 Current examData:', examData);
+      console.log('📝 Exam Name:', examData.examname);
+      console.log('🏫 Class ID:', examData.classid);
+      console.log('📅 Date:', examData.date);
+      
+      // Validate required fields with more specific error messages
+      const missingFields = [];
+      if (!examData.examname || examData.examname.trim() === '') {
+        missingFields.push('Exam Name');
+      }
+      if (!examData.classid) {
+        missingFields.push('Class');
+      }
+      if (!examData.date) {
+        missingFields.push('Date');
+      }
+      
+      if (missingFields.length > 0) {
+        alert(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+        return;
       }
 
       // First create the exam
