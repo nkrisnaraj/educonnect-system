@@ -181,13 +181,19 @@ useEffect(() => {
 
   
    
-  const today = new Date();
-  const formatdate = today.toLocaleDateString("en-GB",{
-    weekday:"long",
-    year:"numeric",
-    month:"long",
-    day:"numeric"
-  })
+  const [currentDate, setCurrentDate] = useState('');
+
+  // Set date only on client side to avoid hydration mismatch
+  useEffect(() => {
+    const today = new Date();
+    const formatdate = today.toLocaleDateString("en-GB", {
+      weekday: "long",
+      year: "numeric", 
+      month: "long",
+      day: "numeric"
+    });
+    setCurrentDate(formatdate);
+  }, []);
 
 //console.log("messages:", messages);
   return (
@@ -195,7 +201,7 @@ useEffect(() => {
       {/* Welcome Banner */}
       <div className="bg-primary rounded-xl p-6 mb-6 text-white relative overflow-hidden">
         <div className="relative z-10 p-4">
-          <p className="text-sm mb-6">{formatdate}</p>
+          <p className="text-sm mb-6">{currentDate}</p>
           <h1 className="text-xl md:text-3xl font-bold mb-2">Welcome back {user?.first_name || 'Student'}!</h1>
           <p className="text-sm opacity-90">Always stay updated in your student portal</p>
         </div>

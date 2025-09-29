@@ -7,45 +7,24 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function Topbar({ toggleSidebar }) {
-  const [notifications,setNotifications] = useState([])
+  // All state hooks first
+  const [notifications, setNotifications] = useState([]);
   const [authReady, setAuthReady] = useState(false);
-  const {user,richUser,api,token,accessToken,refreshAccessToken,loading} = useAuth();
-  const route = useRouter();
-  const {id}= useParams();
   
-  // Track when auth is truly ready (separate from loading state)
+  // All context hooks
+  const { user, richUser, api, token, accessToken, refreshAccessToken, loading } = useAuth();
+  const route = useRouter();
+  const { id } = useParams();
+  
+  // All useEffect hooks must come before any conditional returns
+  // Effect 1: Track when auth is truly ready
   useEffect(() => {
     const isAuthReady = !loading && accessToken && user && (user.role !== 'student' || richUser?.student_profile);
     setAuthReady(isAuthReady);
     console.log("Auth ready state changed:", isAuthReady);
   }, [loading, accessToken, user, richUser]);
-  
-  // If still loading or no user, show basic topbar
-  if (loading || !user || !authReady) {
-    return (
-      <div className="flex justify-between items-center mb-2 mt-2 gap-6 px-6 pt-6">
-        <button className="md:hidden" onClick={toggleSidebar}>
-          <Menu className="w-6 h-6 text-gray-700" />
-        </button>
-        <div className="flex items-center gap-4">
-          <div className="animate-pulse flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span>Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  const profileSrc = richUser?.student_profile?.profile_image
-    ? `http://127.0.0.1:8000${richUser.student_profile.profile_image}`
-    : "/student.png";
 
-  console.log("Profile image URL:", profileSrc);
-  
-  console.log("user:",user);
-  //console.log("batch:" ,user.student_profile.year_of_al);
-
+  // Effect 2: Fetch notifications
   useEffect(() => {
     const fetchNotice = async () => {
       try {
@@ -62,8 +41,8 @@ export default function Topbar({ toggleSidebar }) {
         console.log("🔔 Using token:", accessToken ? `${accessToken.substring(0, 20)}...` : 'none');
         
         // Don't add manual headers - api interceptor handles authentication automatically
-        const response = await api.get("students/notifications/",{
-          headers:{
+        const response = await api.get("students/notifications/", {
+          headers: {
             Authorization: `Bearer ${accessToken}`
           }
         });
@@ -97,9 +76,35 @@ export default function Topbar({ toggleSidebar }) {
     };
     
     fetchNotice();
-  }, [loading, accessToken, user, api, refreshAccessToken]); // Add user to dependencies
+  }, [loading, accessToken, user, api, refreshAccessToken]);
 
-  const unreadCount = Array.isArray(notifications) ? notifications.filter((n)=>!n.read_status).length : 0;
+  // Calculate values that don't depend on conditional logic
+  const profileSrc = richUser?.student_profile?.profile_image
+    ? `http://127.0.0.1:8000${richUser.student_profile.profile_image}`
+    : "/student.png";
+
+  const unreadCount = Array.isArray(notifications) ? notifications.filter((n) => !n.read_status).length : 0;
+
+  // Early return AFTER all hooks
+  if (loading || !user || !authReady) {
+    return (
+      <div className="flex justify-between items-center mb-2 mt-2 gap-6 px-6 pt-6">
+        <button className="md:hidden" onClick={toggleSidebar}>
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+        <div className="flex items-center gap-4">
+          <div className="animate-pulse flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log("Profile image URL:", profileSrc);
+  console.log("user:", user);
+  //console.log("batch:" ,user.student_profile.year_of_al);
 
   return (
     <div className="flex justify-between items-center mb-2  mt-2 gap-6 px-6 pt-6">

@@ -50,7 +50,7 @@ def test_admin_authentication():
         # Test API endpoint directly
         if receipts:
             test_receipt = receipts[0]
-            url = f"http://127.0.0.1:8000/api/edu_admin/receipt-payments/{test_receipt.receiptid}/verify/"
+            url = f"http://127.0.0.1:8000/edu_admin/receipt-payments/{test_receipt.receiptid}/verify/"
             headers = {
                 'Authorization': f'Bearer {access_token}',
                 'Content-Type': 'application/json'
