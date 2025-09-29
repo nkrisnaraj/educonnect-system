@@ -169,6 +169,51 @@ export default function Classes() {
       alert("Please upload a valid image.");
       return;
     }
+    
+    // Check authentication state before making the request
+    console.log("🔐 Pre-upload Auth Check:", {
+      hasUser: !!user,
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      authLoading: loading,
+      tokenLength: accessToken?.length
+    });
+    
+    if (!accessToken) {
+      alert("❌ Authentication required. Please log in again.");
+      return;
+    }
+    
+    // Check token expiry and refresh if needed
+    if (refreshToken && refreshAccessToken) {
+      try {
+        // Try to decode the token to check expiry (basic check)
+        if (accessToken) {
+          const tokenParts = accessToken.split('.');
+          if (tokenParts.length === 3) {
+            const payload = JSON.parse(atob(tokenParts[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timeUntilExpiry = payload.exp - currentTime;
+            
+            console.log("🔍 Token expiry check:", {
+              expiresAt: new Date(payload.exp * 1000).toLocaleString(),
+              timeUntilExpiry: `${timeUntilExpiry} seconds`,
+              needsRefresh: timeUntilExpiry < 300 // Less than 5 minutes
+            });
+            
+            // Refresh if token expires in less than 5 minutes
+            if (timeUntilExpiry < 300) {
+              console.log("🔄 Token expires soon, refreshing...");
+              await refreshAccessToken();
+              console.log("✅ Token refreshed successfully");
+            }
+          }
+        }
+      } catch (refreshError) {
+        console.log("⚠️ Token analysis/refresh failed, continuing with existing token:", refreshError);
+      }
+    }
+    
     setIsProcessing(true);
     try {
       const selectedClassDetails = classes.filter((Class) =>
@@ -178,25 +223,90 @@ export default function Classes() {
         (sum, Class) => sum + parseFloat(Class.fee),
         0
       );
+      
+      // Extract class names for the payment record
+      const classNames = selectedClassDetails.map(cls => cls.title).join(", ");
+      
+      console.log("📋 Receipt Upload Data:", {
+        classIds: selectedClasses,
+        classNames: classNames,
+        amount: totalAmount,
+        hasApi: !!api,
+        tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'No token'
+      });
+      
       const formData = new FormData();
       formData.append("image", file);
-      formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of course IDs
+      formData.append("class_ids", JSON.stringify(selectedClasses)); // Send array of class IDs
+      formData.append("class_names", classNames); // Send class names as comma-separated string
       formData.append("amount", totalAmount);
+
+      // Debug: Check token and API configuration before request
+      console.log("🔧 Pre-request debug:", {
+        hasApi: !!api,
+        currentToken: accessToken ? `${accessToken.substring(0, 20)}...${accessToken.substring(-10)}` : 'No token',
+        tokenFromStorage: sessionStorage.getItem('accessToken') ? 'Found in session' : 'Not in session',
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => [key, typeof value === 'object' ? 'File' : value])
+      });
 
       const response = await api.post(
         "/students/payments/upload-receipt/",
         formData,
         {
           headers: {
-            "Content-Type": "multipart/form-data",
+            // Don't set Content-Type manually for FormData - let browser set it with boundary
+            // "Content-Type": "multipart/form-data",
+            // Explicitly add the Authorization header as backup
+            ...(accessToken && { "Authorization": `Bearer ${accessToken}` })
           },
         }
       );
+      
+      console.log("✅ Receipt upload successful:", response.data);
       alert(response.data.message || "Receipt uploaded successfully!");
       closeAllModals();
     } catch (error) {
-      console.error(error);
-      alert("❌ Upload failed. Try again.");
+      // Enhanced error logging to capture all possible error details
+      console.error("❌ Receipt upload error - Full error object:", error);
+      console.error("❌ Receipt upload error - Detailed info:", {
+        errorType: error?.name || 'Unknown',
+        errorMessage: error?.message || 'No message',
+        httpStatus: error?.response?.status || 'No status',
+        httpStatusText: error?.response?.statusText || 'No status text',
+        responseData: error?.response?.data || 'No response data',
+        requestUrl: error?.config?.url || 'No URL',
+        requestMethod: error?.config?.method || 'No method',
+        hasRefreshToken: !!refreshToken,
+        hasAccessToken: !!accessToken,
+        isAxiosError: error?.isAxiosError || false,
+        errorCode: error?.code || 'No code',
+        errorStack: error?.stack || 'No stack'
+      });
+      
+      // Check specific error conditions
+      if (error?.response?.status === 401) {
+        console.log("🔑 401 Unauthorized - Token may have expired");
+        alert("❌ Authentication expired. Please refresh the page and try again.");
+      } else if (error?.response?.status === 413) {
+        console.log("📁 413 Payload Too Large - File might be too big");
+        alert("❌ File is too large. Please choose a smaller image.");
+      } else if (error?.response?.status === 400) {
+        console.log("📋 400 Bad Request - Invalid data sent");
+        alert(`❌ Invalid request: ${error?.response?.data?.message || error?.response?.data?.error || 'Please check your data'}`);
+      } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network')) {
+        console.log("🌐 Network error - Connection issue");
+        alert("❌ Network error. Please check your internet connection and try again.");
+      } else if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        console.log("⏱️ Request timeout");
+        alert("❌ Upload timeout. Please try again with a smaller image.");
+      } else {
+        console.log("❓ Unknown error occurred");
+        const errorMsg = error?.response?.data?.message 
+          || error?.response?.data?.error 
+          || error?.message 
+          || 'Unknown error occurred';
+        alert(`❌ Upload failed: ${errorMsg}`);
+      }
     } finally {
       setIsProcessing(false);
     }

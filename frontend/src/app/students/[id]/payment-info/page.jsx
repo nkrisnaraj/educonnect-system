@@ -35,8 +35,24 @@ export default function PaymentInfo() {
       });
       
       if (response.status === 200) {
-        console.log(response.data);
-        setPayments(response.data.payments || []);
+        console.log("📊 Payment Info Response:", response.data);
+        console.log("📋 Payments with class info:", response.data.payments?.map(p => ({
+          payid: p.payid,
+          method: p.method,
+          class: p.class,
+          amount: p.amount
+        })));
+        
+        // Sort payments by date (most recent first)
+        const sortedPayments = (response.data.payments || []).sort((a, b) => {
+          // Parse dates and compare (assuming date format is consistent)
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateB - dateA; // Descending order (newest first)
+        });
+        
+        console.log("📅 Sorted payments (newest first):", sortedPayments.map(p => ({ date: p.date, payid: p.payid })));
+        setPayments(sortedPayments);
       }
     } catch (error) {
       console.error("Payment fetch error:", error);

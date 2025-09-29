@@ -7,13 +7,13 @@ const ThemeContext = createContext();
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  useEffect(() => {
-    const saved = sessionStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const dark = saved === "dark" || (!saved && prefersDark);
-    setIsDarkMode(dark);
-    document.documentElement.classList.toggle("dark", dark);
-  }, []);
+  // useEffect(() => {
+  //   const saved = sessionStorage.getItem("theme");
+  //   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  //   const dark = saved === "dark" || (!saved && prefersDark);
+  //   setIsDarkMode(dark);
+  //   document.documentElement.classList.toggle("dark", dark);
+  // }, []);
 
   // useEffect(() => {
   //   sessionStorage.setItem("theme", isDarkMode ? "dark" : "light");

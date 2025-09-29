@@ -89,13 +89,28 @@ class ReceiptUploadView(APIView):
         user = request.user
         image = request.FILES.get("image")
         method = 'receipt'
+        
+        # Extract class information from request
+        class_ids_str = request.data.get('class_ids', '[]')  # JSON string of class IDs
+        class_names = request.data.get('class_names', '')    # Comma-separated class names
+        amount = request.data.get('amount', 0.0)             # Payment amount
+        
+        print(f"📋 Receipt Upload Request Data:")
+        print(f"   Class IDs: {class_ids_str}")
+        print(f"   Class Names: {class_names}")
+        print(f"   Amount: {amount}")
 
         if not image:
             # No image file was sent in the request
             return Response({'error': "No image provided"}, status=400)
 
-        # Create initial Payment record with zero amount (to be updated after OCR)
-        payment = Payment.objects.create(stuid=user, method=method, amount=0.0)
+        # Create initial Payment record with class names
+        payment = Payment.objects.create(
+            stuid=user, 
+            method=method, 
+            amount=float(amount) if amount else 0.0,
+            class_names=class_names if class_names else None  # Store class names (can be null)
+        )
 
         # Initialize Google Vision API client - TEMPORARILY DISABLED
         # client = vision.ImageAnnotatorClient()
@@ -186,13 +201,20 @@ class PaymentInfoView(APIView):
 
             for payment in payments:
                 try:
-                    # Try to get Enrollment related to this payment
-                    enrollment = Enrollment.objects.filter(payid=payment).first()
+                    # Get class name from Payment.class_names field first (for receipt payments before verification)
+                    # Then fallback to Enrollment table (for verified payments and online payments)
                     classname = None
-                    if enrollment and hasattr(enrollment, 'classid') and enrollment.classid:
-                        classname = enrollment.classid.title
                     
-                    print(f"Payment: {payment.payid}, Enrollment: {enrollment}, Classname: {classname}")
+                    # First priority: class_names field in Payment model
+                    if payment.class_names:
+                        classname = payment.class_names
+                    else:
+                        # Fallback: Try to get from Enrollment table (for verified/enrolled classes)
+                        enrollment = Enrollment.objects.filter(payid=payment).first()
+                        if enrollment and hasattr(enrollment, 'classid') and enrollment.classid:
+                            classname = enrollment.classid.title
+                    
+                    print(f"Payment: {payment.payid}, Method: {payment.method}, Class Names: {classname}")
 
                     invoice_no = None
                     record_no = None
@@ -218,7 +240,7 @@ class PaymentInfoView(APIView):
                         "amount": float(payment.amount) if payment.amount else 0.0,
                         "status": payment.status or "pending",
                         "method": payment.method or "unknown",
-                        "class": classname or "N/A",
+                        "class": classname or "No class specified",
                         "Invoice_No": invoice_no,
                         "Record_No": record_no
                     })
